@@ -10,4 +10,5 @@ export interface WorkerEnv extends Cloudflare.Env {
 
   // Variables
   ENVIRONMENT?: string;
+  SENTRY_DSN?: string;
 }

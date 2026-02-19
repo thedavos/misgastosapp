@@ -23,12 +23,12 @@ export class YapeParser extends BaseParser {
       const text = this.getTextContent(email);
 
       // "Yapeo de S/ 15.50 a Juan Perez"
-      const amountMatch = text.match(/(?:yapeo|yapaste|enviaste).*?S\/\s*([\d,\.]+)/i);
+      const amountMatch = text.match(/(?:yapeo|yapaste|enviaste).*?S\/\s*([\d,.]+)/i);
       if (!amountMatch) return null;
 
       const amount = parseFloat(amountMatch[1].replace(",", ""));
 
-      const merchantMatch = text.match(/(?:a|para)\s+([^\n\.]+)/i);
+      const merchantMatch = text.match(/(?:a|para)\s+([^\n.]+)/i);
       const merchant = merchantMatch ? merchantMatch[1].trim() : "Yapeo";
 
       return {

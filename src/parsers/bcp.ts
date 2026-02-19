@@ -27,7 +27,7 @@ export class BcpParser extends BaseParser {
   parse(email: Email): ParsedTransaction | null {
     const textContent = this.getTextContent(email);
 
-    const amountMatch = textContent.match(/consumo de\s+([A-Z$\/]+)\s*([\d,\.]+)/i);
+    const amountMatch = textContent.match(/consumo de\s+([A-Z$/]+)\s*([\d,.]+)/i);
     if (!amountMatch) {
       console.log("❌ BCP: No se encontró monto");
       return null;
@@ -37,7 +37,7 @@ export class BcpParser extends BaseParser {
     const amount = parseFloat(amountMatch[2].replace(",", ""));
 
     // Extraer comercio
-    const merchantMatch = textContent.match(/en\s+([^\n\.]+?)(?:\.|Fecha|Por tu seguridad)/i);
+    const merchantMatch = textContent.match(/en\s+([^\n.]+?)(?:\.|Fecha|Por tu seguridad)/i);
     const merchant = merchantMatch ? merchantMatch[1].trim() : "Comercio desconocido";
 
     // Extraer fecha

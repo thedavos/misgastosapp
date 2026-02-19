@@ -18,7 +18,7 @@ export class AstropayParser extends BaseParser {
     try {
       const text = this.getTextContent(email);
 
-      const amountMatch = text.match(/(USD|EUR|BRL|ARS|PEN)\s*([\d,\.]+)/i);
+      const amountMatch = text.match(/(USD|EUR|BRL|ARS|PEN)\s*([\d,.]+)/i);
       if (!amountMatch) return null;
 
       const currency = amountMatch[1].toUpperCase();

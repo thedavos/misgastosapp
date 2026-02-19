@@ -27,13 +27,13 @@ export class InterbankParser extends BaseParser {
       const text = this.getTextContent(email);
 
       // Interbank: "Compra por S/ 150.00"
-      const amountMatch = text.match(/(?:compra|consumo|pago).*?([A-Z$\/]+)?\s*([\d,\.]+)/i);
+      const amountMatch = text.match(/(?:compra|consumo|pago).*?([A-Z$/]+)?\s*([\d,.]+)/i);
       if (!amountMatch) return null;
 
       const currency = amountMatch[1] || "S/";
       const amount = parseFloat(amountMatch[2].replace(",", ""));
 
-      const merchantMatch = text.match(/(?:en|comercio|establecimiento)[\s:]+([^\n\.]+)/i);
+      const merchantMatch = text.match(/(?:en|comercio|establecimiento)[\s:]+([^\n.]+)/i);
       const merchant = merchantMatch ? merchantMatch[1].trim() : "Comercio Interbank";
 
       return {

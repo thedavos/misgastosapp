@@ -18,7 +18,7 @@ export class Global66Parser extends BaseParser {
     try {
       const text = this.getTextContent(email);
 
-      const amountMatch = text.match(/(USD|PEN|CLP|ARS)\s*([\d,\.]+)/i);
+      const amountMatch = text.match(/(USD|PEN|CLP|ARS)\s*([\d,.]+)/i);
       if (!amountMatch) return null;
 
       const currency = amountMatch[1].toUpperCase();
