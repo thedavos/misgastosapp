@@ -1,4 +1,4 @@
-# MisGastos Bot 💰
+# MisGastosApp 💰
 
 Bot personal que automatiza la categorización de gastos bancarios usando Cloudflare Workers, Claude AI y Telegram.
 
@@ -6,21 +6,21 @@ Bot personal que automatiza la categorización de gastos bancarios usando Cloudf
 
 MisGastos es un bot personal que:
 
-✅ **Intercepta** notificaciones de transacciones de tus bancos  
-✅ **Parsea automáticamente** los emails usando Email Worker  
-✅ **Categoriza** gastos inteligentemente con Claude AI  
-✅ **Aprende** de tus gastos frecuentes para auto-categorizar  
-✅ **Confirma** cambios por Telegram de forma natural  
-✅ **Genera reportes** mensuales en PDF con análisis  
+✅ **Intercepta** notificaciones de transacciones de tus bancos
+✅ **Parsea automáticamente** los emails con el Worker
+✅ **Categoriza** gastos inteligentemente con Claude AI
+✅ **Aprende** de tus gastos frecuentes para auto-categorizar
+✅ **Confirma** cambios por Telegram de forma natural
+✅ **Genera reportes** mensuales en PDF con análisis
 
 ## Problema que resuelve
 
 Recibir notificaciones de gastos es fácil, pero registrarlos es tedioso:
 
-❌ Los comercios tienen nombres extraños (ej: "Vespucio Apoquindo 123")  
-❌ Es fácil olvidar qué era cada transacción  
-❌ No hay visibilidad de dónde va tu dinero  
-❌ Los apps de finanzas son complicados  
+❌ Los comercios tienen nombres extraños (ej: "Vespucio Apoquindo 123")
+❌ Es fácil olvidar qué era cada transacción
+❌ No hay visibilidad de dónde va tu dinero
+❌ Los apps de finanzas son complicados
 
 **MisGastos lo automatiza todo.**
 
@@ -33,36 +33,36 @@ Recibir notificaciones de gastos es fácil, pero registrarlos es tedioso:
    ↓
 3. Gmail Filter reenvía automáticamente a gastos@misgastos.app
    ↓
-4. Cloudflare Email Worker intercepta y parsea
+4. Cloudflare Worker intercepta, parsea y categoriza con Claude AI
    ↓
-5. Main Worker categoriza con Claude AI
+5. Se guarda en D1 y te pregunta por Telegram
    ↓
-6. Se guarda en D1 y te pregunta por Telegram
+6. Confirmas con ✓ o agregas nota con /nota
    ↓
-7. Confirmas con ✓ o agregas nota con /nota
-   ↓
-8. A fin de mes: /reporte genera PDF con análisis
+7. A fin de mes: /reporte genera PDF con análisis
 ```
 
 ## Stack Tecnológico
 
-| Componente | Tecnología | Por qué |
-|---|---|---|
-| **Runtime** | Cloudflare Workers | Serverless, rápido, escalable |
-| **Base de Datos** | Cloudflare D1 | SQL nativo, integrado con Workers |
-| **Almacenamiento** | Cloudflare R2 | Object storage para reportes |
-| **IA** | Claude API (Anthropic) | Mejor comprensión de contexto natural |
-| **Interfaz** | Telegram Bot API | Accesible, natural, gratuito |
-| **Email** | Cloudflare Email Routing | Intercepta emails sin intermediarios |
+| Componente         | Tecnología               | Por qué                               |
+| ------------------ | ------------------------ | ------------------------------------- |
+| **Runtime**        | Cloudflare Workers       | Serverless, rápido, escalable         |
+| **Base de Datos**  | Cloudflare D1            | SQL nativo, integrado con Workers     |
+| **Almacenamiento** | Cloudflare R2            | Object storage para reportes          |
+| **IA**             | Claude API (Anthropic)   | Mejor comprensión de contexto natural |
+| **Interfaz**       | Telegram Bot API         | Accesible, natural, gratuito          |
+| **Email**          | Cloudflare Email Routing | Intercepta emails sin intermediarios  |
 
 ## Características
 
 ### Categorización inteligente
+
 - Auto-categoriza gastos según el comercio
 - Aprende de patrones recurrentes
 - Permite override manual por Telegram
 
 ### Comandos Telegram
+
 ```
 ✓              → Confirmar último gasto
 ✗              → Rechazar gasto
@@ -75,6 +75,7 @@ Recibir notificaciones de gastos es fácil, pero registrarlos es tedioso:
 ```
 
 ### Reportes mensuales
+
 - Total de gastos por mes
 - Desglose por categoría
 - Gasto promedio diario
@@ -82,6 +83,7 @@ Recibir notificaciones de gastos es fácil, pero registrarlos es tedioso:
 - Exportable como PDF
 
 ### Bancos soportados
+
 - ✅ BCP
 - ✅ Interbank
 - 🔜 Otros bancos (agregar parsers)
@@ -98,14 +100,14 @@ Recibir notificaciones de gastos es fácil, pero registrarlos es tedioso:
 ### 1. Clonar repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/misgastos-bot.git
-cd misgastos-bot
+git clone https://github.com/tu-usuario/misgastosapp.git
+cd misgastosapp
 ```
 
 ### 2. Instalar dependencias
 
 ```bash
-pnpm install
+bun install
 ```
 
 ### 3. Setup Cloudflare
@@ -137,16 +139,7 @@ wrangler d1 execute misgastos --file db/schema.sql
 ### 6. Configurar secrets
 
 ```bash
-# Email Worker
-cd packages/email-worker
-wrangler secret put EMAIL_WORKER_SECRET
-# (generar: openssl rand -base64 32)
-
-wrangler secret put MAIN_WORKER_URL
-# (pegar: https://misgastos.app)
-
-# Main Worker
-cd ../main-worker
+# Worker
 wrangler secret put CLAUDE_API_KEY
 # (pegar tu key de Claude)
 
@@ -155,9 +148,6 @@ wrangler secret put TELEGRAM_BOT_TOKEN
 
 wrangler secret put TELEGRAM_CHAT_ID
 # (pegar tu ID de chat)
-
-wrangler secret put EMAIL_WORKER_SECRET
-# (mismo valor que en email-worker)
 ```
 
 ### 7. Configurar Email Routing en Cloudflare
@@ -165,7 +155,7 @@ wrangler secret put EMAIL_WORKER_SECRET
 1. Dashboard Cloudflare → misgastos.app → Email Routing
 2. Habilitar Email Routing
 3. Crear dirección: `gastos@misgastos.app`
-4. Acción: Send to Worker → `misgastos-email-worker`
+4. Acción: Send to Worker → `misgastosapp`
 
 ### 8. Configurar Gmail Filters
 
@@ -181,18 +171,14 @@ wrangler secret put EMAIL_WORKER_SECRET
 
 ```bash
 # Desde la raíz del proyecto
-pnpm deploy
-
-# O individuales:
-pnpm -r deploy
+bun run deploy
 ```
 
 ### 10. Verificar que funciona
 
 ```bash
 # Ver logs en vivo
-wrangler tail misgastos-bot
-wrangler tail misgastos-email-worker
+wrangler tail misgastosapp
 
 # Envía email de prueba a gastos@misgastos.app desde tu Gmail
 ```
@@ -200,29 +186,19 @@ wrangler tail misgastos-email-worker
 ## Estructura del proyecto
 
 ```
-misgastos-bot/
-├── packages/
-│   ├── email-worker/          # Parsea emails de bancos
-│   │   ├── src/
-│   │   │   ├── index.ts
-│   │   │   └── parsers/       # Parsers por banco
-│   │   ├── wrangler.toml
-│   │   └── package.json
-│   │
-│   └── main-worker/           # Lógica principal
-│       ├── src/
-│       │   ├── index.ts
-│       │   ├── handlers/
-│       │   ├── services/
-│       │   ├── utils/
-│       │   └── types.ts
-│       ├── wrangler.toml
-│       └── package.json
-│
+misgastosapp/
+├── src/
+│   ├── index.ts
+│   ├── parsers/               # Parsers por banco
+│   └── types.ts
+├── test/
+│   ├── env.d.ts
+│   └── index.spec.ts
+├── wrangler.jsonc
+├── tsconfig.worker.json
 ├── db/
 │   └── schema.sql             # Schema de D1
 │
-├── pnpm-workspace.yaml
 ├── package.json
 ├── README.md
 └── .env.example
@@ -230,17 +206,17 @@ misgastos-bot/
 
 ## Costos
 
-| Servicio | Costo |
-|---|---|
-| Cloudflare Workers | $0 (gratuito) |
-| Cloudflare D1 | $0 (gratuito) |
-| Cloudflare R2 | $0 (gratuito) |
-| Claude API | ~$0.10-0.30/mes* |
-| Telegram | $0 (gratuito) |
-| Dominio | $12-15/año |
-| **TOTAL** | **~$1-5 USD/año** |
+| Servicio           | Costo             |
+| ------------------ | ----------------- |
+| Cloudflare Workers | $0 (gratuito)     |
+| Cloudflare D1      | $0 (gratuito)     |
+| Cloudflare R2      | $0 (gratuito)     |
+| Claude API         | ~$0.10-0.30/mes\* |
+| Telegram           | $0 (gratuito)     |
+| Dominio            | $12-15/año        |
+| **TOTAL**          | **~$1-5 USD/año** |
 
-*Estimado para ~100 transacciones mensuales
+\*Estimado para ~100 transacciones mensuales
 
 ## Roadmap
 
@@ -271,16 +247,19 @@ Las contribuciones son bienvenidas. Para cambios grandes:
 ## Troubleshooting
 
 ### Los emails no llegan a Cloudflare
+
 - Verificar que Email Routing esté habilitado
 - Revisar que el dominio DNS está en Cloudflare
 - Revisar logs de Email Routing
 
 ### Claude API devuelve error
+
 - Verificar que `CLAUDE_API_KEY` sea válido
 - Revisar límites de rate en console de Claude
 - Revisar logs del Worker
 
 ### Telegram no recibe mensajes
+
 - Verificar que `TELEGRAM_BOT_TOKEN` es correcto
 - Verificar que `TELEGRAM_CHAT_ID` es correcto
 - Revisar logs del Worker
