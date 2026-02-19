@@ -37,7 +37,9 @@
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"],
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "db/*": ["./db/*"],
       "types/*": ["./types/*"]
     }

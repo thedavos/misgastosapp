@@ -1,4 +1,4 @@
-import { BaseParser } from "./base";
+import { BaseParser } from "@/parsers/base";
 import type { Email } from "postal-mime";
 import type { ParsedTransaction } from "../types";
 
