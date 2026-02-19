@@ -107,7 +107,7 @@ cd misgastosapp
 ### 2. Instalar dependencias
 
 ```bash
-bun install
+pnpm install
 ```
 
 ### 3. Setup Cloudflare
@@ -171,7 +171,7 @@ wrangler secret put TELEGRAM_CHAT_ID
 
 ```bash
 # Desde la raíz del proyecto
-bun run deploy
+pnpm deploy
 ```
 
 ### 10. Verificar que funciona
