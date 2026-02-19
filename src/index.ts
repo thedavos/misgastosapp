@@ -8,6 +8,9 @@ export default Sentry.withSentry(
     dsn: env.SENTRY_DSN,
     enableLogs: true,
     sendDefaultPii: true,
+    integrations: [
+      Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })
+    ]
   }),
   {
     fetch: onFetch,
