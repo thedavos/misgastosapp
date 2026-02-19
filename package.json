@@ -16,7 +16,7 @@
     "start": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest",
-    "lint": "oxlint",
+    "lint": "oxlint --type-aware",
     "lint:format": "oxfmt --check",
     "tsc": "tsgo --project tsconfig.worker.json",
     "check": "npm-run-all --parallel tsc lint lint:format",
