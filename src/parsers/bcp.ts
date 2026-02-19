@@ -1,5 +1,5 @@
-import { BaseParser } from "@/parsers/base";
 import type { Email } from "postal-mime";
+import { BaseParser } from "@/parsers/base";
 import type { ParsedTransaction } from "../types";
 
 export class BcpParser extends BaseParser {

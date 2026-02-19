@@ -12,16 +12,18 @@
   "author": "davidvargas.d45@gmail.com",
   "main": "index.js",
   "scripts": {
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "test": "vitest",
-    "lint": "oxlint --type-aware",
-    "lint:format": "oxfmt --check",
-    "tsc": "tsgo --project tsconfig.worker.json",
-    "check": "npm-run-all --parallel tsc lint lint:format",
     "cf-typegen": "wrangler types",
-    "tail": "wrangler tail misgastosapp"
+    "check": "npm-run-all --parallel tsc lint format:check",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
+    "format:diff": "oxfmt --write && git --no-pager diff",
+    "lint": "oxlint --type-aware",
+    "start": "wrangler dev",
+    "tail": "wrangler tail misgastosapp",
+    "test": "vitest",
+    "tsc": "tsgo --project tsconfig.worker.json"
   },
   "dependencies": {
     "@sentry/cloudflare": "^10.39.0",

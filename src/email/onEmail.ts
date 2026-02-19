@@ -1,7 +1,7 @@
 import PostalMime from "postal-mime";
-import { getParser } from "@/parsers";
-import { createLogger } from "@/logger";
 import type { WorkerEnv } from "types/env";
+import { createLogger } from "@/logger";
+import { getParser } from "@/parsers";
 
 export async function onEmail(
   message: ForwardableEmailMessage,

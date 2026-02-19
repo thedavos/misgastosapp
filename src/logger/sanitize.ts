@@ -28,9 +28,7 @@ function sanitizeValue(
   seen.add(value);
 
   if (Array.isArray(value)) {
-    return value.map((item) =>
-      sanitizeValue(item, keyHint, seen, depth + 1, options),
-    );
+    return value.map((item) => sanitizeValue(item, keyHint, seen, depth + 1, options));
   }
 
   const output: LogContext = {};

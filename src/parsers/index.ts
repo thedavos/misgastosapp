@@ -1,6 +1,6 @@
 import type { Email } from "postal-mime";
-import type { EmailParser } from "@/parsers/base";
 import { AstropayParser } from "@/parsers/astropay";
+import type { EmailParser } from "@/parsers/base";
 import { BcpParser } from "@/parsers/bcp";
 import { Global66Parser } from "@/parsers/global66";
 import { InterbankParser } from "@/parsers/interbank";
