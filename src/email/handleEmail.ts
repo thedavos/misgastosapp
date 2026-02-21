@@ -13,7 +13,7 @@ export async function handleEmail(
   const logger = createLogger({ env: env.ENVIRONMENT, requestId });
 
   const effect = Effect.gen(function* () {
-    const parsedEmail = yield* parseEmail(message.raw).pipe(
+    const parsedEmail = yield* parseEmail(message.raw, { requestId }).pipe(
       Effect.tapError(tapErrorLog(logger, "email.parse_failed")),
     );
 
@@ -41,7 +41,7 @@ export async function handleEmail(
       logger.info("email.parser", { parser: transactionResult.left.parserName });
     }
 
-    const aiTransaction = yield* parseEmailWithAi(env, parsedEmail).pipe(
+    const aiTransaction = yield* parseEmailWithAi(env, parsedEmail, { requestId }).pipe(
       Effect.tapError(tapErrorLog(logger, "email.ai_failed")),
     );
 

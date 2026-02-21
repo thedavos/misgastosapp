@@ -3,7 +3,7 @@ import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
 import type { ParsedTransaction } from "@/types";
 
-const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+export const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 const AI_MAX_INPUT_CHARS = 6000;
 
 const PARSED_TRANSACTION_SCHEMA = {

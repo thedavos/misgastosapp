@@ -1,9 +1,16 @@
 import { Data } from "effect";
 
-export class EmailParseError extends Data.TaggedError("EmailParseError")<{
+type EmailErrorBase = {
+  message: string;
+  requestId?: string;
   cause: unknown;
-}> {}
+};
+
+export class EmailParseError extends Data.TaggedError("EmailParseError")<{
+  source: "postal-mime";
+} & EmailErrorBase> {}
 
 export class EmailAiError extends Data.TaggedError("EmailAiError")<{
-  cause: unknown;
-}> {}
+  provider: "cloudflare-workers-ai";
+  model: string;
+} & EmailErrorBase> {}

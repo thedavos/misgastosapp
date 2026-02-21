@@ -1,7 +1,7 @@
 import { Either, Effect } from "effect";
 import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
-import { parseEmailTransactionWithAi } from "@/ai/transactionParser";
+import { AI_MODEL, parseEmailTransactionWithAi } from "@/ai/transactionParser";
 import { getParser } from "@/parsers";
 import { EmailAiError, EmailParseError } from "@/email/errors";
 import type { ParserFailure, ParserSuccess } from "@/email/types";
@@ -23,14 +23,31 @@ export function getTransactionWithParser(
   return Either.right({ parserName, transaction });
 }
 
-export const parseEmail = (raw: ForwardableEmailMessage["raw"]) =>
+type ParseOptions = {
+  requestId?: string;
+};
+
+export const parseEmail = (raw: ForwardableEmailMessage["raw"], options: ParseOptions = {}) =>
   Effect.tryPromise({
     try: () => PostalMime.parse(raw),
-    catch: (error) => new EmailParseError({ cause: error }),
+    catch: (error) =>
+      new EmailParseError({
+        source: "postal-mime",
+        message: "No se pudo parsear el email entrante",
+        requestId: options.requestId,
+        cause: error,
+      }),
   });
 
-export const parseEmailWithAi = (env: WorkerEnv, parsedEmail: Email) =>
+export const parseEmailWithAi = (env: WorkerEnv, parsedEmail: Email, options: ParseOptions = {}) =>
   Effect.tryPromise({
     try: () => parseEmailTransactionWithAi(env, parsedEmail),
-    catch: (error) => new EmailAiError({ cause: error }),
+    catch: (error) =>
+      new EmailAiError({
+        provider: "cloudflare-workers-ai",
+        model: AI_MODEL,
+        message: "Fallo la extraccion de transaccion con Workers AI",
+        requestId: options.requestId,
+        cause: error,
+      }),
   });
