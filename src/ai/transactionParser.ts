@@ -3,7 +3,6 @@ import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
 import type { ParsedTransaction } from "@/types";
 
-export const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 const AI_MAX_INPUT_CHARS = 6000;
 
 const PARSED_TRANSACTION_SCHEMA = {
@@ -43,32 +42,34 @@ async function parseTransactionWithAi(
   env: WorkerEnv,
   input: string,
 ): Promise<ParsedTransaction | null> {
-  const response: AiTextGenerationOutput = await env.AI.run(AI_MODEL, {
-    messages: [
-      {
-        role: "system",
-        content:
-          "Eres un asistente que extrae datos de transacciones bancarias. Devuelve solo JSON válido.",
-      },
-      {
-        role: "user",
-        content:
-          "Extrae una transacción bancaria del texto y responde en JSON con este schema exacto: " +
-          JSON.stringify(PARSED_TRANSACTION_SCHEMA) +
-          ". Usa fecha ISO 8601. Si no hay datos, haz tu mejor inferencia.",
-      },
-      {
-        role: "user",
-        content: input,
-      },
-    ],
+  const messages = [
+    {
+      role: "system",
+      content:
+        "Eres un asistente que extrae datos de transacciones bancarias. Devuelve solo JSON válido.",
+    },
+    {
+      role: "user",
+      content:
+        "Extrae una transacción bancaria del texto y responde en JSON con este schema exacto: " +
+        JSON.stringify(PARSED_TRANSACTION_SCHEMA) +
+        ". Usa fecha ISO 8601. Si no hay datos, haz tu mejor inferencia.",
+    },
+    {
+      role: "user",
+      content: input,
+    },
+  ];
+
+  const response: AiTextGenerationOutput = await env.AI.run(env.CLOUDFLARE_AI_MODEL, {
+    messages,
     response_format: {
       type: "json_schema",
       json_schema: PARSED_TRANSACTION_SCHEMA,
     },
-    max_tokens: 512,
-    temperature: 0.1,
   } as Record<string, unknown>);
+
+  console.log("AI response:", response);
 
   const payloadCandidate = (response as { response?: unknown }).response ?? response;
   if (!payloadCandidate || typeof payloadCandidate !== "object") return null;
