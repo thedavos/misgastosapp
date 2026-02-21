@@ -177,3 +177,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .env*
 !.env.example
 .wrangler/
+
+# own
+test/fixtures/*
