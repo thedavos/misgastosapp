@@ -17,11 +17,6 @@
 	"ai": {
 		"binding": "AI"
 	},
-	"vars": {
-		"SENTRY_ORG": "davosdo",
-		"SENTRY_PROJECT": "misgastosapp-cloudflare-workers",
-		"SENTRY_RELEASE": "0.0.1"
-	}
 	/**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

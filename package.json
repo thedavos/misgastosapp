@@ -24,7 +24,7 @@
     "sentry:sourcemaps": "npm-run-all sentry:sourcemaps:build sentry:sourcemaps:inject sentry:sourcemaps:upload",
     "sentry:sourcemaps:build": "wrangler deploy --dry-run --outdir dist",
     "sentry:sourcemaps:inject": "pnpm dlx @sentry/cli sourcemaps inject dist",
-    "sentry:sourcemaps:upload": "pnpm dlx @sentry/cli sourcemaps upload dist --release \"$SENTRY_RELEASE\" --org \"$SENTRY_ORG\" --project \"$SENTRY_PROJECT\"",
+    "sentry:sourcemaps:upload": "pnpm dlx @sentry/cli sourcemaps upload dist --release \"$(node -p \"require('./package.json').version\")\" --org \"$SENTRY_ORG\" --project \"$SENTRY_PROJECT\"",
     "start": "wrangler dev",
     "tail": "wrangler tail misgastosapp",
     "test": "vitest",
