@@ -1,7 +1,8 @@
-import PostalMime from "postal-mime";
+import { Either, Effect } from "effect";
 import type { WorkerEnv } from "types/env";
+import { parseEmail, parseEmailWithAi, getTransactionWithParser } from "@/email/emailProcessors";
 import { createLogger } from "@/logger";
-import { getParser } from "@/parsers";
+import { tapErrorLog } from "@/utils/tapErrorLog";
 
 export async function onEmail(
   message: ForwardableEmailMessage,
@@ -10,8 +11,11 @@ export async function onEmail(
 ) {
   const requestId = message.headers.get("cf-ray") ?? undefined;
   const logger = createLogger({ env: env.ENVIRONMENT, requestId });
-  try {
-    const parsedEmail = await PostalMime.parse(message.raw);
+
+  const effect = Effect.gen(function* () {
+    const parsedEmail = yield* parseEmail(message.raw).pipe(
+      Effect.tapError(tapErrorLog(logger, "email.parse_failed")),
+    );
 
     logger.info("email.meta", {
       from: parsedEmail.from?.address,
@@ -20,25 +24,33 @@ export async function onEmail(
       date: String(parsedEmail.date || ""),
     });
 
-    const parser = getParser(parsedEmail);
+    const transactionResult = getTransactionWithParser(parsedEmail);
 
-    if (!parser) {
+    if (Either.isRight(transactionResult)) {
+      logger.info("email.parser", { parser: transactionResult.right.parserName });
+      logger.info("email.transaction", { transaction: transactionResult.right.transaction });
+      logger.info("email.done");
+      return;
+    }
+
+    if (transactionResult.left._tag === "NoParser") {
       logger.warn("email.error", { reason: "No parser available" });
-      return;
-    }
-
-    logger.info("email.parser", { parser: parser.getName() });
-
-    const transaction = parser.parse(parsedEmail);
-
-    if (!transaction) {
+    } else {
       logger.warn("email.error", { reason: "No se pudo parsear la transacción" });
-      return;
+      logger.info("email.parser", { parser: transactionResult.left.parserName });
     }
 
-    logger.info("email.transaction", { transaction });
+    const aiTransaction = yield* parseEmailWithAi(env, parsedEmail).pipe(
+      Effect.tapError(tapErrorLog(logger, "email.ai_failed")),
+    );
+
+    if (!aiTransaction) return;
+    logger.info("email.transaction", { transaction: aiTransaction, source: "ai" });
     logger.info("email.done");
-  } catch (error) {
-    logger.error("email.error", { error: String(error) });
+  });
+
+  const result = await Effect.runPromiseExit(effect);
+  if (result._tag === "Failure") {
+    logger.error("email.error", { error: String(result.cause) });
   }
 }

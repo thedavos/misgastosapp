@@ -7,6 +7,7 @@ export interface WorkerEnv extends Cloudflare.Env {
   // Bindings
   DB: D1Database;
   REPORTS: R2Bucket;
+  AI: Ai;
 
   // Variables
   ENVIRONMENT?: string;
