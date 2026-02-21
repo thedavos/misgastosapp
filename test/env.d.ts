@@ -8,6 +8,7 @@ declare module "cloudflare:test" {
     // Bindings
     DB: D1Database;
     REPORTS: R2Bucket;
+    AI: Ai;
 
     // Variables
     ENVIRONMENT?: string;

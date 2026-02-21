@@ -1,8 +1,9 @@
 import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import bcpMail from "test/fixtures/bcp/bcp_consumo_tarjeta_debito.txt?raw";
 import ibkEmail from "test/fixtures/ibk/ibk_constancia_de_pago.txt?raw";
 import { describe, it, expect } from "vitest";
-import { onEmail } from "@/email/onEmail";
-import { createEmailMessage } from "@/utils/email-mocks";
+import { handleEmail } from "@/email/handleEmail";
+import { makeMessage } from "@/utils/makeMessage";
 // Import your worker so you can unit test it
 import worker from "../src";
 
@@ -25,10 +26,17 @@ describe("Misgastosapp Worker", () => {
   });
 
   describe("OnEmail", () => {
-    it("procesa un email", async () => {
-      const message = createEmailMessage(ibkEmail);
+    it("procesa un email de ibk", async () => {
+      const message = makeMessage(ibkEmail);
       const ctx = createExecutionContext();
-      await onEmail(message, env, ctx);
+      await handleEmail(message, env, ctx);
+      await waitOnExecutionContext(ctx);
+    });
+
+    it("procesa un email de bcp", async () => {
+      const message = makeMessage(bcpMail);
+      const ctx = createExecutionContext();
+      await handleEmail(message, env, ctx);
       await waitOnExecutionContext(ctx);
     });
   });
