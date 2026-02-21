@@ -1,9 +1,6 @@
-import { vi } from "vitest";
+import { env } from "cloudflare:test";
+import { vi, beforeEach } from "vitest";
 
-vi.mock("@/logger", () => ({
-  createLogger: () => ({
-    info: (...args: unknown[]) => console.log("[info]", ...args),
-    warn: (...args: unknown[]) => console.warn("[warn]", ...args),
-    error: (...args: unknown[]) => console.error("[error]", ...args),
-  }),
-}));
+beforeEach(() => {
+  env.AI.run = vi.fn().mockResolvedValue({ response: null });
+});

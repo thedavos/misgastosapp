@@ -23,10 +23,22 @@ function logWithConsoleFallback(level: LogLevel, event: string, context: LogCont
     // fall through
   }
 
+  const logFn = (console[level] ?? console.log).bind(console);
   try {
-    console.log(JSON.stringify({ level, ...payload }));
+    logFn(JSON.stringify({ level, ...payload }));
   } catch {
-    console.log(`[${level}] ${event}`, payload);
+    logFn(`[${level}] ${event}`, payload);
+  }
+}
+
+function normalizeError(input: unknown): Error {
+  if (input instanceof Error) return input;
+  if (typeof input === "string") return new Error(input);
+
+  try {
+    return new Error(JSON.stringify(sanitize({ error: input }).error));
+  } catch {
+    return new Error(String(input));
   }
 }
 
@@ -44,9 +56,9 @@ export function createLogger(config: LoggerConfig = {}) {
       logWithConsoleFallback("warn", event, { ...baseContext, ...context });
     },
     error(event: string, context: LogContext = {}) {
-      if (context.error instanceof Error) {
+      if ("error" in context) {
         try {
-          Sentry.captureException(context.error, {
+          Sentry.captureException(normalizeError(context.error), {
             extra: sanitize({ ...baseContext, ...context }),
           });
         } catch {
