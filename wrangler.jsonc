@@ -20,7 +20,7 @@
 	"vars": {
 		"SENTRY_ORG": "davosdo",
 		"SENTRY_PROJECT": "misgastosapp-cloudflare-workers",
-		"SENTRY_RELEASE": "v0.0.1"
+		"SENTRY_RELEASE": "0.0.1"
 	}
 	/**
    * Smart Placement
