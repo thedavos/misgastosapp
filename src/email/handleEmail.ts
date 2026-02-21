@@ -4,7 +4,7 @@ import { parseEmail, parseEmailWithAi, getTransactionWithParser } from "@/email/
 import { createLogger } from "@/logger";
 import { tapErrorLog } from "@/utils/tapErrorLog";
 
-export async function onEmail(
+export async function handleEmail(
   message: ForwardableEmailMessage,
   env: WorkerEnv,
   _ctx: ExecutionContext,
@@ -22,6 +22,7 @@ export async function onEmail(
       to: parsedEmail.to?.map((t) => t.address).join(","),
       subject: parsedEmail.subject,
       date: String(parsedEmail.date || ""),
+      parsed: JSON.stringify(parsedEmail),
     });
 
     const transactionResult = getTransactionWithParser(parsedEmail);

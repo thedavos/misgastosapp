@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import type { WorkerEnv } from "types/env";
-import { onEmail } from "@/email/onEmail";
-import { onFetch } from "@/http/onFetch";
+import { handleEmail } from "@/email/handleEmail";
+import { handleFetch } from "@/http/handleFetch";
 
 export default Sentry.withSentry(
   (env: WorkerEnv) => ({
@@ -11,7 +11,7 @@ export default Sentry.withSentry(
     integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
   }),
   {
-    fetch: onFetch,
-    email: onEmail,
+    fetch: handleFetch,
+    email: handleEmail,
   } satisfies ExportedHandler<WorkerEnv>,
 );

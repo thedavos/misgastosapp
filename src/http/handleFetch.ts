@@ -1,7 +1,7 @@
 import type { WorkerEnv } from "types/env";
 import { createLogger } from "@/logger";
 
-export async function onFetch(
+export async function handleFetch(
   request: Request,
   env: WorkerEnv,
   _ctx: ExecutionContext,
