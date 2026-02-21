@@ -13,6 +13,7 @@ declare module "cloudflare:test" {
     // Variables
     ENVIRONMENT?: string;
     SENTRY_DSN?: string;
+    SENTRY_RELEASE?: string;
   }
 }
 
