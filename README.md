@@ -174,6 +174,28 @@ wrangler secret put TELEGRAM_CHAT_ID
 pnpm deploy
 ```
 
+### 9.1. Sentry source maps (recomendado para stack traces legibles)
+
+Define estas variables en CI (o tu shell):
+
+- `SENTRY_AUTH_TOKEN`
+- `SENTRY_ORG`
+- `SENTRY_PROJECT`
+- `SENTRY_RELEASE` (recomendado: SHA del commit)
+
+También define `SENTRY_RELEASE` como variable del Worker para que el runtime reporte el mismo release en Sentry:
+
+```bash
+wrangler secret put SENTRY_DSN
+wrangler secret put SENTRY_RELEASE
+```
+
+Luego despliega y sube sourcemaps:
+
+```bash
+pnpm deploy:release
+```
+
 ### 10. Verificar que funciona
 
 ```bash
