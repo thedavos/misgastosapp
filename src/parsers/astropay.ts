@@ -1,18 +1,9 @@
 import type { Email } from "postal-mime";
 import { BaseParser } from "@/parsers/base";
-import type { ParsedTransaction } from "../types";
+import type { ParsedTransaction } from "@/types";
 
 export class AstropayParser extends BaseParser {
-  canHandle(email: Email): boolean {
-    const from = this.getFromAddress(email);
-    const subject = email.subject || "";
-
-    if (!from || !subject) {
-      return false;
-    }
-
-    return from.includes("astropay") || subject.toLowerCase().includes("astropay");
-  }
+  TRUSTED_SENDERS: string[] = ["astropay.com", "notificaciones@astropay"];
 
   parse(email: Email): ParsedTransaction | null {
     try {

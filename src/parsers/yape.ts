@@ -1,22 +1,9 @@
 import type { Email } from "postal-mime";
 import { BaseParser } from "@/parsers/base";
-import type { ParsedTransaction } from "../types";
+import type { ParsedTransaction } from "@/types";
 
 export class YapeParser extends BaseParser {
-  canHandle(email: Email): boolean {
-    const from = this.getFromAddress(email);
-    const subject = email.subject || "";
-
-    if (!from || !subject) {
-      return false;
-    }
-
-    return (
-      from.includes("yape.com.pe") ||
-      from.includes("yape") ||
-      subject.toLowerCase().includes("yape")
-    );
-  }
+  TRUSTED_SENDERS = ["yape.com.pe", "yape.pe", "notificaciones@yape"];
 
   parse(email: Email): ParsedTransaction | null {
     try {

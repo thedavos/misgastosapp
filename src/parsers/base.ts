@@ -1,23 +1,35 @@
 import { parse, isValid, formatISO } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Email } from "postal-mime";
-import type { ParsedTransaction } from "../types";
+import type { ParsedTransaction } from "@/types";
 
 export interface EmailParser {
-  // Identificar si este parser puede manejar el email
-  canHandle(email: Email): boolean;
-
   // Parsear el email ya procesado por PostalMime
   parse(email: Email): ParsedTransaction | null;
+
+  // Determina si el parser aplica para el email
+  canHandle(email: Email): boolean;
 
   // Nombre del banco/servicio
   getName(): string;
 }
 
 export abstract class BaseParser implements EmailParser {
-  abstract canHandle(email: Email): boolean;
+  abstract TRUSTED_SENDERS: string[];
+
   abstract parse(email: Email): ParsedTransaction | null;
   abstract getName(): string;
+
+  canHandle(email: Email): boolean {
+    const from = this.getFromAddress(email);
+    const subject = email.subject || "";
+
+    if (!from || !subject) {
+      return false;
+    }
+
+    return this.TRUSTED_SENDERS.some((sender) => from.includes(sender));
+  }
 
   // Utilidad para obtener el 'from' como string
   protected getFromAddress(email: Email): string | null {
@@ -37,12 +49,25 @@ export abstract class BaseParser implements EmailParser {
 
   // Obtener el contenido de texto (prioriza text sobre html)
   protected getTextContent(email: Email): string {
-    return email.text || this.stripHtml(email.html || "");
+    const raw = email.text || this.stripHtml(email.html || "");
+
+    return this.extractText(raw);
+  }
+
+  protected extractText(raw: string): string {
+    return raw
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&oacute;/g, "ó")
+      .replace(/&[a-z]+;/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   // Remover tags HTML básico
   protected stripHtml(html: string): string {
     return html
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
       .replace(/<[^>]*>/g, " ")
       .replace(/\s+/g, " ")
       .trim();

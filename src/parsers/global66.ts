@@ -1,18 +1,9 @@
 import type { Email } from "postal-mime";
 import { BaseParser } from "@/parsers/base";
-import type { ParsedTransaction } from "../types";
+import type { ParsedTransaction } from "@/types";
 
 export class Global66Parser extends BaseParser {
-  canHandle(email: Email): boolean {
-    const from = this.getFromAddress(email);
-    const subject = email.subject || "";
-
-    if (!from || !subject) {
-      return false;
-    }
-
-    return from.includes("global66") || subject.toLowerCase().includes("global66");
-  }
+  TRUSTED_SENDERS = ["global66.com", "notificaciones@global66"];
 
   parse(email: Email): ParsedTransaction | null {
     try {

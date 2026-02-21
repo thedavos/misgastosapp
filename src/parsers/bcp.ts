@@ -1,27 +1,12 @@
 import type { Email } from "postal-mime";
 import { BaseParser } from "@/parsers/base";
-import type { ParsedTransaction } from "../types";
+import type { ParsedTransaction } from "@/types";
 
 export class BcpParser extends BaseParser {
+  TRUSTED_SENDERS = ["notificacionesbcp.com.pe", "bcp.com.pe"];
+
   getName(): string {
     return "BCP";
-  }
-
-  canHandle(email: Email): boolean {
-    const from = this.getFromAddress(email);
-    const subject = email.subject;
-
-    if (!from || !subject) {
-      return false;
-    }
-
-    return (
-      from.includes("notificacionesbcp.com.pe") ||
-      from.includes("bcp.com.pe") ||
-      subject.includes("BCP") ||
-      subject.includes("Tarjeta de Débito BCP") ||
-      subject.includes("Tarjeta de Crédito BCP")
-    );
   }
 
   parse(email: Email): ParsedTransaction | null {
