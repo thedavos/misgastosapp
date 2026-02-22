@@ -8,7 +8,7 @@ export function createTelegramChannelAdapter(): ChannelPort {
     async parseWebhook(_request: Request): Promise<IncomingUserMessage | null> {
       return null;
     },
-    async verifyWebhook(_request: Request): Promise<boolean> {
+    async verifyWebhook(_input: { headers: Headers; rawBody: string }): Promise<boolean> {
       return true;
     },
   };

@@ -8,6 +8,7 @@ import { createD1CustomerEmailRouteRepo } from "@/adapters/persistence/d1/custom
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
+import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
 import { createLogger } from "@/adapters/observability";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
@@ -25,6 +26,7 @@ export function createContainer(env: WorkerEnv, requestId?: string) {
   const customerRepo = createD1CustomerRepo(env);
   const customerEmailRouteRepo = createD1CustomerEmailRouteRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
+  const webhookEventRepo = createD1WebhookEventRepo(env);
   const featurePolicy = createD1FeaturePolicyRepo(env, subscriptionRepo);
   const conversationState = createKvConversationStateRepo(env);
   const authorizeChannel = createAuthorizeChannel({
@@ -45,6 +47,7 @@ export function createContainer(env: WorkerEnv, requestId?: string) {
     subscriptionRepo,
     customerRepo,
     customerEmailRouteRepo,
+    webhookEventRepo,
     conversationState,
     authorizeChannel,
     ingestExpenseFromEmail: createIngestExpenseFromEmail({

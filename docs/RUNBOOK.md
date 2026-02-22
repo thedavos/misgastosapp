@@ -11,6 +11,7 @@ wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
+wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 ```
 
 ### KV namespaces
@@ -39,6 +40,8 @@ wrangler secret put SENTRY_RELEASE
 Definir en `wrangler.jsonc` (o por ambiente):
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
+- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`dual` durante rollout, luego `strict`)
+- `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE=true`
 - `ENVIRONMENT`
@@ -69,7 +72,9 @@ Endpoint:
 - `POST https://<tu-worker>/webhooks/whatsapp`
 
 Recomendación:
-- Configura `x-kapso-signature` en Kapso y alinea con `KAPSO_WEBHOOK_SECRET`.
+- Configura `x-kapso-signature` y `x-kapso-timestamp` en Kapso.
+- Firma esperada: `HMAC-SHA256(KAPSO_WEBHOOK_SECRET, "<timestamp>.<rawBody>")`.
+- Durante rollout usar `KAPSO_WEBHOOK_SIGNATURE_MODE=dual`; luego pasar a `strict`.
 
 ## 6) Operación diaria
 
@@ -84,6 +89,7 @@ wrangler tail misgastosapp
 - `expense.pending_category_created`
 - `expense.flow_completed`
 - `whatsapp.webhook_unauthorized` (si firma incorrecta)
+- `whatsapp.webhook_duplicate_ignored` (si llega evento repetido)
 
 ## 7) Troubleshooting
 
@@ -91,6 +97,8 @@ wrangler tail misgastosapp
 
 - Verifica `KAPSO_WEBHOOK_SECRET`.
 - Verifica header `x-kapso-signature`.
+- Verifica header `x-kapso-timestamp`.
+- Verifica que el reloj del proveedor no esté fuera de `KAPSO_WEBHOOK_MAX_SKEW_SECONDS`.
 
 ### Gasto no se categoriza
 

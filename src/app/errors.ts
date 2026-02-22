@@ -104,6 +104,12 @@ export class WebhookParseError extends Data.TaggedError("WebhookParseError")<{
   cause: unknown;
 }> {}
 
+export class WebhookIdempotencyError extends Data.TaggedError("WebhookIdempotencyError")<{
+  requestId?: string;
+  operation: "tryStartProcessing" | "markProcessed" | "markFailed" | "cleanupOld";
+  cause: unknown;
+}> {}
+
 export class InvalidTransactionError extends Data.TaggedError("InvalidTransactionError")<{
   requestId?: string;
 }> {}
@@ -128,4 +134,5 @@ export type AppError =
   | SubscriptionFeatureBlockedError
   | WebhookVerificationError
   | WebhookParseError
+  | WebhookIdempotencyError
   | InvalidTransactionError;

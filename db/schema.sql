@@ -194,6 +194,29 @@ CREATE TABLE IF NOT EXISTS expense_events (
 
 CREATE INDEX IF NOT EXISTS idx_expense_events_customer_id ON expense_events(customer_id);
 
+CREATE TABLE IF NOT EXISTS inbound_webhook_events (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  request_id TEXT,
+  attempt_count INTEGER NOT NULL DEFAULT 1,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  processed_at TEXT,
+  last_error TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_inbound_webhook_events_provider_event
+  ON inbound_webhook_events(provider, event_id);
+
+CREATE INDEX IF NOT EXISTS idx_inbound_webhook_events_status
+  ON inbound_webhook_events(status);
+
+CREATE INDEX IF NOT EXISTS idx_inbound_webhook_events_last_seen_at
+  ON inbound_webhook_events(last_seen_at);
+
 INSERT OR IGNORE INTO customers (id, name, status, default_currency, timezone, locale, confidence_threshold, created_at, updated_at)
 VALUES ('cust_default', 'Default Customer', 'ACTIVE', 'PEN', 'America/Lima', 'es-PE', 0.75, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 

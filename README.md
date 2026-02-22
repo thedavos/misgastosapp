@@ -26,6 +26,17 @@ Estado actual:
 - `POST /webhooks/telegram` (placeholder, `501`)
 - `POST /webhooks/instagram` (placeholder, `501`)
 
+## Seguridad webhook WhatsApp
+
+Headers esperados:
+- `x-kapso-signature`: firma hex (`v1=<hex>` preferido)
+- `x-kapso-timestamp`: epoch en segundos
+
+Validación:
+- Se calcula `HMAC-SHA256(secret, "<timestamp>.<rawBody>")`.
+- Se rechaza si la firma no coincide o si el timestamp cae fuera de la ventana configurada.
+- `KAPSO_WEBHOOK_SIGNATURE_MODE=dual` acepta fallback legacy (`x-kapso-signature === secret`) para rollout temporal.
+
 ## Arquitectura del proyecto
 
 ```txt
@@ -61,6 +72,8 @@ src/
 
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
+- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`dual` por 2 semanas, luego `strict`)
+- `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE` (`true` recomendado en producción)
 - `ENVIRONMENT`
@@ -94,6 +107,7 @@ wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
+wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.
@@ -136,9 +150,3 @@ Suite actual:
 ## Documentación operativa
 
 - Runbook: `docs/RUNBOOK.md`
-
-## Roadmap corto
-
-- Implementar adapters reales para Telegram e Instagram.
-- Completar adapter real de Inflection API.
-- Endurecer webhook de WhatsApp (firma HMAC + idempotencia).

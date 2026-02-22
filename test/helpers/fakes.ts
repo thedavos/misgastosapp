@@ -91,6 +91,20 @@ type CustomerSubscriptionRow = {
   metadata_json: string | null;
 };
 
+type InboundWebhookEventRow = {
+  id: string;
+  provider: string;
+  event_id: string;
+  status: "PROCESSING" | "PROCESSED" | "FAILED";
+  payload_hash: string;
+  request_id: string | null;
+  attempt_count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  processed_at: string | null;
+  last_error: string | null;
+};
+
 function createMemoryKvNamespace() {
   const store = new Map<string, string>();
 
@@ -126,6 +140,7 @@ function createMemoryD1Database(options?: {
   const planFeatures = new Map<string, PlanFeatureRow>();
   const subscriptions = new Map<string, CustomerSubscriptionRow>();
   const emailRoutes = new Map<string, CustomerEmailRouteRow>();
+  const inboundWebhookEvents = new Map<string, InboundWebhookEventRow>();
   const expenseEvents: Array<{
     id: string;
     customer_id: string | null;
@@ -359,6 +374,38 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
+        if (query.startsWith("insert into inbound_webhook_events")) {
+          const [id, provider, eventId, payloadHash, requestId, firstSeenAt, lastSeenAt] = values as [
+            string,
+            string,
+            string,
+            string,
+            string | null,
+            string,
+            string,
+          ];
+
+          const key = `${provider}:${eventId}`;
+          if (inboundWebhookEvents.has(key)) {
+            throw new Error("UNIQUE constraint failed: inbound_webhook_events.provider, inbound_webhook_events.event_id");
+          }
+
+          inboundWebhookEvents.set(key, {
+            id,
+            provider,
+            event_id: eventId,
+            status: "PROCESSING",
+            payload_hash: payloadHash,
+            request_id: requestId,
+            attempt_count: 1,
+            first_seen_at: firstSeenAt,
+            last_seen_at: lastSeenAt,
+            processed_at: null,
+            last_error: null,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
         if (query.startsWith("insert or replace into customer_channels")) {
           const [id, customerId, channel, externalUserId, isPrimary] = values as [
             string,
@@ -377,6 +424,83 @@ function createMemoryD1Database(options?: {
             is_primary: isPrimary,
           });
           return { success: true };
+        }
+
+        if (query.startsWith("update inbound_webhook_events set last_seen_at = ?")) {
+          const [lastSeenAt, requestId, provider, eventId] = values as [string, string | null, string, string];
+          const key = `${provider}:${eventId}`;
+          const current = inboundWebhookEvents.get(key);
+          if (!current) return { success: true, meta: { changes: 0 } };
+          inboundWebhookEvents.set(key, {
+            ...current,
+            last_seen_at: lastSeenAt,
+            request_id: requestId,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("update inbound_webhook_events set status = 'processing'")) {
+          const [payloadHash, requestId, lastSeenAt, provider, eventId] = values as [
+            string,
+            string | null,
+            string,
+            string,
+            string,
+          ];
+          const key = `${provider}:${eventId}`;
+          const current = inboundWebhookEvents.get(key);
+          if (!current || current.status !== "FAILED") return { success: true, meta: { changes: 0 } };
+          inboundWebhookEvents.set(key, {
+            ...current,
+            status: "PROCESSING",
+            payload_hash: payloadHash,
+            request_id: requestId,
+            attempt_count: current.attempt_count + 1,
+            last_seen_at: lastSeenAt,
+            last_error: null,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("update inbound_webhook_events set status = 'processed'")) {
+          const [lastSeenAt, processedAt, provider, eventId] = values as [string, string, string, string];
+          const key = `${provider}:${eventId}`;
+          const current = inboundWebhookEvents.get(key);
+          if (!current) return { success: true, meta: { changes: 0 } };
+          inboundWebhookEvents.set(key, {
+            ...current,
+            status: "PROCESSED",
+            last_seen_at: lastSeenAt,
+            processed_at: processedAt,
+            last_error: null,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("update inbound_webhook_events set status = 'failed'")) {
+          const [lastSeenAt, lastError, provider, eventId] = values as [string, string, string, string];
+          const key = `${provider}:${eventId}`;
+          const current = inboundWebhookEvents.get(key);
+          if (!current) return { success: true, meta: { changes: 0 } };
+          inboundWebhookEvents.set(key, {
+            ...current,
+            status: "FAILED",
+            last_seen_at: lastSeenAt,
+            last_error: lastError,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("delete from inbound_webhook_events")) {
+          const [provider, threshold] = values as [string, string];
+          let changes = 0;
+          for (const [key, row] of inboundWebhookEvents.entries()) {
+            if (row.provider === provider && row.last_seen_at < threshold) {
+              inboundWebhookEvents.delete(key);
+              changes++;
+            }
+          }
+          return { success: true, meta: { changes } };
         }
 
         return { success: true };
@@ -475,6 +599,11 @@ function createMemoryD1Database(options?: {
           return (planFeatures.get(`${planId}:${featureKey}`) as T | undefined) ?? null;
         }
 
+        if (query.includes("from inbound_webhook_events") && query.includes("where provider = ? and event_id = ?")) {
+          const [provider, eventId] = values as [string, string];
+          return (inboundWebhookEvents.get(`${provider}:${eventId}`) as T | undefined) ?? null;
+        }
+
         return null;
       },
 
@@ -510,6 +639,7 @@ function createMemoryD1Database(options?: {
       subscriptions,
       emailRoutes,
       expenseEvents,
+      inboundWebhookEvents,
     },
     prepare(sql: string) {
       const query = sql.replace(/\s+/g, " ").trim().toLowerCase();
@@ -549,6 +679,7 @@ function createMemoryD1Database(options?: {
         payload_json: string;
         created_at: string;
       }>;
+      inboundWebhookEvents: Map<string, InboundWebhookEventRow>;
     };
   };
 }
@@ -563,6 +694,9 @@ export function createTestEnv(options?: {
   subscriptions?: CustomerSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
   strictPolicyMode?: "true" | "false";
+  kapsoWebhookSecret?: string;
+  kapsoWebhookSignatureMode?: "dual" | "strict";
+  kapsoWebhookMaxSkewSeconds?: string;
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -625,6 +759,9 @@ export function createTestEnv(options?: {
     SENTRY_DSN: "https://test@sentry.io/123",
     KAPSO_API_BASE_URL: undefined,
     KAPSO_API_KEY: undefined,
+    KAPSO_WEBHOOK_SECRET: options?.kapsoWebhookSecret,
+    KAPSO_WEBHOOK_SIGNATURE_MODE: options?.kapsoWebhookSignatureMode ?? "dual",
+    KAPSO_WEBHOOK_MAX_SKEW_SECONDS: options?.kapsoWebhookMaxSkewSeconds ?? "300",
     DEFAULT_CUSTOMER_ID: "cust_default",
     STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
   } as unknown as WorkerEnv;

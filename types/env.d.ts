@@ -20,6 +20,8 @@ export interface WorkerEnv extends Cloudflare.Env {
   SENTRY_DSN?: string;
   SENTRY_RELEASE?: string;
   KAPSO_API_BASE_URL?: string;
+  KAPSO_WEBHOOK_SIGNATURE_MODE?: "dual" | "strict";
+  KAPSO_WEBHOOK_MAX_SKEW_SECONDS?: string;
   DEFAULT_CUSTOMER_ID?: string;
   STRICT_POLICY_MODE?: string;
 }

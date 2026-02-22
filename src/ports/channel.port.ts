@@ -3,6 +3,8 @@ export interface IncomingUserMessage {
   userId: string;
   text: string;
   timestamp: string;
+  providerEventId?: string;
+  payloadHash?: string;
   raw: unknown;
 }
 
@@ -14,5 +16,5 @@ export interface SendMessageInput {
 export interface ChannelPort {
   sendMessage(input: SendMessageInput): Promise<{ providerMessageId: string }>;
   parseWebhook(request: Request): Promise<IncomingUserMessage | null>;
-  verifyWebhook(request: Request): Promise<boolean>;
+  verifyWebhook(input: { headers: Headers; rawBody: string }): Promise<boolean>;
 }

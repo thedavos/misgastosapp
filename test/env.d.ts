@@ -21,6 +21,8 @@ declare module "cloudflare:test" {
     SENTRY_RELEASE?: string;
     CLOUDFLARE_AI_MODEL: string;
     KAPSO_API_BASE_URL?: string;
+    KAPSO_WEBHOOK_SIGNATURE_MODE?: "dual" | "strict";
+    KAPSO_WEBHOOK_MAX_SKEW_SECONDS?: string;
     DEFAULT_CUSTOMER_ID?: string;
     STRICT_POLICY_MODE?: string;
   }
