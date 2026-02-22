@@ -1,7 +1,7 @@
 export interface ParsedTransaction {
   amount: number;
   currency: string;
-  symbol: string;
+  symbol?: string;
   merchant: string;
   date: string;
   cardType?: string;

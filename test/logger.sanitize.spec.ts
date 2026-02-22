@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitize } from "../src/logger/sanitize";
+import { sanitize } from "../src/adapters/observability/sanitize";
 
 describe("sanitize", () => {
   it("redacta claves sensibles", () => {

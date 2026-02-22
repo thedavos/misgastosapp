@@ -1,6 +1,5 @@
-import { env } from "cloudflare:test";
-import { vi, beforeEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
-beforeEach(() => {
-  env.AI.run = vi.fn().mockResolvedValue({ response: null });
+afterEach(() => {
+  vi.restoreAllMocks();
 });

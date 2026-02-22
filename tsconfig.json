@@ -40,7 +40,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "db/*": ["./db/*"],
-      "types/*": ["./types/*"]
+      "types/*": ["./types/*"],
+      "test/*": ["./test/*"]
     }
   },
   "include": ["@cloudflare/workers-types", "types/**/*", "src/**/*", "test/**/*"]

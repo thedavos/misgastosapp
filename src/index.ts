@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import type { WorkerEnv } from "types/env";
-import { handleEmail } from "@/email/handleEmail";
-import { handleFetch } from "@/http/handleFetch";
+import { handleEmail } from "@/handlers/email.handler";
+import { handleFetch } from "@/handlers/http/router.handler";
 
 export default Sentry.withSentry(
   (env: WorkerEnv) => ({

@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { createLogger } from "@/logger";
+import { createLogger } from "@/adapters/observability";
 
 export const tapErrorLog =
   (logger: ReturnType<typeof createLogger>, event: string) =>

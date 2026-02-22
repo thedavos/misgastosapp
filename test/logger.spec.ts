@@ -18,7 +18,7 @@ describe("createLogger", () => {
     };
 
     vi.doMock("@sentry/cloudflare", () => sentryMock);
-    const { createLogger } = await import("../src/logger/index");
+    const { createLogger } = await import("../src/adapters/observability/index");
     const logger = createLogger({ env: "test", requestId: "rid" });
 
     logger.error("email.error", { error: "boom" });
@@ -43,7 +43,7 @@ describe("createLogger", () => {
     };
 
     vi.doMock("@sentry/cloudflare", () => sentryMock);
-    const { createLogger } = await import("../src/logger/index");
+    const { createLogger } = await import("../src/adapters/observability/index");
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);

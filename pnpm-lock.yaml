@@ -17,6 +17,9 @@ importers:
       effect:
         specifier: ^3.19.18
         version: 3.19.18
+      hono:
+        specifier: ^4.12.1
+        version: 4.12.1
       postal-mime:
         specifier: ^2.7.3
         version: 2.7.3
@@ -1109,6 +1112,10 @@ packages:
   globrex@0.1.2:
     resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
 
+  hono@4.12.1:
+    resolution: {integrity: sha512-hi9afu8g0lfJVLolxElAZGANCTTl6bewIdsRNhaywfP9K8BPf++F2z6OLrYGIinUwpRKzbZHMhPwvc0ZEpAwGw==}
+    engines: {node: '>=16.9.0'}
+
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
@@ -2132,6 +2139,8 @@ snapshots:
     optional: true
 
   globrex@0.1.2: {}
+
+  hono@4.12.1: {}
 
   isexe@2.0.0: {}
 
