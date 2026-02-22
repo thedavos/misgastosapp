@@ -36,6 +36,7 @@ export async function handleEmail(
       return;
     }
     logger.info("email.transaction", { transaction: transactionResult, source: "ai" });
+    console.log("transaction done: ", transactionResult);
     logger.info("email.done");
   });
 
