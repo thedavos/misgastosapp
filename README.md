@@ -35,7 +35,7 @@ Headers esperados:
 Validación:
 - Se calcula `HMAC-SHA256(secret, "<timestamp>.<rawBody>")`.
 - Se rechaza si la firma no coincide o si el timestamp cae fuera de la ventana configurada.
-- `KAPSO_WEBHOOK_SIGNATURE_MODE=dual` acepta fallback legacy (`x-kapso-signature === secret`) para rollout temporal.
+- `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp y desactiva fallback legacy.
 
 ## Arquitectura del proyecto
 
@@ -72,7 +72,7 @@ src/
 
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
-- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`dual` por 2 semanas, luego `strict`)
+- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` recomendado en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE` (`true` recomendado en producción)

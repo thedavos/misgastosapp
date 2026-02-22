@@ -40,7 +40,7 @@ wrangler secret put SENTRY_RELEASE
 Definir en `wrangler.jsonc` (o por ambiente):
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
-- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`dual` durante rollout, luego `strict`)
+- `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE=true`
@@ -74,7 +74,7 @@ Endpoint:
 Recomendación:
 - Configura `x-kapso-signature` y `x-kapso-timestamp` en Kapso.
 - Firma esperada: `HMAC-SHA256(KAPSO_WEBHOOK_SECRET, "<timestamp>.<rawBody>")`.
-- Durante rollout usar `KAPSO_WEBHOOK_SIGNATURE_MODE=dual`; luego pasar a `strict`.
+- Usa `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` para exigir HMAC+timestamp.
 
 ## 6) Operación diaria
 
