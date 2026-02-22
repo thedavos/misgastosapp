@@ -180,3 +180,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # own
 test/fixtures/*
+
+# macOS
+.DS_Store
+
+# macOS
+.DS_Store
