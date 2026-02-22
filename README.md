@@ -62,7 +62,6 @@ src/
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `EMAIL_WORKER_SECRET`
 - `KAPSO_API_KEY`
 - `KAPSO_WEBHOOK_SECRET`
 - `SENTRY_DSN`
@@ -119,7 +118,6 @@ wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 ```bash
 wrangler secret put TELEGRAM_BOT_TOKEN
 wrangler secret put TELEGRAM_CHAT_ID
-wrangler secret put EMAIL_WORKER_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
 wrangler secret put SENTRY_DSN

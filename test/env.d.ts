@@ -3,7 +3,6 @@ declare module "cloudflare:test" {
     // Secrets
     TELEGRAM_BOT_TOKEN: string;
     TELEGRAM_CHAT_ID: string;
-    EMAIL_WORKER_SECRET: string;
     KAPSO_API_KEY?: string;
     KAPSO_WEBHOOK_SECRET?: string;
 

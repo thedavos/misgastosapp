@@ -745,7 +745,6 @@ export function createTestEnv(options?: {
   return {
     TELEGRAM_BOT_TOKEN: "token",
     TELEGRAM_CHAT_ID: "51999999999",
-    EMAIL_WORKER_SECRET: "secret",
     CLOUDFLARE_AI_MODEL: "@cf/meta/llama-3.1-8b-instruct",
     DB: db,
     REPORTS: {} as R2Bucket,

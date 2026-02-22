@@ -28,7 +28,6 @@ Actualizar `wrangler.jsonc` con IDs reales.
 ```bash
 wrangler secret put TELEGRAM_BOT_TOKEN
 wrangler secret put TELEGRAM_CHAT_ID
-wrangler secret put EMAIL_WORKER_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
 wrangler secret put SENTRY_DSN
