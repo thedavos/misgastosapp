@@ -60,7 +60,7 @@ async function parseTransactionWithAi(
       content: input,
     },
   ];
-
+  console.log("in parseTransactionWithAi AI input:", input, env.CLOUDFLARE_AI_MODEL);
   const response: AiTextGenerationOutput = await env.AI.run(env.CLOUDFLARE_AI_MODEL, {
     messages,
     response_format: {
@@ -104,6 +104,8 @@ export async function parseEmailTransactionWithAi(
   env: WorkerEnv,
   parsedEmail: Awaited<ReturnType<typeof PostalMime.parse>>,
 ): Promise<ParsedTransaction | null> {
+  console.log("Parsing email with AI:", parsedEmail);
   const input = buildEmailContext(parsedEmail);
+  console.log("Input for AI:", input);
   return parseTransactionWithAi(env, input);
 }
