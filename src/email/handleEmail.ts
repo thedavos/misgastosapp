@@ -22,31 +22,14 @@ export async function handleEmail(
       to: parsedEmail.to?.map((t) => t.address).join(","),
       subject: parsedEmail.subject,
       date: String(parsedEmail.date || ""),
-      parsed: JSON.stringify(parsedEmail),
     });
 
-    const transactionResult = getTransactionWithParser(parsedEmail);
-
-    if (Either.isRight(transactionResult)) {
-      logger.info("email.parser", { parser: transactionResult.right.parserName });
-      logger.info("email.transaction", { transaction: transactionResult.right.transaction });
-      logger.info("email.done");
-      return;
-    }
-
-    if (transactionResult.left._tag === "NoParser") {
-      logger.warn("email.error", { reason: "No parser available" });
-    } else {
-      logger.warn("email.error", { reason: "No se pudo parsear la transacción" });
-      logger.info("email.parser", { parser: transactionResult.left.parserName });
-    }
-
-    const aiTransaction = yield* parseEmailWithAi(env, parsedEmail, { requestId }).pipe(
+    const transactionResult = yield* parseEmailWithAi(env, parsedEmail, { requestId }).pipe(
       Effect.tapError(tapErrorLog(logger, "email.ai_failed")),
     );
 
-    if (!aiTransaction) return;
-    logger.info("email.transaction", { transaction: aiTransaction, source: "ai" });
+    if (!transactionResult) return;
+    logger.info("email.transaction", { transaction: transactionResult, source: "ai" });
     logger.info("email.done");
   });
 
