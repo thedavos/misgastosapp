@@ -13,7 +13,7 @@ Estado actual:
 1. Llega un email de consumo al trigger `email` del Worker.
 2. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
 3. Se guarda gasto en D1 con estado `PENDING_CATEGORY`.
-4. Se guarda estado conversacional en KV (`conv:{channel}:{userId}`).
+4. Se guarda estado conversacional en KV (`conv:{customerId}:{channel}:{userId}`).
 5. Se envía mensaje por WhatsApp pidiendo categoría.
 6. Webhook de WhatsApp recibe respuesta del usuario.
 7. Se clasifica categoría con AI + reglas heurísticas.
@@ -70,6 +70,7 @@ src/
 - `DB` (D1)
 - `PROMPTS_KV`
 - `CONVERSATION_STATE_KV`
+- `ENTITLEMENTS_KV` (opcional, cache de entitlements)
 - `REPORTS` (R2)
 
 Importante:
@@ -90,6 +91,7 @@ wrangler d1 create misgastos
 wrangler d1 execute misgastos --file db/migrations/001_init.sql
 wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
+wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.

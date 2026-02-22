@@ -9,13 +9,15 @@ wrangler d1 create misgastos
 wrangler d1 execute misgastos --file db/migrations/001_init.sql
 wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
+wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 ```
 
 ### KV namespaces
 
-Crear dos namespaces:
+Crear namespaces:
 - `PROMPTS_KV`
 - `CONVERSATION_STATE_KV`
+- `ENTITLEMENTS_KV` (opcional, recomendado)
 
 Actualizar `wrangler.jsonc` con IDs reales.
 
