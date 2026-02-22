@@ -4,6 +4,7 @@ import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import {
   ChannelDisabledError,
+  ChannelSettingMissingError,
   ChannelPolicyError,
   FeaturePolicyError,
   SubscriptionFeatureBlockedError,
@@ -15,6 +16,7 @@ export type AuthorizeChannelDeps = {
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
   logger: LoggerPort;
+  strictPolicyMode: boolean;
 };
 
 export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
@@ -37,6 +39,37 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
             cause,
           }),
       );
+
+      if (deps.strictPolicyMode) {
+        const setting = yield* fromPromise(
+          () =>
+            deps.channelPolicyRepo.getCustomerChannelSetting({
+              customerId: input.customerId,
+              channelId: input.channelId,
+            }),
+          (cause) =>
+            new ChannelPolicyError({
+              requestId: input.requestId,
+              operation: "isEnabled",
+              cause,
+            }),
+        );
+
+        if (!setting) {
+          deps.logger.warn("channel.setting_missing_blocked", {
+            requestId: input.requestId,
+            customerId: input.customerId,
+            channelId: input.channelId,
+          });
+          return yield* Effect.fail(
+            new ChannelSettingMissingError({
+              requestId: input.requestId,
+              customerId: input.customerId,
+              channelId: input.channelId,
+            }),
+          );
+        }
+      }
 
       if (!isChannelEnabled) {
         deps.logger.warn("channel.disabled", {

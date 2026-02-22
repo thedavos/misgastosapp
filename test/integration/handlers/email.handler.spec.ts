@@ -24,4 +24,18 @@ describe("email handler integration", () => {
     const conversation = await env.CONVERSATION_STATE_KV.get("conv:cust_default:whatsapp:51999999999");
     expect(conversation).toBeTruthy();
   });
+
+  it("does not create expense when customer route is not configured", async () => {
+    const env = createTestEnv({ emailRoutes: [] });
+    const message = makeMessage(
+      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+    );
+
+    await handleEmail(message, env, {} as ExecutionContext);
+
+    const dbState = (env.DB as unknown as {
+      __state: { expenses: Map<string, { status: string; customer_id: string }> };
+    }).__state;
+    expect(dbState.expenses.size).toBe(0);
+  });
 });

@@ -32,4 +32,34 @@ describe("d1 channel policy repo integration", () => {
 
     expect(enabled).toBe(false);
   });
+
+  it("returns false in strict mode when customer channel setting is missing", async () => {
+    const env = createTestEnv({
+      channelSettings: [],
+      strictPolicyMode: "true",
+    });
+    const repo = createD1ChannelPolicyRepo(env);
+
+    const enabled = await repo.isChannelEnabledForCustomer({
+      customerId: "cust_default",
+      channelId: "whatsapp",
+    });
+
+    expect(enabled).toBe(false);
+  });
+
+  it("returns true in compatibility mode when customer channel setting is missing", async () => {
+    const env = createTestEnv({
+      channelSettings: [],
+      strictPolicyMode: "false",
+    });
+    const repo = createD1ChannelPolicyRepo(env);
+
+    const enabled = await repo.isChannelEnabledForCustomer({
+      customerId: "cust_default",
+      channelId: "whatsapp",
+    });
+
+    expect(enabled).toBe(true);
+  });
 });

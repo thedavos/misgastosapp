@@ -4,6 +4,7 @@ import { createKapsoChannelAdapter } from "@/adapters/channels/whatsapp/kapso.ad
 import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
+import { createD1CustomerEmailRouteRepo } from "@/adapters/persistence/d1/customer-email-route.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
@@ -22,10 +23,16 @@ export function createContainer(env: WorkerEnv, requestId?: string) {
   const categoryRepo = createD1CategoryRepo(env);
   const channelPolicyRepo = createD1ChannelPolicyRepo(env);
   const customerRepo = createD1CustomerRepo(env);
+  const customerEmailRouteRepo = createD1CustomerEmailRouteRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
   const featurePolicy = createD1FeaturePolicyRepo(env, subscriptionRepo);
   const conversationState = createKvConversationStateRepo(env);
-  const authorizeChannel = createAuthorizeChannel({ channelPolicyRepo, featurePolicy, logger });
+  const authorizeChannel = createAuthorizeChannel({
+    channelPolicyRepo,
+    featurePolicy,
+    logger,
+    strictPolicyMode: env.STRICT_POLICY_MODE !== "false",
+  });
 
   return {
     logger,
@@ -37,6 +44,7 @@ export function createContainer(env: WorkerEnv, requestId?: string) {
     featurePolicy,
     subscriptionRepo,
     customerRepo,
+    customerEmailRouteRepo,
     conversationState,
     authorizeChannel,
     ingestExpenseFromEmail: createIngestExpenseFromEmail({

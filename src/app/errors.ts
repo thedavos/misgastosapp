@@ -5,6 +5,11 @@ export class MissingDefaultUserError extends Data.TaggedError("MissingDefaultUse
   message: string;
 }> {}
 
+export class CustomerUnresolvedError extends Data.TaggedError("CustomerUnresolvedError")<{
+  requestId?: string;
+  recipientEmail: string;
+}> {}
+
 export class EmailParseFailedError extends Data.TaggedError("EmailParseFailedError")<{
   requestId?: string;
   cause: unknown;
@@ -60,6 +65,12 @@ export class ChannelDisabledError extends Data.TaggedError("ChannelDisabledError
   channelId: string;
 }> {}
 
+export class ChannelSettingMissingError extends Data.TaggedError("ChannelSettingMissingError")<{
+  requestId?: string;
+  customerId: string;
+  channelId: string;
+}> {}
+
 export class FeaturePolicyError extends Data.TaggedError("FeaturePolicyError")<{
   requestId?: string;
   featureKey: string;
@@ -88,6 +99,7 @@ export class InvalidTransactionError extends Data.TaggedError("InvalidTransactio
 
 export type AppError =
   | MissingDefaultUserError
+  | CustomerUnresolvedError
   | EmailParseFailedError
   | AiExtractFailedError
   | AiMessageGenerationError
@@ -98,6 +110,7 @@ export type AppError =
   | ChannelSendError
   | ChannelPolicyError
   | ChannelDisabledError
+  | ChannelSettingMissingError
   | FeaturePolicyError
   | SubscriptionFeatureBlockedError
   | WebhookVerificationError

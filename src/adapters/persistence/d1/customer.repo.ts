@@ -71,6 +71,19 @@ export function createD1CustomerRepo(env: WorkerEnv): CustomerRepoPort {
       return mapCustomer(row);
     },
 
+    async getPrimaryExternalUserId(input: { customerId: string; channel: string }): Promise<string | null> {
+      const row = await env.DB.prepare(
+        `SELECT external_user_id
+         FROM customer_channels
+         WHERE customer_id = ? AND channel = ? AND is_primary = 1
+         LIMIT 1`,
+      )
+        .bind(input.customerId, input.channel)
+        .first<{ external_user_id: string }>();
+
+      return row?.external_user_id ?? null;
+    },
+
     async createChannelMapping(input: {
       customerId: string;
       channel: string;

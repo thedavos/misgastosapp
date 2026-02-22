@@ -21,8 +21,8 @@ declare module "cloudflare:test" {
     SENTRY_RELEASE?: string;
     CLOUDFLARE_AI_MODEL: string;
     KAPSO_API_BASE_URL?: string;
-    DEFAULT_EXPENSE_USER_ID?: string;
     DEFAULT_CUSTOMER_ID?: string;
+    STRICT_POLICY_MODE?: string;
   }
 }
 

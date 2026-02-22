@@ -61,7 +61,8 @@ src/
 
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
-- `DEFAULT_EXPENSE_USER_ID`
+- `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
+- `STRICT_POLICY_MODE` (`true` recomendado en producción)
 - `ENVIRONMENT`
 
 ### Bindings
@@ -74,7 +75,7 @@ src/
 - `REPORTS` (R2)
 
 Importante:
-- En `wrangler.jsonc` debes reemplazar `CONVERSATION_STATE_KV.id = "replace-with-kv-id"` por tu id real.
+- Configura `CONVERSATION_STATE_KV` y `ENTITLEMENTS_KV` con IDs reales en `wrangler.jsonc`.
 
 ## Setup rápido
 
@@ -92,6 +93,7 @@ wrangler d1 execute misgastos --file db/migrations/001_init.sql
 wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
+wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.

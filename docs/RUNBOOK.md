@@ -10,6 +10,7 @@ wrangler d1 execute misgastos --file db/migrations/001_init.sql
 wrangler d1 execute misgastos --file db/migrations/002_customers.sql
 wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
+wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 ```
 
 ### KV namespaces
@@ -38,7 +39,8 @@ wrangler secret put SENTRY_RELEASE
 Definir en `wrangler.jsonc` (o por ambiente):
 - `CLOUDFLARE_AI_MODEL`
 - `KAPSO_API_BASE_URL`
-- `DEFAULT_EXPENSE_USER_ID`
+- `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
+- `STRICT_POLICY_MODE=true`
 - `ENVIRONMENT`
 
 ## 4) Despliegue

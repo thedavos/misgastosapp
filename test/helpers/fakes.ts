@@ -50,6 +50,13 @@ type CustomerChannelSettingRow = {
   config_json: string | null;
 };
 
+type CustomerEmailRouteRow = {
+  id: string;
+  customer_id: string;
+  recipient_email: string;
+  enabled: number;
+};
+
 type PlanRow = {
   id: string;
   name: string;
@@ -107,6 +114,7 @@ function createMemoryD1Database(options?: {
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
   subscriptions?: CustomerSubscriptionRow[];
+  emailRoutes?: CustomerEmailRouteRow[];
 }) {
   const expenses = new Map<string, ExpenseRow>();
   const categories = new Map<string, CategoryRow>();
@@ -117,6 +125,7 @@ function createMemoryD1Database(options?: {
   const plans = new Map<string, PlanRow>();
   const planFeatures = new Map<string, PlanFeatureRow>();
   const subscriptions = new Map<string, CustomerSubscriptionRow>();
+  const emailRoutes = new Map<string, CustomerEmailRouteRow>();
   const expenseEvents: Array<{
     id: string;
     customer_id: string | null;
@@ -143,6 +152,19 @@ function createMemoryD1Database(options?: {
     external_user_id: "51999999999",
     is_primary: 1,
   });
+
+  const defaultEmailRoutes: CustomerEmailRouteRow[] = [
+    {
+      id: "cer_default_email",
+      customer_id: "cust_default",
+      recipient_email: "davidvargas.d45@gmail.com",
+      enabled: 1,
+    },
+  ];
+
+  for (const route of options?.emailRoutes ?? defaultEmailRoutes) {
+    emailRoutes.set(route.recipient_email, route);
+  }
 
   const defaultChannels: ChannelRow[] = [
     { id: "whatsapp", name: "WhatsApp", status: "ACTIVE" },
@@ -403,6 +425,15 @@ function createMemoryD1Database(options?: {
           return (customerChannels.get(`${channel}:${externalUserId}`) as T | undefined) ?? null;
         }
 
+        if (query.includes("from customer_channels") && query.includes("where customer_id = ? and channel = ? and is_primary = 1")) {
+          const [customerId, channel] = values as [string, string];
+          const match = Array.from(customerChannels.values()).find(
+            (row) => row.customer_id === customerId && row.channel === channel && row.is_primary === 1,
+          );
+          if (!match) return null;
+          return { external_user_id: match.external_user_id } as T;
+        }
+
         if (query.includes("from channels") && query.includes("where id = ?")) {
           const [channelId] = values as [string];
           return (channels.get(channelId) as T | undefined) ?? null;
@@ -411,6 +442,13 @@ function createMemoryD1Database(options?: {
         if (query.includes("from customer_channel_settings") && query.includes("where customer_id = ? and channel_id = ?")) {
           const [customerId, channelId] = values as [string, string];
           return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
+        }
+
+        if (query.includes("from customer_email_routes") && query.includes("where recipient_email = ? and enabled = 1")) {
+          const [recipientEmail] = values as [string];
+          const route = emailRoutes.get(recipientEmail);
+          if (!route || route.enabled !== 1) return null;
+          return { customer_id: route.customer_id } as T;
         }
 
         if (query.includes("from customer_subscriptions") && query.includes("where customer_id = ?") && query.includes("status in")) {
@@ -470,6 +508,7 @@ function createMemoryD1Database(options?: {
       plans,
       planFeatures,
       subscriptions,
+      emailRoutes,
       expenseEvents,
     },
     prepare(sql: string) {
@@ -501,6 +540,7 @@ function createMemoryD1Database(options?: {
       plans: Map<string, PlanRow>;
       planFeatures: Map<string, PlanFeatureRow>;
       subscriptions: Map<string, CustomerSubscriptionRow>;
+      emailRoutes: Map<string, CustomerEmailRouteRow>;
       expenseEvents: Array<{
         id: string;
         customer_id: string | null;
@@ -521,6 +561,8 @@ export function createTestEnv(options?: {
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
   subscriptions?: CustomerSubscriptionRow[];
+  emailRoutes?: CustomerEmailRouteRow[];
+  strictPolicyMode?: "true" | "false";
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -563,6 +605,7 @@ export function createTestEnv(options?: {
     plans: options?.plans,
     planFeatures: options?.planFeatures,
     subscriptions: options?.subscriptions,
+    emailRoutes: options?.emailRoutes,
   });
 
   return {
@@ -582,7 +625,7 @@ export function createTestEnv(options?: {
     SENTRY_DSN: "https://test@sentry.io/123",
     KAPSO_API_BASE_URL: undefined,
     KAPSO_API_KEY: undefined,
-    DEFAULT_EXPENSE_USER_ID: "51999999999",
     DEFAULT_CUSTOMER_ID: "cust_default",
+    STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
   } as unknown as WorkerEnv;
 }

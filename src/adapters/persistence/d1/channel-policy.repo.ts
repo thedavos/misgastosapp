@@ -37,6 +37,8 @@ function mapCustomerChannelSetting(row: CustomerChannelSettingRow): CustomerChan
 }
 
 export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort {
+  const strictPolicyMode = env.STRICT_POLICY_MODE !== "false";
+
   return {
     async getChannel(channelId: string): Promise<Channel | null> {
       const row = await env.DB.prepare(
@@ -78,8 +80,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
 
       const setting = await this.getCustomerChannelSetting(input);
       if (!setting) {
-        // Transitional fallback: preserve compatibility for existing customers.
-        return true;
+        return !strictPolicyMode;
       }
 
       return setting.enabled;

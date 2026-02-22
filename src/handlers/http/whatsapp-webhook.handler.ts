@@ -3,6 +3,7 @@ import type { WorkerEnv } from "types/env";
 import { createContainer } from "@/composition/container";
 import {
   ChannelDisabledError,
+  ChannelSettingMissingError,
   SubscriptionFeatureBlockedError,
   WebhookParseError,
   WebhookVerificationError,
@@ -63,6 +64,9 @@ export async function handleWhatsAppWebhook(
     if (authorizationResult._tag === "Left") {
       if (authorizationResult.left instanceof ChannelDisabledError) {
         return new Response("Channel disabled", { status: 403 });
+      }
+      if (authorizationResult.left instanceof ChannelSettingMissingError) {
+        return new Response("Channel setting missing", { status: 403 });
       }
       if (authorizationResult.left instanceof SubscriptionFeatureBlockedError) {
         return new Response("Payment Required", { status: 402 });
