@@ -1,10 +1,10 @@
 import { Either, Effect } from "effect";
 import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
-import { AI_MODEL, parseEmailTransactionWithAi } from "@/ai/transactionParser";
-import { getParser } from "@/parsers";
+import { parseEmailTransactionWithAi } from "@/ai/transactionParser";
 import { EmailAiError, EmailParseError } from "@/email/errors";
 import type { ParserFailure, ParserSuccess } from "@/email/types";
+import { getParser } from "@/parsers";
 
 export function getTransactionWithParser(
   parsedEmail: Email,
@@ -45,7 +45,7 @@ export const parseEmailWithAi = (env: WorkerEnv, parsedEmail: Email, options: Pa
     catch: (error) =>
       new EmailAiError({
         provider: "cloudflare-workers-ai",
-        model: AI_MODEL,
+        model: env.CLOUDFLARE_AI_MODEL,
         message: "Fallo la extraccion de transaccion con Workers AI",
         requestId: options.requestId,
         cause: error,
