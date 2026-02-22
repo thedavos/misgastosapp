@@ -61,7 +61,7 @@ async function parseTransactionWithAi(
     },
   ];
 
-  const response: AiTextGenerationOutput = await env.AI.run("@cf/meta/llama-3-8b-instruct", {
+  const response: AiTextGenerationOutput = await env.AI.run(env.CLOUDFLARE_AI_MODEL, {
     messages,
     response_format: {
       type: "json_schema",
