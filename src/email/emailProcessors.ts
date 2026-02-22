@@ -1,7 +1,7 @@
 import { Either, Effect } from "effect";
 import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
-import { parseEmailTransactionWithAi } from "@/ai/transactionParser";
+import { extractTransactionFromEmailWithAi } from "@/ai/transactionParser";
 import { EmailAiError, EmailParseError } from "@/email/errors";
 import type { ParserFailure, ParserSuccess } from "@/email/types";
 import { getParser } from "@/parsers";
@@ -41,7 +41,7 @@ export const parseEmail = (raw: ForwardableEmailMessage["raw"], options: ParseOp
 
 export const parseEmailWithAi = (env: WorkerEnv, parsedEmail: Email, options: ParseOptions = {}) =>
   Effect.tryPromise({
-    try: () => parseEmailTransactionWithAi(env, parsedEmail),
+    try: () => extractTransactionFromEmailWithAi(env, parsedEmail),
     catch: (error) =>
       new EmailAiError({
         provider: "cloudflare-workers-ai",

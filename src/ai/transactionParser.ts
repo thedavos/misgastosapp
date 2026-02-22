@@ -38,22 +38,34 @@ function buildEmailContext(parsedEmail: Email) {
   return lines.join("\n").slice(0, AI_MAX_INPUT_CHARS);
 }
 
-async function parseTransactionWithAi(
+async function inferTransactionFromTextWithAi(
   env: WorkerEnv,
   input: string,
 ): Promise<ParsedTransaction | null> {
+  const systemPrompt = await env.PROMPTS_KV.get("SYSTEM_PROMPT");
+
   const messages = [
     {
       role: "system",
-      content:
-        "Eres un asistente que extrae datos de transacciones bancarias. Devuelve solo JSON válido.",
+      content: systemPrompt,
     },
     {
       role: "user",
-      content:
-        "Extrae una transacción bancaria del texto y responde en JSON con este schema exacto: " +
-        JSON.stringify(PARSED_TRANSACTION_SCHEMA) +
-        ". Usa fecha ISO 8601. Si no hay datos, haz tu mejor inferencia.",
+      content: `Analiza el siguiente texto de un correo electrónico bancario de Perú.
+                Extrae la información de la transacción y genera un JSON que cumpla estrictamente con este esquema: ${JSON.stringify(PARSED_TRANSACTION_SCHEMA)}.
+
+                REQUERIMIENTOS ADICIONALES:
+                - Si es un Yape o Plin, el 'merchant' es la persona o negocio que recibió el dinero.
+                - Si el banco es Interbank, busca el 'Número de Operación' para el 'rawText' si es posible.
+                - Si la moneda es 'S/' o 'Soles', usa 'PEN'. Si es '$' o 'Dólares', usa 'USD'.
+                - Si el texto contiene múltiples transacciones, extrae solo la más reciente o principal.
+                - Si el campo 'cardType' no es explícito pero es Yape/Plin, pon 'Billetera Digital'.
+
+                TEXTO DEL CORREO:
+                """
+                ${input}
+                """
+      `,
     },
     {
       role: "user",
@@ -68,8 +80,6 @@ async function parseTransactionWithAi(
       json_schema: PARSED_TRANSACTION_SCHEMA,
     },
   } as Record<string, unknown>);
-
-  console.log("AI response:", response);
 
   const payloadCandidate = (response as { response?: unknown }).response ?? response;
   if (!payloadCandidate || typeof payloadCandidate !== "object") return null;
@@ -100,11 +110,10 @@ async function parseTransactionWithAi(
   };
 }
 
-export async function parseEmailTransactionWithAi(
+export async function extractTransactionFromEmailWithAi(
   env: WorkerEnv,
   parsedEmail: Awaited<ReturnType<typeof PostalMime.parse>>,
 ): Promise<ParsedTransaction | null> {
   const input = buildEmailContext(parsedEmail);
-  console.log("Input for AI:", input);
-  return parseTransactionWithAi(env, input);
+  return inferTransactionFromTextWithAi(env, input);
 }
