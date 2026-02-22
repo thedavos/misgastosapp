@@ -6,6 +6,7 @@ describe("ingest expense from email", () => {
   it("creates pending expense and stores conversation state", async () => {
     const createPending = vi.fn().mockResolvedValue({
       id: "exp_1",
+      customerId: "cust_default",
       amount: 55,
       currency: "PEN",
       merchant: "Tambo",
@@ -32,6 +33,11 @@ describe("ingest expense from email", () => {
         parseWebhook: vi.fn(),
         verifyWebhook: vi.fn(),
       },
+      channelPolicyRepo: {
+        getChannel: vi.fn(),
+        getCustomerChannelSetting: vi.fn(),
+        isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
+      },
       expenseRepo: {
         createPending,
         getById: vi.fn(),
@@ -52,6 +58,7 @@ describe("ingest expense from email", () => {
 
     const result = await Effect.runPromise(
       ingest({
+        customerId: "cust_default",
         emailText: "mail text",
         channel: "whatsapp",
         userId: "51999999999",
@@ -59,9 +66,14 @@ describe("ingest expense from email", () => {
     );
 
     expect(result).toEqual({ expenseId: "exp_1" });
-    expect(createPending).toHaveBeenCalledTimes(1);
+    expect(createPending).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: "cust_default",
+      }),
+    );
     expect(put).toHaveBeenCalledWith(
       expect.objectContaining({
+        customerId: "cust_default",
         channel: "whatsapp",
         userId: "51999999999",
         expenseId: "exp_1",

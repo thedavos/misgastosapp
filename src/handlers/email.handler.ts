@@ -28,6 +28,7 @@ export async function handleEmail(
 
     const emailText = emailToAiInput(parsedEmail);
     const userId = env.DEFAULT_EXPENSE_USER_ID ?? env.TELEGRAM_CHAT_ID;
+    const customerId = env.DEFAULT_CUSTOMER_ID ?? "cust_default";
 
     if (!userId) {
       return yield* Effect.fail(
@@ -39,6 +40,7 @@ export async function handleEmail(
     }
 
     yield* container.ingestExpenseFromEmail({
+      customerId,
       emailText,
       channel: "whatsapp",
       userId,

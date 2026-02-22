@@ -2,6 +2,7 @@ import type { WorkerEnv } from "types/env";
 
 type ExpenseRow = {
   id: string;
+  customer_id: string;
   amount: number;
   currency: string;
   merchant: string;
@@ -14,7 +15,40 @@ type ExpenseRow = {
   updated_at: string;
 };
 
-type CategoryRow = { id: string; name: string; slug: string };
+type CategoryRow = { id: string; customer_id: string | null; name: string; slug: string };
+
+type CustomerRow = {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+  default_currency: string;
+  timezone: string;
+  locale: string;
+  confidence_threshold: number;
+};
+
+type CustomerChannelRow = {
+  id: string;
+  customer_id: string;
+  channel: string;
+  external_user_id: string;
+  is_primary: number;
+};
+
+type ChannelRow = {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+};
+
+type CustomerChannelSettingRow = {
+  id: string;
+  customer_id: string;
+  channel_id: string;
+  enabled: number;
+  is_primary: number;
+  config_json: string | null;
+};
 
 function createMemoryKvNamespace() {
   const store = new Map<string, string>();
@@ -32,12 +66,75 @@ function createMemoryKvNamespace() {
   } as unknown as KVNamespace;
 }
 
-function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
+function createMemoryD1Database(options?: {
+  categories?: CategoryRow[];
+  channels?: ChannelRow[];
+  channelSettings?: CustomerChannelSettingRow[];
+}) {
   const expenses = new Map<string, ExpenseRow>();
   const categories = new Map<string, CategoryRow>();
-  const expenseEvents: Array<{ id: string; expense_id: string; type: string; payload_json: string; created_at: string }> = [];
+  const customers = new Map<string, CustomerRow>();
+  const customerChannels = new Map<string, CustomerChannelRow>();
+  const channels = new Map<string, ChannelRow>();
+  const channelSettings = new Map<string, CustomerChannelSettingRow>();
+  const expenseEvents: Array<{
+    id: string;
+    customer_id: string | null;
+    expense_id: string;
+    type: string;
+    payload_json: string;
+    created_at: string;
+  }> = [];
 
-  for (const category of seedCategories) {
+  customers.set("cust_default", {
+    id: "cust_default",
+    name: "Default Customer",
+    status: "ACTIVE",
+    default_currency: "PEN",
+    timezone: "America/Lima",
+    locale: "es-PE",
+    confidence_threshold: 0.75,
+  });
+
+  customerChannels.set("whatsapp:51999999999", {
+    id: "custch_default_whatsapp",
+    customer_id: "cust_default",
+    channel: "whatsapp",
+    external_user_id: "51999999999",
+    is_primary: 1,
+  });
+
+  const defaultChannels: ChannelRow[] = [
+    { id: "whatsapp", name: "WhatsApp", status: "ACTIVE" },
+    { id: "telegram", name: "Telegram", status: "INACTIVE" },
+    { id: "instagram", name: "Instagram", status: "INACTIVE" },
+  ];
+
+  for (const channel of options?.channels ?? defaultChannels) {
+    channels.set(channel.id, channel);
+  }
+
+  const defaultSettings: CustomerChannelSettingRow[] = [
+    {
+      id: "ccs_cust_default_whatsapp",
+      customer_id: "cust_default",
+      channel_id: "whatsapp",
+      enabled: 1,
+      is_primary: 1,
+      config_json: null,
+    },
+  ];
+
+  for (const setting of options?.channelSettings ?? defaultSettings) {
+    channelSettings.set(`${setting.customer_id}:${setting.channel_id}`, setting);
+  }
+
+  const defaultCategories: CategoryRow[] = [
+    { id: "cat_food", customer_id: null, name: "Comida", slug: "comida" },
+    { id: "cat_transport", customer_id: null, name: "Transporte", slug: "transporte" },
+  ];
+
+  for (const category of options?.categories ?? defaultCategories) {
     categories.set(category.id, category);
   }
 
@@ -47,10 +144,11 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
     return {
       async run() {
         if (query.startsWith("insert into expenses")) {
-          const [id, amount, currency, merchant, occurredAt, bank, rawText, status, createdAt, updatedAt] =
-            values as [string, number, string, string, string, string, string, string, string, string];
+          const [id, customerId, amount, currency, merchant, occurredAt, bank, rawText, status, createdAt, updatedAt] =
+            values as [string, string, number, string, string, string, string, string, string, string, string];
           expenses.set(id, {
             id,
+            customer_id: customerId,
             amount,
             currency,
             merchant,
@@ -66,9 +164,9 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
         }
 
         if (query.startsWith("update expenses set status = ?")) {
-          const [status, categoryId, updatedAt, id] = values as [string, string, string, string];
+          const [status, categoryId, updatedAt, id, customerId] = values as [string, string, string, string, string];
           const current = expenses.get(id);
-          if (!current) return { success: false };
+          if (!current || current.customer_id !== customerId) return { success: false };
           expenses.set(id, {
             ...current,
             status,
@@ -79,9 +177,17 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
         }
 
         if (query.startsWith("insert into expense_events")) {
-          const [id, expenseId, type, payloadJson, createdAt] = values as [string, string, string, string, string];
+          const [id, customerId, expenseId, type, payloadJson, createdAt] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
           expenseEvents.push({
             id,
+            customer_id: customerId,
             expense_id: expenseId,
             type,
             payload_json: payloadJson,
@@ -90,24 +196,79 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
           return { success: true };
         }
 
+        if (query.startsWith("insert or replace into customer_channels")) {
+          const [id, customerId, channel, externalUserId, isPrimary] = values as [
+            string,
+            string,
+            string,
+            string,
+            number,
+            string,
+            string,
+          ];
+          customerChannels.set(`${channel}:${externalUserId}`, {
+            id,
+            customer_id: customerId,
+            channel,
+            external_user_id: externalUserId,
+            is_primary: isPrimary,
+          });
+          return { success: true };
+        }
+
         return { success: true };
       },
 
       async first<T>() {
-        if (query.includes("from expenses where id = ?")) {
-          const [id] = values as [string];
-          return (expenses.get(id) as T | undefined) ?? null;
+        if (query.includes("from expenses where id = ? and customer_id = ?")) {
+          const [id, customerId] = values as [string, string];
+          const row = expenses.get(id);
+          if (!row || row.customer_id !== customerId) return null;
+          return row as T;
         }
 
         if (query.includes("from categories where lower(name) = ?")) {
-          const [name] = values as [string];
-          const found = Array.from(categories.values()).find((category) => category.name.toLowerCase() === name);
+          const [name, customerId] = values as [string, string];
+          const found = Array.from(categories.values()).find(
+            (category) => category.name.toLowerCase() === name && (category.customer_id === customerId || category.customer_id === null),
+          );
           return (found as T | undefined) ?? null;
         }
 
-        if (query.includes("from categories where id = ?")) {
+        if (query.includes("from categories where id = ? and (customer_id = ? or customer_id is null)")) {
+          const [id, customerId] = values as [string, string];
+          const category = categories.get(id);
+          if (!category) return null;
+          if (category.customer_id !== customerId && category.customer_id !== null) return null;
+          return category as T;
+        }
+
+        if (query.includes("from customers where id = ?")) {
           const [id] = values as [string];
-          return (categories.get(id) as T | undefined) ?? null;
+          return (customers.get(id) as T | undefined) ?? null;
+        }
+
+        if (query.includes("from customer_channels cc join customers c")) {
+          const [channel, externalUserId] = values as [string, string];
+          const channelRow = customerChannels.get(`${channel}:${externalUserId}`);
+          if (!channelRow) return null;
+          const customer = customers.get(channelRow.customer_id);
+          return (customer as T | undefined) ?? null;
+        }
+
+        if (query.includes("from customer_channels where channel = ? and external_user_id = ?")) {
+          const [channel, externalUserId] = values as [string, string];
+          return (customerChannels.get(`${channel}:${externalUserId}`) as T | undefined) ?? null;
+        }
+
+        if (query.includes("from channels") && query.includes("where id = ?")) {
+          const [channelId] = values as [string];
+          return (channels.get(channelId) as T | undefined) ?? null;
+        }
+
+        if (query.includes("from customer_channel_settings") && query.includes("where customer_id = ? and channel_id = ?")) {
+          const [customerId, channelId] = values as [string, string];
+          return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
         }
 
         return null;
@@ -115,6 +276,15 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
 
       async all<T>() {
         if (query.includes("from categories")) {
+          if (values.length === 1) {
+            const [customerId] = values as [string];
+            return {
+              results: Array.from(categories.values()).filter(
+                (category) => category.customer_id === customerId || category.customer_id === null,
+              ) as T[],
+            };
+          }
+
           return { results: Array.from(categories.values()) as T[] };
         }
 
@@ -127,6 +297,10 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
     __state: {
       expenses,
       categories,
+      customers,
+      customerChannels,
+      channels,
+      channelSettings,
       expenseEvents,
     },
     prepare(sql: string) {
@@ -151,7 +325,11 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
     __state: {
       expenses: Map<string, ExpenseRow>;
       categories: Map<string, CategoryRow>;
-      expenseEvents: Array<{ id: string; expense_id: string; type: string; payload_json: string; created_at: string }>;
+      customers: Map<string, CustomerRow>;
+      customerChannels: Map<string, CustomerChannelRow>;
+      channels: Map<string, ChannelRow>;
+      channelSettings: Map<string, CustomerChannelSettingRow>;
+      expenseEvents: Array<{ id: string; customer_id: string | null; expense_id: string; type: string; payload_json: string; created_at: string }>;
     };
   };
 }
@@ -159,6 +337,8 @@ function createMemoryD1Database(seedCategories: CategoryRow[] = []) {
 export function createTestEnv(options?: {
   aiRun?: (model: string, params: Record<string, unknown>) => Promise<unknown>;
   categories?: CategoryRow[];
+  channels?: ChannelRow[];
+  channelSettings?: CustomerChannelSettingRow[];
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -194,10 +374,11 @@ export function createTestEnv(options?: {
     return { response: "Listo" };
   };
 
-  const db = createMemoryD1Database(options?.categories ?? [
-    { id: "cat_food", name: "Comida", slug: "comida" },
-    { id: "cat_transport", name: "Transporte", slug: "transporte" },
-  ]);
+  const db = createMemoryD1Database({
+    categories: options?.categories,
+    channels: options?.channels,
+    channelSettings: options?.channelSettings,
+  });
 
   return {
     TELEGRAM_BOT_TOKEN: "token",
@@ -216,5 +397,6 @@ export function createTestEnv(options?: {
     KAPSO_API_BASE_URL: undefined,
     KAPSO_API_KEY: undefined,
     DEFAULT_EXPENSE_USER_ID: "51999999999",
+    DEFAULT_CUSTOMER_ID: "cust_default",
   } as unknown as WorkerEnv;
 }

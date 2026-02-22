@@ -4,9 +4,12 @@ import type { ChannelPort } from "@/ports/channel.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { LoggerPort } from "@/ports/logger.port";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import { isValidExpenseCandidate } from "@/domain/expense/rules";
 import {
   AiExtractFailedError,
+  ChannelDisabledError,
+  ChannelPolicyError,
   AiMessageGenerationError,
   ChannelSendError,
   ConversationStateError,
@@ -17,6 +20,7 @@ import {
 import { fromPromise } from "@/app/effects";
 
 export type IngestExpenseFromEmailInput = {
+  customerId: string;
   emailText: string;
   channel: string;
   userId: string;
@@ -26,6 +30,7 @@ export type IngestExpenseFromEmailInput = {
 export type IngestExpenseFromEmailDeps = {
   ai: AiPort;
   channel: ChannelPort;
+  channelPolicyRepo: ChannelPolicyRepoPort;
   expenseRepo: ExpenseRepoPort;
   conversationState: ConversationStatePort;
   logger: LoggerPort;
@@ -54,6 +59,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       const expense = yield* fromPromise(
         () =>
           deps.expenseRepo.createPending({
+            customerId: input.customerId,
             amount: transaction.amount,
             currency: transaction.currency,
             merchant: transaction.merchant,
@@ -72,6 +78,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       yield* fromPromise(
         () =>
           deps.conversationState.put({
+            customerId: input.customerId,
             channel: input.channel,
             userId: input.userId,
             expenseId: expense.id,
@@ -95,6 +102,35 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
           }),
         (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
       );
+
+      const isEnabled = yield* fromPromise(
+        () =>
+          deps.channelPolicyRepo.isChannelEnabledForCustomer({
+            customerId: input.customerId,
+            channelId: input.channel,
+          }),
+        (cause) =>
+          new ChannelPolicyError({
+            requestId: input.requestId,
+            operation: "isEnabled",
+            cause,
+          }),
+      );
+
+      if (!isEnabled) {
+        deps.logger.warn("channel.disabled_skip_send", {
+          requestId: input.requestId,
+          customerId: input.customerId,
+          channelId: input.channel,
+        });
+        return yield* Effect.fail(
+          new ChannelDisabledError({
+            requestId: input.requestId,
+            customerId: input.customerId,
+            channelId: input.channel,
+          }),
+        );
+      }
 
       yield* fromPromise(
         () => deps.channel.sendMessage({ userId: input.userId, text: message }),

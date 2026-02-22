@@ -8,6 +8,7 @@ describe("d1 expense repo integration", () => {
     const repo = createD1ExpenseRepo(env);
 
     const created = await repo.createPending({
+      customerId: "cust_default",
       amount: 23,
       currency: "PEN",
       merchant: "Metro",
@@ -18,8 +19,8 @@ describe("d1 expense repo integration", () => {
 
     expect(created.status).toBe("PENDING_CATEGORY");
 
-    await repo.markCategorized({ id: created.id, categoryId: "cat_food" });
-    const updated = await repo.getById(created.id);
+    await repo.markCategorized({ id: created.id, customerId: "cust_default", categoryId: "cat_food" });
+    const updated = await repo.getById({ id: created.id, customerId: "cust_default" });
 
     expect(updated?.status).toBe("CATEGORIZED");
     expect(updated?.categoryId).toBe("cat_food");

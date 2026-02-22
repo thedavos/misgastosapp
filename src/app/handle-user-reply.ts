@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import type { AiPort } from "@/ports/ai.port";
 import type { CategoryRepoPort } from "@/ports/category-repo.port";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { IncomingUserMessage } from "@/ports/channel.port";
@@ -10,6 +11,8 @@ import type { ChannelPort } from "@/ports/channel.port";
 import {
   CategoryClassificationError,
   CategoryLookupError,
+  ChannelDisabledError,
+  ChannelPolicyError,
   ChannelSendError,
   ConversationStateError,
   ExpensePersistenceError,
@@ -20,6 +23,7 @@ import { fromPromise } from "@/app/effects";
 export type HandleUserReplyDeps = {
   ai: AiPort;
   channel: ChannelPort;
+  channelPolicyRepo: ChannelPolicyRepoPort;
   expenseRepo: ExpenseRepoPort;
   categoryRepo: CategoryRepoPort;
   conversationState: ConversationStatePort;
@@ -31,15 +35,21 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
   const completeExpenseFlow = createCompleteExpenseFlow({
     ai: deps.ai,
     channel: deps.channel,
+    channelPolicyRepo: deps.channelPolicyRepo,
     conversationState: deps.conversationState,
     logger: deps.logger,
   });
 
-  return function handleUserReply(message: IncomingUserMessage): Effect.Effect<{ categorized: boolean }, AppError> {
+  return function handleUserReply(input: {
+    customerId: string;
+    message: IncomingUserMessage;
+  }): Effect.Effect<{ categorized: boolean }, AppError> {
     return Effect.gen(function* () {
+      const message = input.message;
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
+            customerId: input.customerId,
             channel: message.channel,
             userId: message.userId,
           }),
@@ -55,7 +65,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const expense = yield* fromPromise(
-        () => deps.expenseRepo.getById(pendingState.expenseId),
+        () => deps.expenseRepo.getById({ id: pendingState.expenseId, customerId: input.customerId }),
         (cause) => new ExpensePersistenceError({ operation: "getById", cause }),
       );
 
@@ -67,7 +77,12 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         });
 
         yield* fromPromise(
-          () => deps.conversationState.delete({ channel: message.channel, userId: message.userId }),
+          () =>
+            deps.conversationState.delete({
+              customerId: input.customerId,
+              channel: message.channel,
+              userId: message.userId,
+            }),
           (cause) => new ConversationStateError({ operation: "delete", cause }),
         );
 
@@ -75,7 +90,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const categories = yield* fromPromise(
-        () => deps.categoryRepo.listAll(),
+        () => deps.categoryRepo.listAll({ customerId: input.customerId }),
         (cause) => new CategoryLookupError({ operation: "listAll", cause }),
       );
 
@@ -91,6 +106,24 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       const threshold = deps.confidenceThreshold ?? 0.75;
       const categoryId = classification.categoryId;
       if (!categoryId || classification.confidence < threshold) {
+        const isEnabled = yield* fromPromise(
+          () =>
+            deps.channelPolicyRepo.isChannelEnabledForCustomer({
+              customerId: input.customerId,
+              channelId: message.channel,
+            }),
+          (cause) => new ChannelPolicyError({ operation: "isEnabled", cause }),
+        );
+
+        if (!isEnabled) {
+          return yield* Effect.fail(
+            new ChannelDisabledError({
+              customerId: input.customerId,
+              channelId: message.channel,
+            }),
+          );
+        }
+
         yield* fromPromise(
           () =>
             deps.channel.sendMessage({
@@ -103,7 +136,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const category = yield* fromPromise(
-        () => deps.categoryRepo.getById(categoryId),
+        () => deps.categoryRepo.getById({ customerId: input.customerId, id: categoryId }),
         (cause) => new CategoryLookupError({ operation: "getById", cause }),
       );
 
@@ -113,11 +146,17 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       yield* fromPromise(
-        () => deps.expenseRepo.markCategorized({ id: expense.id, categoryId: category.id }),
+        () =>
+          deps.expenseRepo.markCategorized({
+            id: expense.id,
+            customerId: input.customerId,
+            categoryId: category.id,
+          }),
         (cause) => new ExpensePersistenceError({ operation: "markCategorized", cause }),
       );
 
       yield* completeExpenseFlow({
+        customerId: input.customerId,
         channel: message.channel,
         userId: message.userId,
         categoryName: category.name,

@@ -32,7 +32,42 @@ export async function handleWhatsAppWebhook(
       return new Response("Invalid payload", { status: 400 });
     }
 
-    yield* container.handleUserReply(incomingMessage);
+    const customer = yield* Effect.tryPromise({
+      try: () =>
+        container.customerRepo.findByChannelExternalId({
+          channel: incomingMessage.channel,
+          externalUserId: incomingMessage.userId,
+        }),
+      catch: (cause) => new WebhookParseError({ requestId, cause }),
+    });
+
+    if (!customer) {
+      container.logger.warn("whatsapp.webhook_customer_not_found", {
+        requestId,
+        externalUserId: incomingMessage.userId,
+      });
+      return new Response("Customer not found", { status: 404 });
+    }
+
+    const isChannelEnabled = yield* Effect.tryPromise({
+      try: () =>
+        container.channelPolicyRepo.isChannelEnabledForCustomer({
+          customerId: customer.id,
+          channelId: incomingMessage.channel,
+        }),
+      catch: (cause) => new WebhookParseError({ requestId, cause }),
+    });
+
+    if (!isChannelEnabled) {
+      container.logger.warn("whatsapp.webhook_channel_disabled", {
+        requestId,
+        customerId: customer.id,
+        channel: incomingMessage.channel,
+      });
+      return new Response("Channel disabled", { status: 403 });
+    }
+
+    yield* container.handleUserReply({ customerId: customer.id, message: incomingMessage });
 
     return new Response("ok", { status: 200 });
   });
