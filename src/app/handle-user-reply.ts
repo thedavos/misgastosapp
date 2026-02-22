@@ -4,6 +4,7 @@ import type { CategoryRepoPort } from "@/ports/category-repo.port";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { IncomingUserMessage } from "@/ports/channel.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import { createCompleteExpenseFlow } from "@/app/complete-expense-flow";
@@ -13,9 +14,11 @@ import {
   CategoryLookupError,
   ChannelDisabledError,
   ChannelPolicyError,
+  FeaturePolicyError,
   ChannelSendError,
   ConversationStateError,
   ExpensePersistenceError,
+  SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
 import { fromPromise } from "@/app/effects";
@@ -24,6 +27,7 @@ export type HandleUserReplyDeps = {
   ai: AiPort;
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
+  featurePolicy: FeaturePolicyPort;
   expenseRepo: ExpenseRepoPort;
   categoryRepo: CategoryRepoPort;
   conversationState: ConversationStatePort;
@@ -36,6 +40,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
     ai: deps.ai,
     channel: deps.channel,
     channelPolicyRepo: deps.channelPolicyRepo,
+    featurePolicy: deps.featurePolicy,
     conversationState: deps.conversationState,
     logger: deps.logger,
   });
@@ -120,6 +125,25 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
             new ChannelDisabledError({
               customerId: input.customerId,
               channelId: message.channel,
+            }),
+          );
+        }
+
+        const featureKey = `channels.${message.channel}`;
+        const featureEnabled = yield* fromPromise(
+          () =>
+            deps.featurePolicy.isFeatureEnabled({
+              customerId: input.customerId,
+              featureKey,
+            }),
+          (cause) => new FeaturePolicyError({ featureKey, cause }),
+        );
+
+        if (!featureEnabled) {
+          return yield* Effect.fail(
+            new SubscriptionFeatureBlockedError({
+              customerId: input.customerId,
+              featureKey,
             }),
           );
         }

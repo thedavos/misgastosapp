@@ -1,7 +1,12 @@
 import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
 import { createContainer } from "@/composition/container";
-import { WebhookParseError, WebhookVerificationError } from "@/app/errors";
+import {
+  ChannelDisabledError,
+  SubscriptionFeatureBlockedError,
+  WebhookParseError,
+  WebhookVerificationError,
+} from "@/app/errors";
 
 export async function handleWhatsAppWebhook(
   request: Request,
@@ -49,22 +54,20 @@ export async function handleWhatsAppWebhook(
       return new Response("Customer not found", { status: 404 });
     }
 
-    const isChannelEnabled = yield* Effect.tryPromise({
-      try: () =>
-        container.channelPolicyRepo.isChannelEnabledForCustomer({
-          customerId: customer.id,
-          channelId: incomingMessage.channel,
-        }),
-      catch: (cause) => new WebhookParseError({ requestId, cause }),
-    });
+    const authorizationResult = yield* container.authorizeChannel({
+      customerId: customer.id,
+      channelId: incomingMessage.channel,
+      requestId,
+    }).pipe(Effect.either);
 
-    if (!isChannelEnabled) {
-      container.logger.warn("whatsapp.webhook_channel_disabled", {
-        requestId,
-        customerId: customer.id,
-        channel: incomingMessage.channel,
-      });
-      return new Response("Channel disabled", { status: 403 });
+    if (authorizationResult._tag === "Left") {
+      if (authorizationResult.left instanceof ChannelDisabledError) {
+        return new Response("Channel disabled", { status: 403 });
+      }
+      if (authorizationResult.left instanceof SubscriptionFeatureBlockedError) {
+        return new Response("Payment Required", { status: 402 });
+      }
+      return yield* Effect.fail(authorizationResult.left);
     }
 
     yield* container.handleUserReply({ customerId: customer.id, message: incomingMessage });

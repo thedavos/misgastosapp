@@ -50,6 +50,40 @@ type CustomerChannelSettingRow = {
   config_json: string | null;
 };
 
+type PlanRow = {
+  id: string;
+  name: string;
+  price_amount: number;
+  price_currency: string;
+  billing_interval: "monthly" | "yearly" | "none";
+  status: "ACTIVE" | "INACTIVE";
+  version: number;
+};
+
+type PlanFeatureRow = {
+  id: string;
+  plan_id: string;
+  feature_key: string;
+  feature_type: "boolean" | "limit";
+  bool_value: number | null;
+  limit_value: number | null;
+};
+
+type CustomerSubscriptionRow = {
+  id: string;
+  customer_id: string;
+  plan_id: string;
+  status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "EXPIRED";
+  start_at: string;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: number;
+  provider: string;
+  provider_subscription_id: string | null;
+  plan_version_at_start: number;
+  metadata_json: string | null;
+};
+
 function createMemoryKvNamespace() {
   const store = new Map<string, string>();
 
@@ -70,6 +104,9 @@ function createMemoryD1Database(options?: {
   categories?: CategoryRow[];
   channels?: ChannelRow[];
   channelSettings?: CustomerChannelSettingRow[];
+  plans?: PlanRow[];
+  planFeatures?: PlanFeatureRow[];
+  subscriptions?: CustomerSubscriptionRow[];
 }) {
   const expenses = new Map<string, ExpenseRow>();
   const categories = new Map<string, CategoryRow>();
@@ -77,6 +114,9 @@ function createMemoryD1Database(options?: {
   const customerChannels = new Map<string, CustomerChannelRow>();
   const channels = new Map<string, ChannelRow>();
   const channelSettings = new Map<string, CustomerChannelSettingRow>();
+  const plans = new Map<string, PlanRow>();
+  const planFeatures = new Map<string, PlanFeatureRow>();
+  const subscriptions = new Map<string, CustomerSubscriptionRow>();
   const expenseEvents: Array<{
     id: string;
     customer_id: string | null;
@@ -136,6 +176,107 @@ function createMemoryD1Database(options?: {
 
   for (const category of options?.categories ?? defaultCategories) {
     categories.set(category.id, category);
+  }
+
+  const defaultPlans: PlanRow[] = [
+    {
+      id: "free",
+      name: "Free",
+      price_amount: 0,
+      price_currency: "PEN",
+      billing_interval: "none",
+      status: "ACTIVE",
+      version: 1,
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price_amount: 1990,
+      price_currency: "PEN",
+      billing_interval: "monthly",
+      status: "ACTIVE",
+      version: 1,
+    },
+  ];
+
+  for (const plan of options?.plans ?? defaultPlans) {
+    plans.set(plan.id, plan);
+  }
+
+  const defaultPlanFeatures: PlanFeatureRow[] = [
+    {
+      id: "pf_free_whatsapp",
+      plan_id: "free",
+      feature_key: "channels.whatsapp",
+      feature_type: "boolean",
+      bool_value: 1,
+      limit_value: null,
+    },
+    {
+      id: "pf_free_telegram",
+      plan_id: "free",
+      feature_key: "channels.telegram",
+      feature_type: "boolean",
+      bool_value: 0,
+      limit_value: null,
+    },
+    {
+      id: "pf_free_instagram",
+      plan_id: "free",
+      feature_key: "channels.instagram",
+      feature_type: "boolean",
+      bool_value: 0,
+      limit_value: null,
+    },
+    {
+      id: "pf_pro_whatsapp",
+      plan_id: "pro",
+      feature_key: "channels.whatsapp",
+      feature_type: "boolean",
+      bool_value: 1,
+      limit_value: null,
+    },
+    {
+      id: "pf_pro_telegram",
+      plan_id: "pro",
+      feature_key: "channels.telegram",
+      feature_type: "boolean",
+      bool_value: 1,
+      limit_value: null,
+    },
+    {
+      id: "pf_pro_instagram",
+      plan_id: "pro",
+      feature_key: "channels.instagram",
+      feature_type: "boolean",
+      bool_value: 1,
+      limit_value: null,
+    },
+  ];
+
+  for (const feature of options?.planFeatures ?? defaultPlanFeatures) {
+    planFeatures.set(`${feature.plan_id}:${feature.feature_key}`, feature);
+  }
+
+  const defaultSubscriptions: CustomerSubscriptionRow[] = [
+    {
+      id: "sub_cust_default_free",
+      customer_id: "cust_default",
+      plan_id: "free",
+      status: "ACTIVE",
+      start_at: "2026-01-01T00:00:00.000Z",
+      current_period_start: "2026-01-01T00:00:00.000Z",
+      current_period_end: "9999-12-31T23:59:59.000Z",
+      cancel_at_period_end: 0,
+      provider: "manual",
+      provider_subscription_id: null,
+      plan_version_at_start: 1,
+      metadata_json: null,
+    },
+  ];
+
+  for (const subscription of options?.subscriptions ?? defaultSubscriptions) {
+    subscriptions.set(subscription.id, subscription);
   }
 
   function bindQuery(sql: string, values: unknown[]) {
@@ -230,7 +371,8 @@ function createMemoryD1Database(options?: {
         if (query.includes("from categories where lower(name) = ?")) {
           const [name, customerId] = values as [string, string];
           const found = Array.from(categories.values()).find(
-            (category) => category.name.toLowerCase() === name && (category.customer_id === customerId || category.customer_id === null),
+            (category) =>
+              category.name.toLowerCase() === name && (category.customer_id === customerId || category.customer_id === null),
           );
           return (found as T | undefined) ?? null;
         }
@@ -271,6 +413,30 @@ function createMemoryD1Database(options?: {
           return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
         }
 
+        if (query.includes("from customer_subscriptions") && query.includes("where customer_id = ?") && query.includes("status in")) {
+          const [customerId] = values as [string];
+          const validStatuses = new Set(["TRIALING", "ACTIVE", "PAST_DUE"]);
+          const candidate = Array.from(subscriptions.values())
+            .filter((subscription) => subscription.customer_id === customerId && validStatuses.has(subscription.status))
+            .sort((a, b) => {
+              const rank = (s: string) => (s === "ACTIVE" ? 0 : s === "TRIALING" ? 1 : 2);
+              const rankDiff = rank(a.status) - rank(b.status);
+              if (rankDiff !== 0) return rankDiff;
+              return b.current_period_end.localeCompare(a.current_period_end);
+            })[0];
+          return (candidate as T | undefined) ?? null;
+        }
+
+        if (query.includes("from plans") && query.includes("where id = ?")) {
+          const [planId] = values as [string];
+          return (plans.get(planId) as T | undefined) ?? null;
+        }
+
+        if (query.includes("from plan_features") && query.includes("where plan_id = ? and feature_key = ?")) {
+          const [planId, featureKey] = values as [string, string];
+          return (planFeatures.get(`${planId}:${featureKey}`) as T | undefined) ?? null;
+        }
+
         return null;
       },
 
@@ -301,6 +467,9 @@ function createMemoryD1Database(options?: {
       customerChannels,
       channels,
       channelSettings,
+      plans,
+      planFeatures,
+      subscriptions,
       expenseEvents,
     },
     prepare(sql: string) {
@@ -329,7 +498,17 @@ function createMemoryD1Database(options?: {
       customerChannels: Map<string, CustomerChannelRow>;
       channels: Map<string, ChannelRow>;
       channelSettings: Map<string, CustomerChannelSettingRow>;
-      expenseEvents: Array<{ id: string; customer_id: string | null; expense_id: string; type: string; payload_json: string; created_at: string }>;
+      plans: Map<string, PlanRow>;
+      planFeatures: Map<string, PlanFeatureRow>;
+      subscriptions: Map<string, CustomerSubscriptionRow>;
+      expenseEvents: Array<{
+        id: string;
+        customer_id: string | null;
+        expense_id: string;
+        type: string;
+        payload_json: string;
+        created_at: string;
+      }>;
     };
   };
 }
@@ -339,6 +518,9 @@ export function createTestEnv(options?: {
   categories?: CategoryRow[];
   channels?: ChannelRow[];
   channelSettings?: CustomerChannelSettingRow[];
+  plans?: PlanRow[];
+  planFeatures?: PlanFeatureRow[];
+  subscriptions?: CustomerSubscriptionRow[];
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -378,6 +560,9 @@ export function createTestEnv(options?: {
     categories: options?.categories,
     channels: options?.channels,
     channelSettings: options?.channelSettings,
+    plans: options?.plans,
+    planFeatures: options?.planFeatures,
+    subscriptions: options?.subscriptions,
   });
 
   return {
@@ -392,6 +577,7 @@ export function createTestEnv(options?: {
     } as unknown as Ai,
     PROMPTS_KV: promptsKv,
     CONVERSATION_STATE_KV: createMemoryKvNamespace(),
+    ENTITLEMENTS_KV: createMemoryKvNamespace(),
     ENVIRONMENT: "test",
     SENTRY_DSN: "https://test@sentry.io/123",
     KAPSO_API_BASE_URL: undefined,

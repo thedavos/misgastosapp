@@ -38,6 +38,9 @@ describe("ingest expense from email", () => {
         getCustomerChannelSetting: vi.fn(),
         isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
       },
+      featurePolicy: {
+        isFeatureEnabled: vi.fn().mockResolvedValue(true),
+      },
       expenseRepo: {
         createPending,
         getById: vi.fn(),

@@ -90,4 +90,32 @@ describe("whatsapp webhook integration", () => {
     const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
     expect(response.status).toBe(403);
   });
+
+  it("returns 402 when subscription blocks channel feature", async () => {
+    const env = createTestEnv({
+      planFeatures: [
+        {
+          id: "pf_free_whatsapp",
+          plan_id: "free",
+          feature_key: "channels.whatsapp",
+          feature_type: "boolean",
+          bool_value: 0,
+          limit_value: null,
+        },
+      ],
+    });
+
+    const request = new Request("https://example.com/webhooks/whatsapp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        from: "51999999999",
+        text: "comida",
+        timestamp: Date.now(),
+      }),
+    });
+
+    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
+    expect(response.status).toBe(402);
+  });
 });

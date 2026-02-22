@@ -3,6 +3,7 @@ import type { AiPort } from "@/ports/ai.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import { isValidExpenseCandidate } from "@/domain/expense/rules";
@@ -10,11 +11,13 @@ import {
   AiExtractFailedError,
   ChannelDisabledError,
   ChannelPolicyError,
+  FeaturePolicyError,
   AiMessageGenerationError,
   ChannelSendError,
   ConversationStateError,
   ExpensePersistenceError,
   InvalidTransactionError,
+  SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
 import { fromPromise } from "@/app/effects";
@@ -31,6 +34,7 @@ export type IngestExpenseFromEmailDeps = {
   ai: AiPort;
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
+  featurePolicy: FeaturePolicyPort;
   expenseRepo: ExpenseRepoPort;
   conversationState: ConversationStatePort;
   logger: LoggerPort;
@@ -128,6 +132,36 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
             requestId: input.requestId,
             customerId: input.customerId,
             channelId: input.channel,
+          }),
+        );
+      }
+
+      const featureKey = `channels.${input.channel}`;
+      const featureEnabled = yield* fromPromise(
+        () =>
+          deps.featurePolicy.isFeatureEnabled({
+            customerId: input.customerId,
+            featureKey,
+          }),
+        (cause) =>
+          new FeaturePolicyError({
+            requestId: input.requestId,
+            featureKey,
+            cause,
+          }),
+      );
+
+      if (!featureEnabled) {
+        deps.logger.warn("subscription.feature_blocked", {
+          requestId: input.requestId,
+          customerId: input.customerId,
+          featureKey,
+        });
+        return yield* Effect.fail(
+          new SubscriptionFeatureBlockedError({
+            requestId: input.requestId,
+            customerId: input.customerId,
+            featureKey,
           }),
         );
       }

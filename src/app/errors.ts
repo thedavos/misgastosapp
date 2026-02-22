@@ -60,6 +60,18 @@ export class ChannelDisabledError extends Data.TaggedError("ChannelDisabledError
   channelId: string;
 }> {}
 
+export class FeaturePolicyError extends Data.TaggedError("FeaturePolicyError")<{
+  requestId?: string;
+  featureKey: string;
+  cause: unknown;
+}> {}
+
+export class SubscriptionFeatureBlockedError extends Data.TaggedError("SubscriptionFeatureBlockedError")<{
+  requestId?: string;
+  customerId: string;
+  featureKey: string;
+}> {}
+
 export class WebhookVerificationError extends Data.TaggedError("WebhookVerificationError")<{
   requestId?: string;
   cause: unknown;
@@ -86,6 +98,8 @@ export type AppError =
   | ChannelSendError
   | ChannelPolicyError
   | ChannelDisabledError
+  | FeaturePolicyError
+  | SubscriptionFeatureBlockedError
   | WebhookVerificationError
   | WebhookParseError
   | InvalidTransactionError;

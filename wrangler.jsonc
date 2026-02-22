@@ -25,6 +25,11 @@
       "binding": "CONVERSATION_STATE_KV",
       "id": "ce5b08491432475c95a46642c7f6a5f5",
       "remote": true
+    },
+    {
+      "binding": "ENTITLEMENTS_KV",
+      "id": "571abbb2edcd4f339604df5f9560829f",
+      "remote": true
     }
   ],
   "vars": {

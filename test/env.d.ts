@@ -13,6 +13,7 @@ declare module "cloudflare:test" {
     AI: Ai;
     PROMPTS_KV: KVNamespace;
     CONVERSATION_STATE_KV: KVNamespace;
+    ENTITLEMENTS_KV?: KVNamespace;
 
     // Variables
     ENVIRONMENT?: string;

@@ -24,6 +24,9 @@ describe("handle user reply", () => {
         getCustomerChannelSetting: vi.fn(),
         isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
       },
+      featurePolicy: {
+        isFeatureEnabled: vi.fn().mockResolvedValue(true),
+      },
       expenseRepo: {
         createPending: vi.fn(),
         getById: vi.fn().mockResolvedValue({ id: "exp_1", customerId: "cust_default" }),
