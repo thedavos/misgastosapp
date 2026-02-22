@@ -17,6 +17,13 @@
 	"ai": {
 		"binding": "AI"
 	},
+	"kv_namespaces": [
+		{
+			"binding": "PROMPTS_KV",
+			"id": "bd265357076a487e91326867ee41157a",
+			"remote": true
+		}
+	],
 	/**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

@@ -9,8 +9,10 @@ export interface WorkerEnv extends Cloudflare.Env {
   DB: D1Database;
   REPORTS: R2Bucket;
   AI: Ai;
+  PROMPTS_KV: KVNamespace;
 
   // Variables
   ENVIRONMENT?: string;
   SENTRY_DSN?: string;
+  SENTRY_RELEASE?: string;
 }
