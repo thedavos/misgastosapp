@@ -8,6 +8,7 @@ import {
   WebhookParseError,
   WebhookVerificationError,
 } from "@/app/errors";
+import { getEffectFailureMeta } from "@/utils/effect-failure";
 
 export async function handleWhatsAppWebhook(
   request: Request,
@@ -82,8 +83,12 @@ export async function handleWhatsAppWebhook(
   const result = await Effect.runPromiseExit(effect);
 
   if (result._tag === "Failure") {
+    const { errorCode, errorMessage } = getEffectFailureMeta(result.cause);
+
     container.logger.error("whatsapp.webhook_error", {
       requestId,
+      errorCode,
+      message: errorMessage,
       cause: result.cause,
       error: result.cause,
     });

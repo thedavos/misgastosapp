@@ -38,4 +38,41 @@ describe("email handler integration", () => {
     }).__state;
     expect(dbState.expenses.size).toBe(0);
   });
+
+  it("does not create expense when recipient email is missing", async () => {
+    const env = createTestEnv();
+    const message = makeMessage(
+      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+    );
+    message.to = "";
+
+    await handleEmail(message, env, {} as ExecutionContext);
+
+    const dbState = (env.DB as unknown as {
+      __state: { expenses: Map<string, { status: string; customer_id: string }> };
+    }).__state;
+    expect(dbState.expenses.size).toBe(0);
+  });
+
+  it("does not create expense when route lookup fails", async () => {
+    const env = createTestEnv();
+    const originalPrepare = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = ((sql: string) => {
+      if (sql.toLowerCase().includes("from customer_email_routes")) {
+        throw new Error("route lookup failed");
+      }
+      return originalPrepare(sql);
+    }) as D1Database["prepare"];
+
+    const message = makeMessage(
+      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+    );
+
+    await handleEmail(message, env, {} as ExecutionContext);
+
+    const dbState = (env.DB as unknown as {
+      __state: { expenses: Map<string, { status: string; customer_id: string }> };
+    }).__state;
+    expect(dbState.expenses.size).toBe(0);
+  });
 });

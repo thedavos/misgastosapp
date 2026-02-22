@@ -1,11 +1,20 @@
 import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
-import { parseForwardedEmail } from "@/adapters/email/parser";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
+import { parseForwardedEmail } from "@/adapters/email/parser";
+import {
+  CustomerRouteLookupError,
+  CustomerRouteNotFoundError,
+  EmailParseFailedError,
+  MissingDefaultUserError,
+} from "@/app/errors";
 import { createContainer } from "@/composition/container";
-import { CustomerUnresolvedError, EmailParseFailedError, MissingDefaultUserError } from "@/app/errors";
+import { getEffectFailureMeta } from "@/utils/effect-failure";
 
-function resolveRecipientEmail(parsedEmail: Awaited<ReturnType<typeof parseForwardedEmail>>, message: ForwardableEmailMessage): string | null {
+function resolveRecipientEmail(
+  parsedEmail: Awaited<ReturnType<typeof parseForwardedEmail>>,
+  message: ForwardableEmailMessage,
+): string | null {
   const emailTo = parsedEmail.to?.[0]?.address?.trim().toLowerCase();
   if (emailTo) return emailTo;
 
@@ -33,7 +42,7 @@ export async function handleEmail(
     const recipientEmail = resolveRecipientEmail(parsedEmail, message);
     if (!recipientEmail) {
       return yield* Effect.fail(
-        new CustomerUnresolvedError({
+        new CustomerRouteNotFoundError({
           requestId,
           recipientEmail: "",
         }),
@@ -42,12 +51,12 @@ export async function handleEmail(
 
     const customerId = yield* Effect.tryPromise({
       try: () => container.customerEmailRouteRepo.resolveCustomerIdByRecipientEmail(recipientEmail),
-      catch: () => new CustomerUnresolvedError({ requestId, recipientEmail }),
+      catch: (cause) => new CustomerRouteLookupError({ requestId, recipientEmail, cause }),
     });
 
     if (!customerId) {
       return yield* Effect.fail(
-        new CustomerUnresolvedError({
+        new CustomerRouteNotFoundError({
           requestId,
           recipientEmail,
         }),
@@ -100,8 +109,12 @@ export async function handleEmail(
 
   const result = await Effect.runPromiseExit(effect);
   if (result._tag === "Failure") {
+    const { errorCode, errorMessage } = getEffectFailureMeta(result.cause);
+
     container.logger.error("email.error", {
       requestId,
+      errorCode,
+      message: errorMessage,
       cause: result.cause,
       error: result.cause,
     });

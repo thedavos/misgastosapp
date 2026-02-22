@@ -10,6 +10,17 @@ export class CustomerUnresolvedError extends Data.TaggedError("CustomerUnresolve
   recipientEmail: string;
 }> {}
 
+export class CustomerRouteNotFoundError extends Data.TaggedError("CustomerRouteNotFoundError")<{
+  requestId?: string;
+  recipientEmail: string;
+}> {}
+
+export class CustomerRouteLookupError extends Data.TaggedError("CustomerRouteLookupError")<{
+  requestId?: string;
+  recipientEmail: string;
+  cause: unknown;
+}> {}
+
 export class EmailParseFailedError extends Data.TaggedError("EmailParseFailedError")<{
   requestId?: string;
   cause: unknown;
@@ -100,6 +111,8 @@ export class InvalidTransactionError extends Data.TaggedError("InvalidTransactio
 export type AppError =
   | MissingDefaultUserError
   | CustomerUnresolvedError
+  | CustomerRouteNotFoundError
+  | CustomerRouteLookupError
   | EmailParseFailedError
   | AiExtractFailedError
   | AiMessageGenerationError
