@@ -1,6 +1,6 @@
-import { Either, Effect } from "effect";
+import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
-import { parseEmail, parseEmailWithAi, getTransactionWithParser } from "@/email/emailProcessors";
+import { parseEmail, parseEmailWithAi } from "@/email/emailProcessors";
 import { createLogger } from "@/logger";
 import { tapErrorLog } from "@/utils/tapErrorLog";
 
@@ -28,13 +28,23 @@ export async function handleEmail(
       Effect.tapError(tapErrorLog(logger, "email.ai_failed")),
     );
 
-    if (!transactionResult) return;
+    if (!transactionResult) {
+      logger.warn("email.ai_no_transaction", {
+        requestId,
+        subject: parsedEmail.subject,
+      });
+      return;
+    }
     logger.info("email.transaction", { transaction: transactionResult, source: "ai" });
     logger.info("email.done");
   });
 
   const result = await Effect.runPromiseExit(effect);
   if (result._tag === "Failure") {
-    logger.error("email.error", { error: String(result.cause) });
+    logger.error("email.error", {
+      requestId,
+      tag: result.cause._tag,
+      error: result.cause,
+    });
   }
 }
