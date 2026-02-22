@@ -2,6 +2,7 @@ import { AiTextGenerationOutput } from "@cloudflare/workers-types";
 import PostalMime, { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
 import type { ParsedTransaction } from "@/types";
+import { getCurrencySymbol } from "@/utils/currencySymbol";
 
 const AI_MAX_INPUT_CHARS = 6000;
 
@@ -102,6 +103,7 @@ async function inferTransactionFromTextWithAi(
   return {
     amount: payload.amount,
     currency: payload.currency,
+    symbol: getCurrencySymbol(payload.currency),
     merchant: payload.merchant,
     date: payload.date,
     cardType: typeof payload.cardType === "string" ? payload.cardType : undefined,
