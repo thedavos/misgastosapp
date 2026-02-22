@@ -29,6 +29,7 @@
   ],
   "vars": {
     "CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
-    "KAPSO_API_BASE_URL": "https://api.kapso.ai"
+    "KAPSO_API_BASE_URL": "https://api.kapso.ai",
+    "DEFAULT_CUSTOMER_ID": "cust_default"
   }
 }

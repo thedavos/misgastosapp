@@ -21,29 +21,46 @@ function normalizeName(name: string): string {
 
 export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
   return {
-    async listAll(): Promise<Category[]> {
-      const rows = await env.DB.prepare(`SELECT id, name, slug FROM categories ORDER BY name ASC`).all<CategoryRow>();
+    async listAll(input: { customerId: string }): Promise<Category[]> {
+      const rows = await env.DB.prepare(
+        `SELECT id, name, slug FROM categories
+         WHERE customer_id = ? OR customer_id IS NULL
+         ORDER BY name ASC`,
+      )
+        .bind(input.customerId)
+        .all<CategoryRow>();
+
       if (!rows.results.length) return DEFAULT_CATEGORIES;
       return rows.results;
     },
 
-    async getByName(name: string): Promise<Category | null> {
-      const normalized = normalizeName(name);
-      const row = await env.DB.prepare(`SELECT id, name, slug FROM categories WHERE lower(name) = ? LIMIT 1`)
-        .bind(normalized)
+    async getByName(input: { customerId: string; name: string }): Promise<Category | null> {
+      const normalized = normalizeName(input.name);
+      const row = await env.DB.prepare(
+        `SELECT id, name, slug FROM categories
+         WHERE lower(name) = ? AND (customer_id = ? OR customer_id IS NULL)
+         ORDER BY customer_id IS NULL ASC
+         LIMIT 1`,
+      )
+        .bind(normalized, input.customerId)
         .first<CategoryRow>();
 
       if (row) return row;
       return DEFAULT_CATEGORIES.find((category) => normalizeName(category.name) === normalized) ?? null;
     },
 
-    async getById(id: string): Promise<Category | null> {
-      const row = await env.DB.prepare(`SELECT id, name, slug FROM categories WHERE id = ? LIMIT 1`)
-        .bind(id)
+    async getById(input: { customerId: string; id: string }): Promise<Category | null> {
+      const row = await env.DB.prepare(
+        `SELECT id, name, slug FROM categories
+         WHERE id = ? AND (customer_id = ? OR customer_id IS NULL)
+         ORDER BY customer_id IS NULL ASC
+         LIMIT 1`,
+      )
+        .bind(input.id, input.customerId)
         .first<CategoryRow>();
 
       if (row) return row;
-      return DEFAULT_CATEGORIES.find((category) => category.id === id) ?? null;
+      return DEFAULT_CATEGORIES.find((category) => category.id === input.id) ?? null;
     },
   };
 }

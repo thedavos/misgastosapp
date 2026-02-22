@@ -20,4 +20,5 @@ export interface WorkerEnv extends Cloudflare.Env {
   SENTRY_RELEASE?: string;
   KAPSO_API_BASE_URL?: string;
   DEFAULT_EXPENSE_USER_ID?: string;
+  DEFAULT_CUSTOMER_ID?: string;
 }

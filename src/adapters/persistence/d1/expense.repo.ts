@@ -5,6 +5,7 @@ import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 
 type ExpenseRow = {
   id: string;
+  customer_id: string;
   amount: number;
   currency: string;
   merchant: string;
@@ -20,6 +21,7 @@ type ExpenseRow = {
 function mapExpenseRow(row: ExpenseRow): Expense {
   return {
     id: row.id,
+    customerId: row.customer_id,
     amount: row.amount,
     currency: row.currency,
     merchant: row.merchant,
@@ -40,11 +42,12 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       const now = new Date().toISOString();
 
       await env.DB.prepare(
-        `INSERT INTO expenses (id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+        `INSERT INTO expenses (id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
       )
         .bind(
           id,
+          input.customerId,
           input.amount,
           input.currency,
           input.merchant,
@@ -59,6 +62,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
 
       return {
         id,
+        customerId: input.customerId,
         amount: input.amount,
         currency: input.currency,
         merchant: input.merchant,
@@ -72,34 +76,35 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       };
     },
 
-    async getById(id: string): Promise<Expense | null> {
+    async getById(input: { id: string; customerId: string }): Promise<Expense | null> {
       const row = await env.DB.prepare(
-        `SELECT id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
-         FROM expenses WHERE id = ? LIMIT 1`,
+        `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
+         FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
       )
-        .bind(id)
+        .bind(input.id, input.customerId)
         .first<ExpenseRow>();
 
       if (!row) return null;
       return mapExpenseRow(row);
     },
 
-    async markCategorized(input: { id: string; categoryId: string }): Promise<void> {
+    async markCategorized(input: { id: string; customerId: string; categoryId: string }): Promise<void> {
       const now = new Date().toISOString();
       await env.DB.prepare(
         `UPDATE expenses
          SET status = ?, category_id = ?, updated_at = ?
-         WHERE id = ?`,
+         WHERE id = ? AND customer_id = ?`,
       )
-        .bind(EXPENSE_STATUS.Categorized, input.categoryId, now, input.id)
+        .bind(EXPENSE_STATUS.Categorized, input.categoryId, now, input.id, input.customerId)
         .run();
 
       await env.DB.prepare(
-        `INSERT INTO expense_events (id, expense_id, type, payload_json, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO expense_events (id, customer_id, expense_id, type, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           crypto.randomUUID(),
+          input.customerId,
           input.id,
           "EXPENSE_CATEGORIZED",
           JSON.stringify({ categoryId: input.categoryId }),
