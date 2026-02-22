@@ -24,6 +24,7 @@
 			"remote": true
 		}
 	],
+  "vars": { "CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct" }
 	/**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -39,7 +40,6 @@
    * Environment Variables
    * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
    */
-	// "vars": { "MY_VARIABLE": "production_value" }
 	/**
    * Note: Use secrets to store sensitive data.
    * https://developers.cloudflare.com/workers/configuration/secrets/
