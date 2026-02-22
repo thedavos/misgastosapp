@@ -14,23 +14,10 @@ const DEFAULT_CONTEXT: LoggerConfig = {
 };
 
 function logWithConsoleFallback(level: LogLevel, event: string, context: LogContext) {
-  const sentryLevel = level === "warn" ? "warning" : level;
   const payload = sanitize({ event, ...context });
 
   try {
-    if (level === "warn" || level === "info") {
-      Sentry.captureMessage(event, {
-        level: sentryLevel,
-        extra: payload,
-      });
-    } else {
-      Sentry.addBreadcrumb({
-        category: "log",
-        message: event,
-        level: sentryLevel,
-        data: payload,
-      });
-    }
+    Sentry.logger[level](event, payload);
     return;
   } catch {
     // fall through
