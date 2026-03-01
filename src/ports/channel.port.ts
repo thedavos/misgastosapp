@@ -1,3 +1,11 @@
+export interface IncomingAttachment {
+  type: "image";
+  url?: string;
+  mimeType?: string;
+  providerFileId?: string;
+  data?: Uint8Array;
+}
+
 export interface IncomingUserMessage {
   channel: string;
   userId: string;
@@ -5,6 +13,7 @@ export interface IncomingUserMessage {
   timestamp: string;
   providerEventId?: string;
   payloadHash?: string;
+  attachments?: IncomingAttachment[];
   raw: unknown;
 }
 

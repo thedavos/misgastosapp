@@ -63,6 +63,35 @@ export async function handleEmail(
       );
     }
 
+    const customer = yield* Effect.tryPromise({
+      try: () => container.customerRepo.getById(customerId),
+      catch: (cause) =>
+        new CustomerRouteLookupError({
+          requestId,
+          recipientEmail,
+          cause,
+        }),
+    });
+
+    if (!customer) {
+      container.logger.warn("email.customer_not_found_skip", {
+        requestId,
+        customerId,
+        recipientEmail,
+      });
+      return;
+    }
+
+    if (customer.status !== "ACTIVE") {
+      container.logger.warn("email.customer_inactive_skip", {
+        requestId,
+        customerId: customer.id,
+        recipientEmail,
+        status: customer.status,
+      });
+      return;
+    }
+
     const userId = yield* Effect.tryPromise({
       try: () =>
         container.customerRepo.getPrimaryExternalUserId({

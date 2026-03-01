@@ -1,9 +1,10 @@
 import type { WorkerEnv } from "types/env";
+import { handleTelegramWebhookWithChatSdk } from "@/adapters/channels/telegram/chat-sdk.bot";
 
 export async function handleTelegramWebhook(
-  _request: Request,
-  _env: WorkerEnv,
-  _ctx: ExecutionContext,
+  request: Request,
+  env: WorkerEnv,
+  ctx: ExecutionContext,
 ): Promise<Response> {
-  return new Response("Telegram webhook not implemented", { status: 501 });
+  return handleTelegramWebhookWithChatSdk(request, env, ctx);
 }

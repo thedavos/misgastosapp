@@ -27,14 +27,25 @@ export async function handleWhatsAppWebhook(
 
   if (typeof ctx.waitUntil === "function" && Math.random() < 0.01) {
     ctx.waitUntil(
-      container.webhookEventRepo
-        .cleanupOld({ provider: WHATSAPP_PROVIDER, retentionDays: WEBHOOK_RETENTION_DAYS })
-        .catch((cause) => {
-          container.logger.warn("whatsapp.webhook_idempotency_cleanup_failed", {
-            requestId,
-            cause,
-          });
+      Promise.allSettled([
+        container.webhookEventRepo.cleanupOld({
+          provider: WHATSAPP_PROVIDER,
+          retentionDays: WEBHOOK_RETENTION_DAYS,
         }),
+        container.chatMediaRepo.deleteExpired({
+          nowIso: new Date().toISOString(),
+          limit: 200,
+        }),
+      ]).then((results) => {
+        for (const result of results) {
+          if (result.status === "rejected") {
+            container.logger.warn("whatsapp.cleanup_failed", {
+              requestId,
+              cause: result.reason,
+            });
+          }
+        }
+      }),
     );
   }
 
@@ -150,7 +161,17 @@ export async function handleWhatsAppWebhook(
       return new Response("ok", { status: 200 });
     }
 
-    yield* container.handleUserReply({ customerId: customer.id, message: incomingMessage });
+    yield* container.processChatMessage({
+      customerId: customer.id,
+      channel: incomingMessage.channel,
+      userId: incomingMessage.userId,
+      providerEventId: eventId,
+      text: incomingMessage.text,
+      attachments: incomingMessage.attachments,
+      raw: incomingMessage.raw,
+      timestamp: incomingMessage.timestamp,
+      requestId,
+    });
 
     yield* Effect.tryPromise({
       try: () =>

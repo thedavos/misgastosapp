@@ -65,6 +65,31 @@ describe("kapso adapter contract", () => {
     expect(message?.providerEventId).toMatch(/^hash:[0-9a-f]{64}$/);
   });
 
+  it("parses image-only webhook payload with attachments", async () => {
+    const env = createTestEnv();
+    const channel = createKapsoChannelAdapter(env);
+
+    const request = new Request("https://example.com/webhooks/whatsapp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "evt_image_only",
+        from: "51999999999",
+        mediaUrl: "https://media.example.com/r.jpg",
+        mediaMimeType: "image/jpeg",
+      }),
+    });
+
+    const message = await channel.parseWebhook(request);
+    expect(message?.text).toBe("");
+    expect(message?.attachments?.[0]).toEqual(
+      expect.objectContaining({
+        type: "image",
+        url: "https://media.example.com/r.jpg",
+      }),
+    );
+  });
+
   it("accepts valid HMAC signature with current timestamp", async () => {
     const env = createTestEnv({
       kapsoWebhookSecret: "topsecret",

@@ -75,4 +75,53 @@ describe("email handler integration", () => {
     }).__state;
     expect(dbState.expenses.size).toBe(0);
   });
+
+  it("does not create expense when routed customer does not exist", async () => {
+    const env = createTestEnv({
+      emailRoutes: [
+        {
+          id: "route_missing_customer",
+          customer_id: "cust_missing",
+          recipient_email: "davidvargas.d45@gmail.com",
+          enabled: 1,
+        },
+      ],
+    });
+    const message = makeMessage(
+      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+    );
+
+    await handleEmail(message, env, {} as ExecutionContext);
+
+    const dbState = (env.DB as unknown as {
+      __state: { expenses: Map<string, { status: string; customer_id: string }> };
+    }).__state;
+    expect(dbState.expenses.size).toBe(0);
+  });
+
+  it("does not create expense when customer is inactive", async () => {
+    const env = createTestEnv({
+      customers: [
+        {
+          id: "cust_default",
+          name: "Default Customer",
+          status: "INACTIVE",
+          default_currency: "PEN",
+          timezone: "America/Lima",
+          locale: "es-PE",
+          confidence_threshold: 0.75,
+        },
+      ],
+    });
+    const message = makeMessage(
+      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+    );
+
+    await handleEmail(message, env, {} as ExecutionContext);
+
+    const dbState = (env.DB as unknown as {
+      __state: { expenses: Map<string, { status: string; customer_id: string }> };
+    }).__state;
+    expect(dbState.expenses.size).toBe(0);
+  });
 });

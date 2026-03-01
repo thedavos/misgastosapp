@@ -12,6 +12,8 @@ wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
+wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
+wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
 ```
 
 ### KV namespaces
@@ -28,6 +30,7 @@ Actualizar `wrangler.jsonc` con IDs reales.
 ```bash
 wrangler secret put TELEGRAM_BOT_TOKEN
 wrangler secret put TELEGRAM_CHAT_ID
+wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
 wrangler secret put SENTRY_DSN
@@ -38,9 +41,11 @@ wrangler secret put SENTRY_RELEASE
 
 Definir en `wrangler.jsonc` (o por ambiente):
 - `CLOUDFLARE_AI_MODEL`
+- `CLOUDFLARE_OCR_MODEL`
 - `KAPSO_API_BASE_URL`
 - `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
+- `CHAT_MEDIA_RETENTION_DAYS` (default `90`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE=true`
 - `ENVIRONMENT`
@@ -75,6 +80,15 @@ Recomendación:
 - Firma esperada: `HMAC-SHA256(KAPSO_WEBHOOK_SECRET, "<timestamp>.<rawBody>")`.
 - Usa `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` para exigir HMAC+timestamp.
 
+### Webhook Telegram (Chat SDK)
+
+Endpoint:
+- `POST https://<tu-worker>/webhooks/telegram`
+
+Configuración Telegram:
+- Registrar webhook con `setWebhook` a ese endpoint.
+- Operación habilitada solo en DM.
+
 ## 6) Operación diaria
 
 ### Ver logs
@@ -89,6 +103,8 @@ wrangler tail misgastosapp
 - `expense.flow_completed`
 - `whatsapp.webhook_unauthorized` (si firma incorrecta)
 - `whatsapp.webhook_duplicate_ignored` (si llega evento repetido)
+- `telegram.unknown_customer_blocked` (si user Telegram no está mapeado)
+- `chat.media_stored` (si se guarda evidencia de imagen en R2)
 
 ## 7) Troubleshooting
 

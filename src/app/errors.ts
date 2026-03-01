@@ -110,6 +110,17 @@ export class WebhookIdempotencyError extends Data.TaggedError("WebhookIdempotenc
   cause: unknown;
 }> {}
 
+export class OcrExtractionError extends Data.TaggedError("OcrExtractionError")<{
+  requestId?: string;
+  cause: unknown;
+}> {}
+
+export class ChatMediaPersistenceError extends Data.TaggedError("ChatMediaPersistenceError")<{
+  requestId?: string;
+  operation: "create" | "linkExpense" | "listByExpenseId" | "deleteExpired";
+  cause: unknown;
+}> {}
+
 export class InvalidTransactionError extends Data.TaggedError("InvalidTransactionError")<{
   requestId?: string;
 }> {}
@@ -135,4 +146,6 @@ export type AppError =
   | WebhookVerificationError
   | WebhookParseError
   | WebhookIdempotencyError
+  | OcrExtractionError
+  | ChatMediaPersistenceError
   | InvalidTransactionError;

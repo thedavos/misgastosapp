@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createContainer } from "@/composition/container";
 import { handleWhatsAppWebhook } from "@/handlers/http/whatsapp-webhook.handler";
 import { createTestEnv } from "test/helpers/fakes";
@@ -154,6 +154,45 @@ describe("whatsapp webhook integration", () => {
 
     const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
     expect(response.status).toBe(402);
+  });
+
+  it("creates pending expense from whatsapp image-only message", async () => {
+    const env = createTestEnv();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3, 4]), {
+        status: 200,
+        headers: {
+          "content-type": "image/jpeg",
+        },
+      }),
+    );
+
+    const request = new Request("https://example.com/webhooks/whatsapp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "evt_image_1",
+        from: "51999999999",
+        mediaUrl: "https://media.example.com/receipt-1.jpg",
+        mediaMimeType: "image/jpeg",
+        timestamp: Date.now(),
+      }),
+    });
+
+    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
+    expect(response.status).toBe(200);
+
+    const dbState = (env.DB as unknown as {
+      __state: {
+        expenses: Map<string, { status: string }>;
+        chatMedia: Map<string, { expense_id: string | null }>;
+      };
+    }).__state;
+
+    expect(dbState.expenses.size).toBe(1);
+    expect(dbState.chatMedia.size).toBe(1);
+
+    fetchSpy.mockRestore();
   });
 
   it("returns 401 on invalid signature in strict mode", async () => {

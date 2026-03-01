@@ -3,6 +3,8 @@ export interface WorkerEnv extends Cloudflare.Env {
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_CHAT_ID: string;
   CLOUDFLARE_AI_MODEL: string;
+  CLOUDFLARE_OCR_MODEL?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
   KAPSO_API_KEY?: string;
   KAPSO_WEBHOOK_SECRET?: string;
 
@@ -21,6 +23,7 @@ export interface WorkerEnv extends Cloudflare.Env {
   KAPSO_API_BASE_URL?: string;
   KAPSO_WEBHOOK_SIGNATURE_MODE?: "dual" | "strict";
   KAPSO_WEBHOOK_MAX_SKEW_SECONDS?: string;
+  CHAT_MEDIA_RETENTION_DAYS?: string;
   DEFAULT_CUSTOMER_ID?: string;
   STRICT_POLICY_MODE?: string;
 }

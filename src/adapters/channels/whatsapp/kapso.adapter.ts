@@ -1,23 +1,12 @@
 import type { WorkerEnv } from "types/env";
 import type { ChannelPort, IncomingUserMessage, SendMessageInput } from "@/ports/channel.port";
-
-function toIsoTimestamp(timestamp: unknown): string {
-  if (typeof timestamp === "string" && timestamp.length > 0) return timestamp;
-  if (typeof timestamp === "number") return new Date(timestamp * 1000).toISOString();
-  return new Date().toISOString();
-}
-
-function normalizeBaseUrl(baseUrl: string | undefined): string | null {
-  if (!baseUrl) return null;
-  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-}
-
-function parsePositiveInt(input: string | undefined, fallback: number): number {
-  if (!input) return fallback;
-  const parsed = Number.parseInt(input, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return parsed;
-}
+import { constantTimeEquals } from "@/utils/crypto/constantTimeEquals";
+import { hexToBytes } from "@/utils/crypto/hexToBytes";
+import { hmacSha256Hex } from "@/utils/crypto/hmacSha256Hex";
+import { sha256Hex } from "@/utils/crypto/sha256Hex";
+import { toIsoTimestamp } from "@/utils/date/toIsoTimestamp";
+import { parsePositiveInt } from "@/utils/number/parsePositiveInt";
+import { normalizeBaseUrl } from "@/utils/url/normalizeBaseUrl";
 
 function parseSignatureHeader(signatureHeader: string | null): string | null {
   if (!signatureHeader) return null;
@@ -30,50 +19,6 @@ function parseSignatureHeader(signatureHeader: string | null): string | null {
   }
 
   return raw.toLowerCase();
-}
-
-function hexToBytes(hex: string): Uint8Array | null {
-  if (hex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hex)) return null;
-
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
-  }
-  return bytes;
-}
-
-function toHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function constantTimeEquals(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a[i] ^ b[i];
-  }
-  return diff === 0;
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return toHex(digest);
-}
-
-async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  return toHex(signature);
 }
 
 function resolveProviderEventId(payload: Record<string, unknown>): string | null {
@@ -105,6 +50,46 @@ function resolveProviderEventId(payload: Record<string, unknown>): string | null
   return null;
 }
 
+function extractImageAttachments(payload: Record<string, unknown>) {
+  const attachments: Array<{ type: "image"; url?: string; mimeType?: string; providerFileId?: string }> = [];
+
+  const maybePush = (url: unknown, mimeType: unknown, providerFileId: unknown) => {
+    if (typeof url !== "string" || url.trim().length === 0) return;
+    attachments.push({
+      type: "image",
+      url: url.trim(),
+      mimeType: typeof mimeType === "string" ? mimeType : undefined,
+      providerFileId: typeof providerFileId === "string" ? providerFileId : undefined,
+    });
+  };
+
+  maybePush(payload.mediaUrl, payload.mediaMimeType, payload.mediaId);
+  maybePush(payload.media_url, payload.media_mime_type, payload.media_id);
+  maybePush(payload.imageUrl, payload.imageMimeType, payload.imageId);
+  maybePush(payload.image_url, payload.image_mime_type, payload.image_id);
+
+  const media = payload.media;
+  if (media && typeof media === "object") {
+    const mediaRecord = media as Record<string, unknown>;
+    maybePush(mediaRecord.url, mediaRecord.mimeType, mediaRecord.id);
+  }
+
+  const mediaList = payload.attachments;
+  if (Array.isArray(mediaList)) {
+    for (const rawAttachment of mediaList) {
+      if (!rawAttachment || typeof rawAttachment !== "object") continue;
+      const attachment = rawAttachment as Record<string, unknown>;
+      const rawType = typeof attachment.type === "string" ? attachment.type.toLowerCase() : "";
+      const mimeType = typeof attachment.mimeType === "string" ? attachment.mimeType : undefined;
+      const isImage = rawType === "image" || (mimeType ? mimeType.startsWith("image/") : false);
+      if (!isImage) continue;
+      maybePush(attachment.url, mimeType, attachment.id);
+    }
+  }
+
+  return attachments;
+}
+
 function extractIncomingMessage(
   payload: Record<string, unknown>,
   providerEventId: string,
@@ -120,15 +105,17 @@ function extractIncomingMessage(
     (typeof payload.text === "string" && payload.text) ||
     (typeof payload.message === "string" && payload.message) ||
     null;
+  const attachments = extractImageAttachments(payload);
 
-  if (from && text) {
+  if (from && (text || attachments.length > 0)) {
     return {
       channel: "whatsapp",
       userId: from,
-      text,
+      text: text ?? "",
       timestamp: toIsoTimestamp(payload.timestamp),
       providerEventId,
       payloadHash,
+      attachments,
       raw: payload,
     };
   }
@@ -138,15 +125,17 @@ function extractIncomingMessage(
     const nestedRecord = nested as Record<string, unknown>;
     const nestedFrom = typeof nestedRecord.from === "string" ? nestedRecord.from : null;
     const nestedText = typeof nestedRecord.text === "string" ? nestedRecord.text : null;
+    const nestedAttachments = extractImageAttachments(nestedRecord);
 
-    if (nestedFrom && nestedText) {
+    if (nestedFrom && (nestedText || nestedAttachments.length > 0)) {
       return {
         channel: "whatsapp",
         userId: nestedFrom,
-        text: nestedText,
+        text: nestedText ?? "",
         timestamp: toIsoTimestamp(nestedRecord.timestamp),
         providerEventId,
         payloadHash,
+        attachments: nestedAttachments.length > 0 ? nestedAttachments : attachments,
         raw: payload,
       };
     }

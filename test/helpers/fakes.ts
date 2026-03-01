@@ -105,6 +105,22 @@ type InboundWebhookEventRow = {
   last_error: string | null;
 };
 
+type ChatMediaRow = {
+  id: string;
+  customer_id: string;
+  channel: string;
+  external_user_id: string;
+  provider_event_id: string;
+  expense_id: string | null;
+  r2_key: string;
+  mime_type: string | null;
+  size_bytes: number;
+  sha256: string;
+  ocr_text: string | null;
+  created_at: string;
+  expires_at: string;
+};
+
 function createMemoryKvNamespace() {
   const store = new Map<string, string>();
 
@@ -121,7 +137,51 @@ function createMemoryKvNamespace() {
   } as unknown as KVNamespace;
 }
 
+function createMemoryR2Bucket() {
+  const objects = new Map<
+    string,
+    {
+      body: Uint8Array;
+      httpMetadata?: Record<string, unknown>;
+    }
+  >();
+
+  return {
+    async put(key: string, value: ReadableStream | ArrayBuffer | ArrayBufferView | string, options?: object) {
+      let body: Uint8Array;
+      if (typeof value === "string") {
+        body = new TextEncoder().encode(value);
+      } else if (value instanceof ArrayBuffer) {
+        body = new Uint8Array(value);
+      } else if (ArrayBuffer.isView(value)) {
+        body = new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+      } else {
+        body = new Uint8Array();
+      }
+
+      objects.set(key, {
+        body,
+        httpMetadata: options as Record<string, unknown> | undefined,
+      });
+    },
+    async get(key: string) {
+      return objects.get(key) ?? null;
+    },
+    async delete(key: string) {
+      objects.delete(key);
+    },
+    __state: {
+      objects,
+    },
+  } as unknown as R2Bucket & {
+    __state: {
+      objects: Map<string, { body: Uint8Array; httpMetadata?: Record<string, unknown> }>;
+    };
+  };
+}
+
 function createMemoryD1Database(options?: {
+  customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
   channelSettings?: CustomerChannelSettingRow[];
@@ -141,6 +201,7 @@ function createMemoryD1Database(options?: {
   const subscriptions = new Map<string, CustomerSubscriptionRow>();
   const emailRoutes = new Map<string, CustomerEmailRouteRow>();
   const inboundWebhookEvents = new Map<string, InboundWebhookEventRow>();
+  const chatMedia = new Map<string, ChatMediaRow>();
   const expenseEvents: Array<{
     id: string;
     customer_id: string | null;
@@ -150,15 +211,20 @@ function createMemoryD1Database(options?: {
     created_at: string;
   }> = [];
 
-  customers.set("cust_default", {
-    id: "cust_default",
-    name: "Default Customer",
-    status: "ACTIVE",
-    default_currency: "PEN",
-    timezone: "America/Lima",
-    locale: "es-PE",
-    confidence_threshold: 0.75,
-  });
+  const defaultCustomers: CustomerRow[] = [
+    {
+      id: "cust_default",
+      name: "Default Customer",
+      status: "ACTIVE",
+      default_currency: "PEN",
+      timezone: "America/Lima",
+      locale: "es-PE",
+      confidence_threshold: 0.75,
+    },
+  ];
+  for (const customer of options?.customers ?? defaultCustomers) {
+    customers.set(customer.id, customer);
+  }
 
   customerChannels.set("whatsapp:51999999999", {
     id: "custch_default_whatsapp",
@@ -183,7 +249,7 @@ function createMemoryD1Database(options?: {
 
   const defaultChannels: ChannelRow[] = [
     { id: "whatsapp", name: "WhatsApp", status: "ACTIVE" },
-    { id: "telegram", name: "Telegram", status: "INACTIVE" },
+    { id: "telegram", name: "Telegram", status: "ACTIVE" },
     { id: "instagram", name: "Instagram", status: "INACTIVE" },
   ];
 
@@ -406,6 +472,55 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes: 1 } };
         }
 
+        if (query.startsWith("insert into chat_media")) {
+          const [
+            id,
+            customerId,
+            channel,
+            externalUserId,
+            providerEventId,
+            expenseId,
+            r2Key,
+            mimeType,
+            sizeBytes,
+            sha256,
+            ocrText,
+            createdAt,
+            expiresAt,
+          ] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            string | null,
+            string,
+            string | null,
+            number,
+            string,
+            string | null,
+            string,
+            string,
+          ];
+
+          chatMedia.set(id, {
+            id,
+            customer_id: customerId,
+            channel,
+            external_user_id: externalUserId,
+            provider_event_id: providerEventId,
+            expense_id: expenseId,
+            r2_key: r2Key,
+            mime_type: mimeType,
+            size_bytes: sizeBytes,
+            sha256,
+            ocr_text: ocrText,
+            created_at: createdAt,
+            expires_at: expiresAt,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
         if (query.startsWith("insert or replace into customer_channels")) {
           const [id, customerId, channel, externalUserId, isPrimary] = values as [
             string,
@@ -501,6 +616,28 @@ function createMemoryD1Database(options?: {
             }
           }
           return { success: true, meta: { changes } };
+        }
+
+        if (query.startsWith("update chat_media set expense_id = ?")) {
+          const [expenseId, mediaId] = values as [string, string];
+          const current = chatMedia.get(mediaId);
+          if (!current) return { success: true, meta: { changes: 0 } };
+          chatMedia.set(mediaId, {
+            ...current,
+            expense_id: expenseId,
+          });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("delete from chat_media")) {
+          const [nowIso, limit] = values as [string, number];
+          const candidates = Array.from(chatMedia.values())
+            .filter((row) => row.expires_at < nowIso)
+            .slice(0, limit);
+          for (const row of candidates) {
+            chatMedia.delete(row.id);
+          }
+          return { success: true, meta: { changes: candidates.length } };
         }
 
         return { success: true };
@@ -621,6 +758,25 @@ function createMemoryD1Database(options?: {
           return { results: Array.from(categories.values()) as T[] };
         }
 
+        if (query.includes("from chat_media") && query.includes("where customer_id = ? and expense_id = ?")) {
+          const [customerId, expenseId] = values as [string, string];
+          return {
+            results: Array.from(chatMedia.values()).filter(
+              (row) => row.customer_id === customerId && row.expense_id === expenseId,
+            ) as T[],
+          };
+        }
+
+        if (query.includes("from chat_media") && query.includes("where expires_at < ?")) {
+          const [nowIso, limit] = values as [string, number];
+          return {
+            results: Array.from(chatMedia.values())
+              .filter((row) => row.expires_at < nowIso)
+              .slice(0, limit)
+              .map((row) => ({ id: row.id, r2_key: row.r2_key })) as T[],
+          };
+        }
+
         return { results: [] as T[] };
       },
     };
@@ -640,6 +796,7 @@ function createMemoryD1Database(options?: {
       emailRoutes,
       expenseEvents,
       inboundWebhookEvents,
+      chatMedia,
     },
     prepare(sql: string) {
       const query = sql.replace(/\s+/g, " ").trim().toLowerCase();
@@ -680,12 +837,14 @@ function createMemoryD1Database(options?: {
         created_at: string;
       }>;
       inboundWebhookEvents: Map<string, InboundWebhookEventRow>;
+      chatMedia: Map<string, ChatMediaRow>;
     };
   };
 }
 
 export function createTestEnv(options?: {
   aiRun?: (model: string, params: Record<string, unknown>) => Promise<unknown>;
+  customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
   channelSettings?: CustomerChannelSettingRow[];
@@ -697,6 +856,7 @@ export function createTestEnv(options?: {
   kapsoWebhookSecret?: string;
   kapsoWebhookSignatureMode?: "dual" | "strict";
   kapsoWebhookMaxSkewSeconds?: string;
+  chatMediaRetentionDays?: string;
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -733,6 +893,7 @@ export function createTestEnv(options?: {
   };
 
   const db = createMemoryD1Database({
+    customers: options?.customers,
     categories: options?.categories,
     channels: options?.channels,
     channelSettings: options?.channelSettings,
@@ -741,13 +902,16 @@ export function createTestEnv(options?: {
     subscriptions: options?.subscriptions,
     emailRoutes: options?.emailRoutes,
   });
+  const reports = createMemoryR2Bucket();
 
   return {
     TELEGRAM_BOT_TOKEN: "token",
     TELEGRAM_CHAT_ID: "51999999999",
+    TELEGRAM_WEBHOOK_SECRET: "tg-secret",
     CLOUDFLARE_AI_MODEL: "@cf/meta/llama-3.1-8b-instruct",
+    CLOUDFLARE_OCR_MODEL: "@cf/meta/llama-3.1-8b-instruct",
     DB: db,
-    REPORTS: {} as R2Bucket,
+    REPORTS: reports,
     AI: {
       run: options?.aiRun ?? defaultAiRun,
     } as unknown as Ai,
@@ -761,6 +925,7 @@ export function createTestEnv(options?: {
     KAPSO_WEBHOOK_SECRET: options?.kapsoWebhookSecret,
     KAPSO_WEBHOOK_SIGNATURE_MODE: options?.kapsoWebhookSignatureMode ?? "dual",
     KAPSO_WEBHOOK_MAX_SKEW_SECONDS: options?.kapsoWebhookMaxSkewSeconds ?? "300",
+    CHAT_MEDIA_RETENTION_DAYS: options?.chatMediaRetentionDays ?? "90",
     DEFAULT_CUSTOMER_ID: "cust_default",
     STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
   } as unknown as WorkerEnv;

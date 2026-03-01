@@ -4,7 +4,8 @@ Worker en Cloudflare para procesar gastos desde email y categorizarlos vía conv
 
 Estado actual:
 - Canal principal implementado: WhatsApp (Kapso).
-- Canales en scaffold: Telegram e Instagram.
+- Canal adicional implementado: Telegram (Chat SDK, DM-only).
+- Canal en scaffold: Instagram.
 - IA principal: Cloudflare Workers AI.
 - IA alterna en scaffold: Inflection API.
 
@@ -23,7 +24,7 @@ Estado actual:
 
 - `GET /health`
 - `POST /webhooks/whatsapp`
-- `POST /webhooks/telegram` (placeholder, `501`)
+- `POST /webhooks/telegram`
 - `POST /webhooks/instagram` (placeholder, `501`)
 
 ## Seguridad webhook WhatsApp
@@ -62,6 +63,7 @@ src/
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+- `TELEGRAM_WEBHOOK_SECRET` (recomendado)
 - `KAPSO_API_KEY`
 - `KAPSO_WEBHOOK_SECRET`
 - `SENTRY_DSN`
@@ -70,9 +72,11 @@ src/
 ### Vars
 
 - `CLOUDFLARE_AI_MODEL`
+- `CLOUDFLARE_OCR_MODEL`
 - `KAPSO_API_BASE_URL`
 - `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` recomendado en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
+- `CHAT_MEDIA_RETENTION_DAYS` (default `90`)
 - `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
 - `STRICT_POLICY_MODE` (`true` recomendado en producción)
 - `ENVIRONMENT`
@@ -107,6 +111,8 @@ wrangler d1 execute misgastos --file db/migrations/003_channels_3_layers.sql
 wrangler d1 execute misgastos --file db/migrations/004_subscriptions.sql
 wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
+wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
+wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.
@@ -118,6 +124,7 @@ wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 ```bash
 wrangler secret put TELEGRAM_BOT_TOKEN
 wrangler secret put TELEGRAM_CHAT_ID
+wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
 wrangler secret put SENTRY_DSN
