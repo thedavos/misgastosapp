@@ -3,41 +3,60 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "misgastosapp",
-  "main": "src/index.ts",
-  "compatibility_flags": ["nodejs_compat"],
-  "compatibility_date": "2026-01-20",
-  "observability": {
-    "enabled": true
-  },
-  "upload_source_maps": true,
-  "ai": {
-    "binding": "AI"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "PROMPTS_KV",
-      "id": "bd265357076a487e91326867ee41157a",
-      "remote": true
-    },
-    {
-      "binding": "CONVERSATION_STATE_KV",
-      "id": "ce5b08491432475c95a46642c7f6a5f5",
-      "remote": true
-    },
-    {
-      "binding": "ENTITLEMENTS_KV",
-      "id": "571abbb2edcd4f339604df5f9560829f",
-      "remote": true
-    }
-  ],
-  "vars": {
-    "CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
-    "KAPSO_API_BASE_URL": "https://api.kapso.ai",
-    "KAPSO_WEBHOOK_SIGNATURE_MODE": "strict",
-    "KAPSO_WEBHOOK_MAX_SKEW_SECONDS": "300",
-    "DEFAULT_CUSTOMER_ID": "cust_default",
-    "STRICT_POLICY_MODE": "true"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "misgastosapp",
+	"main": "src/index.ts",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"compatibility_date": "2026-01-20",
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"ai": {
+		"binding": "AI"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "PROMPTS_KV",
+			"id": "bd265357076a487e91326867ee41157a",
+			"remote": true
+		},
+		{
+			"binding": "CONVERSATION_STATE_KV",
+			"id": "ce5b08491432475c95a46642c7f6a5f5",
+			"remote": true
+		},
+		{
+			"binding": "ENTITLEMENTS_KV",
+			"id": "571abbb2edcd4f339604df5f9560829f",
+			"remote": true
+		}
+	],
+	"vars": {
+		"CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+		"CLOUDFLARE_OCR_MODEL": "@cf/meta/llama-3.2-11b-vision-instruct",
+		"KAPSO_API_BASE_URL": "https://api.kapso.ai",
+		"KAPSO_WEBHOOK_SIGNATURE_MODE": "strict",
+		"KAPSO_WEBHOOK_MAX_SKEW_SECONDS": "300",
+		"CHAT_MEDIA_RETENTION_DAYS": "90",
+		"DEFAULT_CUSTOMER_ID": "cust_default",
+		"STRICT_POLICY_MODE": "true"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "misgastos",
+			"database_id": "3adbfb15-4003-4877-b40b-53dc47b6b6e2",
+			"remote": true
+		}
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "misgastos-reports",
+			"binding": "REPORTS",
+			"remote": true
+		}
+	]
 }
