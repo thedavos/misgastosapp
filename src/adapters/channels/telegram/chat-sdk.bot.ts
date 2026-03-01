@@ -197,16 +197,25 @@ async function createTelegramBotRuntime(env: WorkerEnv): Promise<BotRuntime | nu
     return null;
   }
 
-  const bot = new ChatCtor({
-    userName: "misgastosapp",
-    adapters: {
-      telegram: createTelegramAdapter({
-        token: env.TELEGRAM_BOT_TOKEN,
-        webhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
-      }),
-    },
-    streamingUpdateIntervalMs: 500,
-  });
+  let bot: {
+    webhooks: { telegram: (request: Request) => Promise<Response> };
+    onNewMention: (handler: (...args: unknown[]) => Promise<void>) => void;
+    onSubscribedMessage: (handler: (...args: unknown[]) => Promise<void>) => void;
+  };
+  try {
+    bot = new ChatCtor({
+      userName: "misgastosapp",
+      adapters: {
+        telegram: createTelegramAdapter({
+          token: env.TELEGRAM_BOT_TOKEN,
+          webhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
+        }),
+      },
+      streamingUpdateIntervalMs: 500,
+    });
+  } catch {
+    return null;
+  }
 
   bot.onNewMention(async (...args: unknown[]) => {
     const thread = args[0];
