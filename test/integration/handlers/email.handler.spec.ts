@@ -25,8 +25,8 @@ describe("email handler integration", () => {
     expect(conversation).toBeTruthy();
   });
 
-  it("does not create expense when customer route is not configured", async () => {
-    const env = createTestEnv({ emailRoutes: [] });
+  it("does not create expense when sender is not mapped", async () => {
+    const env = createTestEnv({ emailSenders: [] });
     const message = makeMessage(
       "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
     );
@@ -39,12 +39,12 @@ describe("email handler integration", () => {
     expect(dbState.expenses.size).toBe(0);
   });
 
-  it("does not create expense when recipient email is missing", async () => {
+  it("does not create expense when recipient inbox is not the worker inbox", async () => {
     const env = createTestEnv();
     const message = makeMessage(
       "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
     );
-    message.to = "";
+    message.to = "otro@misgastos.app";
 
     await handleEmail(message, env, {} as ExecutionContext);
 
@@ -54,19 +54,12 @@ describe("email handler integration", () => {
     expect(dbState.expenses.size).toBe(0);
   });
 
-  it("does not create expense when route lookup fails", async () => {
+  it("does not create expense when sender email is missing", async () => {
     const env = createTestEnv();
-    const originalPrepare = env.DB.prepare.bind(env.DB);
-    env.DB.prepare = ((sql: string) => {
-      if (sql.toLowerCase().includes("from customer_email_routes")) {
-        throw new Error("route lookup failed");
-      }
-      return originalPrepare(sql);
-    }) as D1Database["prepare"];
-
     const message = makeMessage(
-      "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
+      "Subject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
     );
+    message.from = "";
 
     await handleEmail(message, env, {} as ExecutionContext);
 
@@ -76,13 +69,13 @@ describe("email handler integration", () => {
     expect(dbState.expenses.size).toBe(0);
   });
 
-  it("does not create expense when routed customer does not exist", async () => {
+  it("does not create expense when mapped customer does not exist", async () => {
     const env = createTestEnv({
-      emailRoutes: [
+      emailSenders: [
         {
-          id: "route_missing_customer",
+          id: "sender_missing_customer",
           customer_id: "cust_missing",
-          recipient_email: "davidvargas.d45@gmail.com",
+          sender_email: "notificaciones@example.com",
           enabled: 1,
         },
       ],
@@ -99,7 +92,7 @@ describe("email handler integration", () => {
     expect(dbState.expenses.size).toBe(0);
   });
 
-  it("does not create expense when customer is inactive", async () => {
+  it("does not create expense when mapped customer is inactive", async () => {
     const env = createTestEnv({
       customers: [
         {

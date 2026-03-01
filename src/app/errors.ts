@@ -21,6 +21,12 @@ export class CustomerRouteLookupError extends Data.TaggedError("CustomerRouteLoo
   cause: unknown;
 }> {}
 
+export class CustomerSenderLookupError extends Data.TaggedError("CustomerSenderLookupError")<{
+  requestId?: string;
+  senderEmail: string;
+  cause: unknown;
+}> {}
+
 export class EmailParseFailedError extends Data.TaggedError("EmailParseFailedError")<{
   requestId?: string;
   cause: unknown;
@@ -130,6 +136,7 @@ export type AppError =
   | CustomerUnresolvedError
   | CustomerRouteNotFoundError
   | CustomerRouteLookupError
+  | CustomerSenderLookupError
   | EmailParseFailedError
   | AiExtractFailedError
   | AiMessageGenerationError

@@ -57,6 +57,13 @@ type CustomerEmailRouteRow = {
   enabled: number;
 };
 
+type CustomerEmailSenderRow = {
+  id: string;
+  customer_id: string;
+  sender_email: string;
+  enabled: number;
+};
+
 type PlanRow = {
   id: string;
   name: string;
@@ -189,6 +196,7 @@ function createMemoryD1Database(options?: {
   planFeatures?: PlanFeatureRow[];
   subscriptions?: CustomerSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
+  emailSenders?: CustomerEmailSenderRow[];
 }) {
   const expenses = new Map<string, ExpenseRow>();
   const categories = new Map<string, CategoryRow>();
@@ -200,6 +208,7 @@ function createMemoryD1Database(options?: {
   const planFeatures = new Map<string, PlanFeatureRow>();
   const subscriptions = new Map<string, CustomerSubscriptionRow>();
   const emailRoutes = new Map<string, CustomerEmailRouteRow>();
+  const emailSenders = new Map<string, CustomerEmailSenderRow>();
   const inboundWebhookEvents = new Map<string, InboundWebhookEventRow>();
   const chatMedia = new Map<string, ChatMediaRow>();
   const expenseEvents: Array<{
@@ -245,6 +254,25 @@ function createMemoryD1Database(options?: {
 
   for (const route of options?.emailRoutes ?? defaultEmailRoutes) {
     emailRoutes.set(route.recipient_email, route);
+  }
+
+  const defaultEmailSenders: CustomerEmailSenderRow[] = [
+    {
+      id: "ces_default_notificaciones",
+      customer_id: "cust_default",
+      sender_email: "notificaciones@example.com",
+      enabled: 1,
+    },
+    {
+      id: "ces_default_david",
+      customer_id: "cust_default",
+      sender_email: "davidvargas.d45@gmail.com",
+      enabled: 1,
+    },
+  ];
+
+  for (const sender of options?.emailSenders ?? defaultEmailSenders) {
+    emailSenders.set(sender.sender_email, sender);
   }
 
   const defaultChannels: ChannelRow[] = [
@@ -712,6 +740,13 @@ function createMemoryD1Database(options?: {
           return { customer_id: route.customer_id } as T;
         }
 
+        if (query.includes("from customer_email_senders") && query.includes("where sender_email = ? and enabled = 1")) {
+          const [senderEmail] = values as [string];
+          const sender = emailSenders.get(senderEmail);
+          if (!sender || sender.enabled !== 1) return null;
+          return { customer_id: sender.customer_id } as T;
+        }
+
         if (query.includes("from customer_subscriptions") && query.includes("where customer_id = ?") && query.includes("status in")) {
           const [customerId] = values as [string];
           const validStatuses = new Set(["TRIALING", "ACTIVE", "PAST_DUE"]);
@@ -794,6 +829,7 @@ function createMemoryD1Database(options?: {
       planFeatures,
       subscriptions,
       emailRoutes,
+      emailSenders,
       expenseEvents,
       inboundWebhookEvents,
       chatMedia,
@@ -828,6 +864,7 @@ function createMemoryD1Database(options?: {
       planFeatures: Map<string, PlanFeatureRow>;
       subscriptions: Map<string, CustomerSubscriptionRow>;
       emailRoutes: Map<string, CustomerEmailRouteRow>;
+      emailSenders: Map<string, CustomerEmailSenderRow>;
       expenseEvents: Array<{
         id: string;
         customer_id: string | null;
@@ -852,6 +889,7 @@ export function createTestEnv(options?: {
   planFeatures?: PlanFeatureRow[];
   subscriptions?: CustomerSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
+  emailSenders?: CustomerEmailSenderRow[];
   strictPolicyMode?: "true" | "false";
   kapsoWebhookSecret?: string;
   kapsoWebhookSignatureMode?: "dual" | "strict";
@@ -901,6 +939,7 @@ export function createTestEnv(options?: {
     planFeatures: options?.planFeatures,
     subscriptions: options?.subscriptions,
     emailRoutes: options?.emailRoutes,
+    emailSenders: options?.emailSenders,
   });
   const reports = createMemoryR2Bucket();
 
@@ -926,7 +965,7 @@ export function createTestEnv(options?: {
     KAPSO_WEBHOOK_SIGNATURE_MODE: options?.kapsoWebhookSignatureMode ?? "dual",
     KAPSO_WEBHOOK_MAX_SKEW_SECONDS: options?.kapsoWebhookMaxSkewSeconds ?? "300",
     CHAT_MEDIA_RETENTION_DAYS: options?.chatMediaRetentionDays ?? "90",
-    DEFAULT_CUSTOMER_ID: "cust_default",
+    EMAIL_WORKER_INBOX: "recibos@misgastos.app",
     STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
   } as unknown as WorkerEnv;
 }

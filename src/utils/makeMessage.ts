@@ -12,7 +12,7 @@ export function makeMessage(rawEmail: string): ForwardableEmailMessage {
     }),
     headers: new Headers({ from: "servicioalcliente@netinterbank.com.pe" }),
     from: "servicioalcliente@netinterbank.com.pe",
-    to: "davidvargas.d45@gmail.com",
+    to: "recibos@misgastos.app",
     forward: vi.fn(),
     reject: vi.fn(),
   } as unknown as ForwardableEmailMessage;

@@ -3,8 +3,7 @@ import type { WorkerEnv } from "types/env";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
 import {
-  CustomerRouteLookupError,
-  CustomerRouteNotFoundError,
+  CustomerSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
@@ -25,6 +24,29 @@ function resolveRecipientEmail(
   return null;
 }
 
+function resolveSenderCandidates(
+  parsedEmail: Awaited<ReturnType<typeof parseForwardedEmail>>,
+  message: ForwardableEmailMessage,
+): string[] {
+  const candidates: string[] = [];
+  if (typeof message.from === "string" && message.from.trim().length > 0) {
+    candidates.push(message.from.trim().toLowerCase());
+  }
+
+  const emailFrom = parsedEmail.from?.address?.trim().toLowerCase();
+  if (emailFrom) {
+    candidates.push(emailFrom);
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+function resolveWorkerInbox(env: WorkerEnv): string {
+  const configured = env.EMAIL_WORKER_INBOX?.trim().toLowerCase();
+  if (configured && configured.length > 0) return configured;
+  return "recibos@misgastos.app";
+}
+
 export async function handleEmail(
   message: ForwardableEmailMessage,
   env: WorkerEnv,
@@ -40,35 +62,59 @@ export async function handleEmail(
     });
 
     const recipientEmail = resolveRecipientEmail(parsedEmail, message);
-    if (!recipientEmail) {
-      return yield* Effect.fail(
-        new CustomerRouteNotFoundError({
-          requestId,
-          recipientEmail: "",
-        }),
-      );
+    const expectedInbox = resolveWorkerInbox(env);
+    if (!recipientEmail || recipientEmail !== expectedInbox) {
+      container.logger.warn("email.inbox_mismatch_skip", {
+        requestId,
+        recipientEmail: recipientEmail ?? "missing",
+        expectedInbox,
+      });
+      return;
     }
 
-    const customerId = yield* Effect.tryPromise({
-      try: () => container.customerEmailRouteRepo.resolveCustomerIdByRecipientEmail(recipientEmail),
-      catch: (cause) => new CustomerRouteLookupError({ requestId, recipientEmail, cause }),
-    });
+    const senderCandidates = resolveSenderCandidates(parsedEmail, message);
+    if (senderCandidates.length === 0) {
+      container.logger.warn("email.sender_missing_skip", {
+        requestId,
+        recipientEmail,
+      });
+      return;
+    }
+
+    let matchedSenderEmail: string | null = null;
+    let customerId: string | null = null;
+    for (const senderCandidate of senderCandidates) {
+      const resolvedCustomerId = yield* Effect.tryPromise({
+        try: () => container.customerEmailSenderRepo.resolveCustomerIdBySenderEmail(senderCandidate),
+        catch: (cause) =>
+          new CustomerSenderLookupError({
+            requestId,
+            senderEmail: senderCandidate,
+            cause,
+          }),
+      });
+      if (resolvedCustomerId) {
+        customerId = resolvedCustomerId;
+        matchedSenderEmail = senderCandidate;
+        break;
+      }
+    }
 
     if (!customerId) {
-      return yield* Effect.fail(
-        new CustomerRouteNotFoundError({
-          requestId,
-          recipientEmail,
-        }),
-      );
+      container.logger.warn("email.sender_not_mapped_skip", {
+        requestId,
+        senderCandidates,
+        recipientEmail,
+      });
+      return;
     }
 
     const customer = yield* Effect.tryPromise({
       try: () => container.customerRepo.getById(customerId),
       catch: (cause) =>
-        new CustomerRouteLookupError({
+        new CustomerSenderLookupError({
           requestId,
-          recipientEmail,
+          senderEmail: matchedSenderEmail ?? senderCandidates[0],
           cause,
         }),
     });
@@ -77,6 +123,7 @@ export async function handleEmail(
       container.logger.warn("email.customer_not_found_skip", {
         requestId,
         customerId,
+        senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
       });
       return;
@@ -86,6 +133,7 @@ export async function handleEmail(
       container.logger.warn("email.customer_inactive_skip", {
         requestId,
         customerId: customer.id,
+        senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
         status: customer.status,
       });
@@ -121,6 +169,7 @@ export async function handleEmail(
       date: String(parsedEmail.date || ""),
       customerId,
       recipientEmail,
+      senderEmail: matchedSenderEmail ?? senderCandidates[0],
     });
 
     const emailText = emailToAiInput(parsedEmail);

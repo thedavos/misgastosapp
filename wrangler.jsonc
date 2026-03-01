@@ -41,7 +41,7 @@
 		"KAPSO_WEBHOOK_SIGNATURE_MODE": "strict",
 		"KAPSO_WEBHOOK_MAX_SKEW_SECONDS": "300",
 		"CHAT_MEDIA_RETENTION_DAYS": "90",
-		"DEFAULT_CUSTOMER_ID": "cust_default",
+		"EMAIL_WORKER_INBOX": "recibos@misgastos.app",
 		"STRICT_POLICY_MODE": "true"
 	},
 	"d1_databases": [

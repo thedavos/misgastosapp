@@ -25,7 +25,7 @@ declare module "cloudflare:test" {
     KAPSO_WEBHOOK_SIGNATURE_MODE?: "dual" | "strict";
     KAPSO_WEBHOOK_MAX_SKEW_SECONDS?: string;
     CHAT_MEDIA_RETENTION_DAYS?: string;
-    DEFAULT_CUSTOMER_ID?: string;
+    EMAIL_WORKER_INBOX?: string;
     STRICT_POLICY_MODE?: string;
   }
 }

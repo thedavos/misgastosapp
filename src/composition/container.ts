@@ -7,7 +7,7 @@ import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
-import { createD1CustomerEmailRouteRepo } from "@/adapters/persistence/d1/customer-email-route.repo";
+import { createD1CustomerEmailSenderRepo } from "@/adapters/persistence/d1/customer-email-sender.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
@@ -39,7 +39,7 @@ export function createContainer(
   const chatMediaRepo = createD1ChatMediaRepo(env);
   const channelPolicyRepo = createD1ChannelPolicyRepo(env);
   const customerRepo = createD1CustomerRepo(env);
-  const customerEmailRouteRepo = createD1CustomerEmailRouteRepo(env);
+  const customerEmailSenderRepo = createD1CustomerEmailSenderRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
   const webhookEventRepo = createD1WebhookEventRepo(env);
   const featurePolicy = createD1FeaturePolicyRepo(env, subscriptionRepo);
@@ -125,7 +125,7 @@ export function createContainer(
     featurePolicy,
     subscriptionRepo,
     customerRepo,
-    customerEmailRouteRepo,
+    customerEmailSenderRepo,
     webhookEventRepo,
     conversationState,
     authorizeChannel,
