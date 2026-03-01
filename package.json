@@ -31,8 +31,8 @@
     "tsc": "tsgo --project tsconfig.worker.json"
   },
   "dependencies": {
-    "@sentry/cloudflare": "^10.39.0",
     "@chat-adapter/telegram": "*",
+    "@sentry/cloudflare": "^10.39.0",
     "chat": "*",
     "date-fns": "^4.1.0",
     "effect": "^3.19.18",
@@ -52,5 +52,5 @@
     "vitest": "~3.2.4",
     "wrangler": "^4.66.0"
   },
-  "packageManager": "pnpm@10.30.0"
+  "packageManager": "pnpm@10.30.3"
 }
