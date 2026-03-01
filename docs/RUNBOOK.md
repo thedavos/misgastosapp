@@ -14,6 +14,8 @@ wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
 wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
+wrangler d1 execute misgastos --file db/migrations/009_default_email_route_recibos.sql
+wrangler d1 execute misgastos --file db/migrations/010_customer_email_senders.sql
 ```
 
 ### KV namespaces
@@ -24,6 +26,11 @@ Crear namespaces:
 - `ENTITLEMENTS_KV` (opcional, recomendado)
 
 Actualizar `wrangler.jsonc` con IDs reales.
+
+### Mapeo de remitentes por customer
+
+El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente en `customer_email_senders`.
+Si un remitente no está mapeado, el email se ignora (skip con log).
 
 ## 2) Configuración de secretos
 
@@ -46,7 +53,7 @@ Definir en `wrangler.jsonc` (o por ambiente):
 - `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `CHAT_MEDIA_RETENTION_DAYS` (default `90`)
-- `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
+- `EMAIL_WORKER_INBOX` (default `recibos@misgastos.app`)
 - `STRICT_POLICY_MODE=true`
 - `ENVIRONMENT`
 

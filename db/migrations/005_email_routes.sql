@@ -16,5 +16,5 @@ CREATE INDEX IF NOT EXISTS idx_customer_email_routes_customer
 
 INSERT OR IGNORE INTO customer_email_routes (id, customer_id, recipient_email, enabled, created_at, updated_at)
 VALUES
-  ('cer_default_gastos', 'cust_default', 'gastos@misgastos.app', 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  ('cer_default_recibos', 'cust_default', 'recibos@misgastos.app', 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   ('cer_default_devmail', 'cust_default', 'davidvargas.d45@gmail.com', 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));

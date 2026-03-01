@@ -12,13 +12,14 @@ Estado actual:
 ## Flujo actual (implementado)
 
 1. Llega un email de consumo al trigger `email` del Worker.
-2. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
-3. Se guarda gasto en D1 con estado `PENDING_CATEGORY`.
-4. Se guarda estado conversacional en KV (`conv:{customerId}:{channel}:{userId}`).
-5. Se envía mensaje por WhatsApp pidiendo categoría.
-6. Webhook de WhatsApp recibe respuesta del usuario.
-7. Se clasifica categoría con AI + reglas heurísticas.
-8. Se actualiza gasto a `CATEGORIZED`, se limpia KV y se confirma por WhatsApp.
+2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve `customer` por remitente en `customer_email_senders`.
+3. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
+4. Se guarda gasto en D1 con estado `PENDING_CATEGORY`.
+5. Se guarda estado conversacional en KV (`conv:{customerId}:{channel}:{userId}`).
+6. Se envía mensaje por WhatsApp pidiendo categoría.
+7. Webhook de WhatsApp recibe respuesta del usuario.
+8. Se clasifica categoría con AI + reglas heurísticas.
+9. Se actualiza gasto a `CATEGORIZED`, se limpia KV y se confirma por WhatsApp.
 
 ## Endpoints HTTP
 
@@ -77,7 +78,7 @@ src/
 - `KAPSO_WEBHOOK_SIGNATURE_MODE` (`strict` recomendado en producción)
 - `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (default `300`)
 - `CHAT_MEDIA_RETENTION_DAYS` (default `90`)
-- `DEFAULT_CUSTOMER_ID` (solo bootstrap/dev)
+- `EMAIL_WORKER_INBOX` (default `recibos@misgastos.app`)
 - `STRICT_POLICY_MODE` (`true` recomendado en producción)
 - `ENVIRONMENT`
 
@@ -113,6 +114,8 @@ wrangler d1 execute misgastos --file db/migrations/005_email_routes.sql
 wrangler d1 execute misgastos --file db/migrations/006_webhook_events.sql
 wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
 wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
+wrangler d1 execute misgastos --file db/migrations/009_default_email_route_recibos.sql
+wrangler d1 execute misgastos --file db/migrations/010_customer_email_senders.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.
