@@ -1,4 +1,8 @@
 import type { WorkerEnv } from "types/env";
+import {
+  parseExpenseProcessingJob,
+  type ExpenseProcessingJob,
+} from "@/agents/expense-ingestion.shared";
 
 type ExpenseRow = {
   id: string;
@@ -128,6 +132,60 @@ type ChatMediaRow = {
   expires_at: string;
 };
 
+type EnqueuedExpenseAgentJob = {
+  agentName: string;
+  job: ExpenseProcessingJob;
+};
+
+type FakeExpenseIngestionAgentNamespace = DurableObjectNamespace & {
+  __state: {
+    enqueueStatus: number;
+    enqueuedJobs: EnqueuedExpenseAgentJob[];
+  };
+};
+
+function createFakeExpenseIngestionAgentNamespace(input?: {
+  enqueueStatus?: number;
+}): FakeExpenseIngestionAgentNamespace {
+  const state = {
+    enqueueStatus: input?.enqueueStatus ?? 202,
+    enqueuedJobs: [] as EnqueuedExpenseAgentJob[],
+  };
+
+  return {
+    __state: state,
+    idFromName(name: string) {
+      return { name } as unknown as DurableObjectId;
+    },
+    get(id: DurableObjectId) {
+      const agentName = (id as unknown as { name?: string }).name ?? "unknown";
+      return {
+        fetch: async (request: Request) => {
+          const url = new URL(request.url);
+          if (url.pathname !== "/enqueue" || request.method !== "POST") {
+            return new Response("Not Found", { status: 404 });
+          }
+
+          const payload = await request.json().catch(() => null);
+          const job = parseExpenseProcessingJob(payload);
+          if (!job) {
+            return new Response("Invalid payload", { status: 400 });
+          }
+
+          if (state.enqueueStatus < 400) {
+            state.enqueuedJobs.push({
+              agentName,
+              job,
+            });
+          }
+
+          return new Response("queued", { status: state.enqueueStatus });
+        },
+      } as DurableObjectStub;
+    },
+  } as unknown as FakeExpenseIngestionAgentNamespace;
+}
+
 function createMemoryKvNamespace() {
   const store = new Map<string, string>();
 
@@ -154,14 +212,20 @@ function createMemoryR2Bucket() {
   >();
 
   return {
-    async put(key: string, value: ReadableStream | ArrayBuffer | ArrayBufferView | string, options?: object) {
+    async put(
+      key: string,
+      value: ReadableStream | ArrayBuffer | ArrayBufferView | string,
+      options?: object,
+    ) {
       let body: Uint8Array;
       if (typeof value === "string") {
         body = new TextEncoder().encode(value);
       } else if (value instanceof ArrayBuffer) {
         body = new Uint8Array(value);
       } else if (ArrayBuffer.isView(value)) {
-        body = new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+        body = new Uint8Array(
+          value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
+        );
       } else {
         body = new Uint8Array();
       }
@@ -416,8 +480,31 @@ function createMemoryD1Database(options?: {
     return {
       async run() {
         if (query.startsWith("insert into expenses")) {
-          const [id, customerId, amount, currency, merchant, occurredAt, bank, rawText, status, createdAt, updatedAt] =
-            values as [string, string, number, string, string, string, string, string, string, string, string];
+          const [
+            id,
+            customerId,
+            amount,
+            currency,
+            merchant,
+            occurredAt,
+            bank,
+            rawText,
+            status,
+            createdAt,
+            updatedAt,
+          ] = values as [
+            string,
+            string,
+            number,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
           expenses.set(id, {
             id,
             customer_id: customerId,
@@ -436,7 +523,13 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("update expenses set status = ?")) {
-          const [status, categoryId, updatedAt, id, customerId] = values as [string, string, string, string, string];
+          const [status, categoryId, updatedAt, id, customerId] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
           const current = expenses.get(id);
           if (!current || current.customer_id !== customerId) return { success: false };
           expenses.set(id, {
@@ -469,19 +562,14 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("insert into inbound_webhook_events")) {
-          const [id, provider, eventId, payloadHash, requestId, firstSeenAt, lastSeenAt] = values as [
-            string,
-            string,
-            string,
-            string,
-            string | null,
-            string,
-            string,
-          ];
+          const [id, provider, eventId, payloadHash, requestId, firstSeenAt, lastSeenAt] =
+            values as [string, string, string, string, string | null, string, string];
 
           const key = `${provider}:${eventId}`;
           if (inboundWebhookEvents.has(key)) {
-            throw new Error("UNIQUE constraint failed: inbound_webhook_events.provider, inbound_webhook_events.event_id");
+            throw new Error(
+              "UNIQUE constraint failed: inbound_webhook_events.provider, inbound_webhook_events.event_id",
+            );
           }
 
           inboundWebhookEvents.set(key, {
@@ -570,7 +658,12 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("update inbound_webhook_events set last_seen_at = ?")) {
-          const [lastSeenAt, requestId, provider, eventId] = values as [string, string | null, string, string];
+          const [lastSeenAt, requestId, provider, eventId] = values as [
+            string,
+            string | null,
+            string,
+            string,
+          ];
           const key = `${provider}:${eventId}`;
           const current = inboundWebhookEvents.get(key);
           if (!current) return { success: true, meta: { changes: 0 } };
@@ -592,7 +685,8 @@ function createMemoryD1Database(options?: {
           ];
           const key = `${provider}:${eventId}`;
           const current = inboundWebhookEvents.get(key);
-          if (!current || current.status !== "FAILED") return { success: true, meta: { changes: 0 } };
+          if (!current || current.status !== "FAILED")
+            return { success: true, meta: { changes: 0 } };
           inboundWebhookEvents.set(key, {
             ...current,
             status: "PROCESSING",
@@ -606,7 +700,12 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("update inbound_webhook_events set status = 'processed'")) {
-          const [lastSeenAt, processedAt, provider, eventId] = values as [string, string, string, string];
+          const [lastSeenAt, processedAt, provider, eventId] = values as [
+            string,
+            string,
+            string,
+            string,
+          ];
           const key = `${provider}:${eventId}`;
           const current = inboundWebhookEvents.get(key);
           if (!current) return { success: true, meta: { changes: 0 } };
@@ -621,7 +720,12 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("update inbound_webhook_events set status = 'failed'")) {
-          const [lastSeenAt, lastError, provider, eventId] = values as [string, string, string, string];
+          const [lastSeenAt, lastError, provider, eventId] = values as [
+            string,
+            string,
+            string,
+            string,
+          ];
           const key = `${provider}:${eventId}`;
           const current = inboundWebhookEvents.get(key);
           if (!current) return { success: true, meta: { changes: 0 } };
@@ -683,12 +787,17 @@ function createMemoryD1Database(options?: {
           const [name, customerId] = values as [string, string];
           const found = Array.from(categories.values()).find(
             (category) =>
-              category.name.toLowerCase() === name && (category.customer_id === customerId || category.customer_id === null),
+              category.name.toLowerCase() === name &&
+              (category.customer_id === customerId || category.customer_id === null),
           );
           return (found as T | undefined) ?? null;
         }
 
-        if (query.includes("from categories where id = ? and (customer_id = ? or customer_id is null)")) {
+        if (
+          query.includes(
+            "from categories where id = ? and (customer_id = ? or customer_id is null)",
+          )
+        ) {
           const [id, customerId] = values as [string, string];
           const category = categories.get(id);
           if (!category) return null;
@@ -714,10 +823,14 @@ function createMemoryD1Database(options?: {
           return (customerChannels.get(`${channel}:${externalUserId}`) as T | undefined) ?? null;
         }
 
-        if (query.includes("from customer_channels") && query.includes("where customer_id = ? and channel = ? and is_primary = 1")) {
+        if (
+          query.includes("from customer_channels") &&
+          query.includes("where customer_id = ? and channel = ? and is_primary = 1")
+        ) {
           const [customerId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
-            (row) => row.customer_id === customerId && row.channel === channel && row.is_primary === 1,
+            (row) =>
+              row.customer_id === customerId && row.channel === channel && row.is_primary === 1,
           );
           if (!match) return null;
           return { external_user_id: match.external_user_id } as T;
@@ -728,30 +841,46 @@ function createMemoryD1Database(options?: {
           return (channels.get(channelId) as T | undefined) ?? null;
         }
 
-        if (query.includes("from customer_channel_settings") && query.includes("where customer_id = ? and channel_id = ?")) {
+        if (
+          query.includes("from customer_channel_settings") &&
+          query.includes("where customer_id = ? and channel_id = ?")
+        ) {
           const [customerId, channelId] = values as [string, string];
           return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
         }
 
-        if (query.includes("from customer_email_routes") && query.includes("where recipient_email = ? and enabled = 1")) {
+        if (
+          query.includes("from customer_email_routes") &&
+          query.includes("where recipient_email = ? and enabled = 1")
+        ) {
           const [recipientEmail] = values as [string];
           const route = emailRoutes.get(recipientEmail);
           if (!route || route.enabled !== 1) return null;
           return { customer_id: route.customer_id } as T;
         }
 
-        if (query.includes("from customer_email_senders") && query.includes("where sender_email = ? and enabled = 1")) {
+        if (
+          query.includes("from customer_email_senders") &&
+          query.includes("where sender_email = ? and enabled = 1")
+        ) {
           const [senderEmail] = values as [string];
           const sender = emailSenders.get(senderEmail);
           if (!sender || sender.enabled !== 1) return null;
           return { customer_id: sender.customer_id } as T;
         }
 
-        if (query.includes("from customer_subscriptions") && query.includes("where customer_id = ?") && query.includes("status in")) {
+        if (
+          query.includes("from customer_subscriptions") &&
+          query.includes("where customer_id = ?") &&
+          query.includes("status in")
+        ) {
           const [customerId] = values as [string];
           const validStatuses = new Set(["TRIALING", "ACTIVE", "PAST_DUE"]);
           const candidate = Array.from(subscriptions.values())
-            .filter((subscription) => subscription.customer_id === customerId && validStatuses.has(subscription.status))
+            .filter(
+              (subscription) =>
+                subscription.customer_id === customerId && validStatuses.has(subscription.status),
+            )
             .sort((a, b) => {
               const rank = (s: string) => (s === "ACTIVE" ? 0 : s === "TRIALING" ? 1 : 2);
               const rankDiff = rank(a.status) - rank(b.status);
@@ -766,12 +895,18 @@ function createMemoryD1Database(options?: {
           return (plans.get(planId) as T | undefined) ?? null;
         }
 
-        if (query.includes("from plan_features") && query.includes("where plan_id = ? and feature_key = ?")) {
+        if (
+          query.includes("from plan_features") &&
+          query.includes("where plan_id = ? and feature_key = ?")
+        ) {
           const [planId, featureKey] = values as [string, string];
           return (planFeatures.get(`${planId}:${featureKey}`) as T | undefined) ?? null;
         }
 
-        if (query.includes("from inbound_webhook_events") && query.includes("where provider = ? and event_id = ?")) {
+        if (
+          query.includes("from inbound_webhook_events") &&
+          query.includes("where provider = ? and event_id = ?")
+        ) {
           const [provider, eventId] = values as [string, string];
           return (inboundWebhookEvents.get(`${provider}:${eventId}`) as T | undefined) ?? null;
         }
@@ -793,7 +928,10 @@ function createMemoryD1Database(options?: {
           return { results: Array.from(categories.values()) as T[] };
         }
 
-        if (query.includes("from chat_media") && query.includes("where customer_id = ? and expense_id = ?")) {
+        if (
+          query.includes("from chat_media") &&
+          query.includes("where customer_id = ? and expense_id = ?")
+        ) {
           const [customerId, expenseId] = values as [string, string];
           return {
             results: Array.from(chatMedia.values()).filter(
@@ -895,6 +1033,7 @@ export function createTestEnv(options?: {
   kapsoWebhookSignatureMode?: "dual" | "strict";
   kapsoWebhookMaxSkewSeconds?: string;
   chatMediaRetentionDays?: string;
+  expenseIngestionEnqueueStatus?: number;
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -942,6 +1081,9 @@ export function createTestEnv(options?: {
     emailSenders: options?.emailSenders,
   });
   const reports = createMemoryR2Bucket();
+  const expenseIngestionAgent = createFakeExpenseIngestionAgentNamespace({
+    enqueueStatus: options?.expenseIngestionEnqueueStatus,
+  });
 
   return {
     TELEGRAM_BOT_TOKEN: "token",
@@ -954,6 +1096,7 @@ export function createTestEnv(options?: {
     AI: {
       run: options?.aiRun ?? defaultAiRun,
     } as unknown as Ai,
+    ExpenseIngestionAgent: expenseIngestionAgent,
     PROMPTS_KV: promptsKv,
     CONVERSATION_STATE_KV: createMemoryKvNamespace(),
     ENTITLEMENTS_KV: createMemoryKvNamespace(),

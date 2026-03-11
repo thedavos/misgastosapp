@@ -1,7 +1,10 @@
 import * as Sentry from "@sentry/cloudflare";
 import type { WorkerEnv } from "types/env";
+import { ExpenseIngestionAgent } from "@/agents/expense-ingestion.agent";
 import { handleEmail } from "@/handlers/email.handler";
 import { handleFetch } from "@/handlers/http/router.handler";
+
+export { ExpenseIngestionAgent };
 
 export default Sentry.withSentry(
   (env: WorkerEnv) => ({

@@ -94,7 +94,9 @@ export class FeaturePolicyError extends Data.TaggedError("FeaturePolicyError")<{
   cause: unknown;
 }> {}
 
-export class SubscriptionFeatureBlockedError extends Data.TaggedError("SubscriptionFeatureBlockedError")<{
+export class SubscriptionFeatureBlockedError extends Data.TaggedError(
+  "SubscriptionFeatureBlockedError",
+)<{
   requestId?: string;
   customerId: string;
   featureKey: string;
@@ -112,7 +114,7 @@ export class WebhookParseError extends Data.TaggedError("WebhookParseError")<{
 
 export class WebhookIdempotencyError extends Data.TaggedError("WebhookIdempotencyError")<{
   requestId?: string;
-  operation: "tryStartProcessing" | "markProcessed" | "markFailed" | "cleanupOld";
+  operation: "tryStartProcessing" | "markProcessed" | "markFailed" | "cleanupOld" | "enqueue";
   cause: unknown;
 }> {}
 

@@ -12,6 +12,7 @@ export interface WorkerEnv extends Cloudflare.Env {
   DB: D1Database;
   REPORTS: R2Bucket;
   AI: Ai;
+  ExpenseIngestionAgent: DurableObjectNamespace;
   PROMPTS_KV: KVNamespace;
   CONVERSATION_STATE_KV: KVNamespace;
   ENTITLEMENTS_KV?: KVNamespace;

@@ -1,8 +1,8 @@
 import { Effect } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { createTestEnv } from "test/helpers/fakes";
+import { describe, expect, it } from "vitest";
 import { createContainer } from "@/composition/container";
 import { handleWhatsAppWebhook } from "@/handlers/http/whatsapp-webhook.handler";
-import { createTestEnv } from "test/helpers/fakes";
 
 async function hmacSignature(secret: string, timestamp: number, rawBody: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -41,9 +41,31 @@ async function makeSignedWebhookRequest(input: {
   });
 }
 
+function getEnqueuedJobs(env: ReturnType<typeof createTestEnv>) {
+  return (
+    env.ExpenseIngestionAgent as unknown as {
+      __state: {
+        enqueuedJobs: Array<{
+          agentName: string;
+          job: {
+            eventId: string;
+            customerId: string;
+            channel: string;
+            userId: string;
+            attempt: number;
+          };
+        }>;
+      };
+    }
+  ).__state.enqueuedJobs;
+}
+
 describe("whatsapp webhook integration", () => {
-  it("categorizes a pending expense and clears KV state", async () => {
-    const env = createTestEnv();
+  it("enqueues processing and returns 200 without inline execution", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
+    });
     const container = createContainer(env);
 
     const created = await Effect.runPromise(
@@ -54,33 +76,42 @@ describe("whatsapp webhook integration", () => {
         userId: "51999999999",
       }),
     );
+    expect(created?.expenseId).toBeTruthy();
 
-    expect(created).toBeTruthy();
-
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "51999999999",
-        text: "comida",
-        timestamp: Date.now(),
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_async_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
       }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getEnqueuedJobs(env)).toHaveLength(1);
+    expect(getEnqueuedJobs(env)[0]?.job).toMatchObject({
+      eventId: "evt_async_1",
+      customerId: "cust_default",
+      channel: "whatsapp",
+      userId: "51999999999",
+      attempt: 0,
     });
 
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(200);
-
     const expenseId = created?.expenseId as string;
-    const dbState = (env.DB as unknown as {
-      __state: { expenses: Map<string, { status: string; category_id: string | null }> };
-    }).__state;
+    const dbState = (
+      env.DB as unknown as {
+        __state: { expenses: Map<string, { status: string }> };
+      }
+    ).__state;
 
-    const expense = dbState.expenses.get(expenseId);
-    expect(expense?.status).toBe("CATEGORIZED");
-    expect(expense?.category_id).toBe("cat_food");
-
+    expect(dbState.expenses.get(expenseId)?.status).toBe("PENDING_CATEGORY");
     const pending = await env.CONVERSATION_STATE_KV.get("conv:cust_default:whatsapp:51999999999");
-    expect(pending).toBeNull();
+    expect(pending).not.toBeNull();
   });
 
   it("returns 404 when customer mapping does not exist", async () => {
@@ -156,45 +187,6 @@ describe("whatsapp webhook integration", () => {
     expect(response.status).toBe(402);
   });
 
-  it("creates pending expense from whatsapp image-only message", async () => {
-    const env = createTestEnv();
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(new Uint8Array([1, 2, 3, 4]), {
-        status: 200,
-        headers: {
-          "content-type": "image/jpeg",
-        },
-      }),
-    );
-
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        id: "evt_image_1",
-        from: "51999999999",
-        mediaUrl: "https://media.example.com/receipt-1.jpg",
-        mediaMimeType: "image/jpeg",
-        timestamp: Date.now(),
-      }),
-    });
-
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(200);
-
-    const dbState = (env.DB as unknown as {
-      __state: {
-        expenses: Map<string, { status: string }>;
-        chatMedia: Map<string, { expense_id: string | null }>;
-      };
-    }).__state;
-
-    expect(dbState.expenses.size).toBe(1);
-    expect(dbState.chatMedia.size).toBe(1);
-
-    fetchSpy.mockRestore();
-  });
-
   it("returns 401 on invalid signature in strict mode", async () => {
     const env = createTestEnv({
       kapsoWebhookSecret: "topsecret",
@@ -216,157 +208,33 @@ describe("whatsapp webhook integration", () => {
     expect(response.status).toBe(401);
   });
 
-  it("ignores duplicate events by provider event id", async () => {
+  it("returns 200 and skips enqueue when event is already inflight", async () => {
     const env = createTestEnv({
       kapsoWebhookSecret: "topsecret",
       kapsoWebhookSignatureMode: "strict",
     });
-    const container = createContainer(env);
-
-    await Effect.runPromise(
-      container.ingestExpenseFromEmail({
-        customerId: "cust_default",
-        emailText: "Compra por S/ 50 en Tambo",
-        channel: "whatsapp",
-        userId: "51999999999",
-      }),
-    );
-
-    const body = {
-      id: "evt_dup_1",
-      from: "51999999999",
-      text: "comida",
-      timestamp: Date.now(),
-    };
-
-    const first = await handleWhatsAppWebhook(
-      await makeSignedWebhookRequest({ body, secret: "topsecret" }),
-      env,
-      {} as ExecutionContext,
-    );
-    expect(first.status).toBe(200);
-
-    const second = await handleWhatsAppWebhook(
-      await makeSignedWebhookRequest({ body, secret: "topsecret" }),
-      env,
-      {} as ExecutionContext,
-    );
-    expect(second.status).toBe(200);
-
-    const dbState = (env.DB as unknown as {
-      __state: {
-        expenseEvents: Array<{ type: string }>;
-      };
-    }).__state;
-
-    expect(dbState.expenseEvents).toHaveLength(1);
-  });
-
-  it("retries processing when prior event state is FAILED", async () => {
-    let shouldFail = true;
-    const env = createTestEnv({
-      kapsoWebhookSecret: "topsecret",
-      kapsoWebhookSignatureMode: "strict",
-      aiRun: async (_model, params) => {
-        const messages = Array.isArray(params.messages)
-          ? (params.messages as Array<{ content?: string }>)
-          : [];
-        const prompt = messages.map((m) => m.content ?? "").join("\n");
-
-        if (prompt.includes("Clasifica la respuesta del usuario") && shouldFail) {
-          shouldFail = false;
-          throw new Error("forced classify failure");
-        }
-
-        if (prompt.includes("Clasifica la respuesta del usuario")) {
-          return { response: { categoryId: "cat_food", confidence: 0.99 } };
-        }
-
-        if (prompt.includes("Extrae la información de la transacción")) {
-          return {
-            response: {
-              amount: 50,
-              currency: "PEN",
-              merchant: "Tambo",
-              date: "2026-02-20T10:00:00.000Z",
-              bank: "BCP",
-              rawText: "consumo en tambo",
-            },
-          };
-        }
-
-        return { response: "Listo" };
-      },
-    });
-    const container = createContainer(env);
-
-    await Effect.runPromise(
-      container.ingestExpenseFromEmail({
-        customerId: "cust_default",
-        emailText: "Compra por S/ 50 en Tambo",
-        channel: "whatsapp",
-        userId: "51999999999",
-      }),
-    );
-
-    const body = {
-      id: "evt_retry_1",
-      from: "51999999999",
-      text: "categoria no exacta",
-      timestamp: Date.now(),
-    };
-
-    const first = await handleWhatsAppWebhook(
-      await makeSignedWebhookRequest({ body, secret: "topsecret" }),
-      env,
-      {} as ExecutionContext,
-    );
-    expect(first.status).toBe(500);
-
-    const second = await handleWhatsAppWebhook(
-      await makeSignedWebhookRequest({ body, secret: "topsecret" }),
-      env,
-      {} as ExecutionContext,
-    );
-    expect(second.status).toBe(200);
-  });
-
-  it("returns 200 when event is already inflight", async () => {
-    const env = createTestEnv({
-      kapsoWebhookSecret: "topsecret",
-      kapsoWebhookSignatureMode: "strict",
-    });
-    const container = createContainer(env);
-
-    await Effect.runPromise(
-      container.ingestExpenseFromEmail({
-        customerId: "cust_default",
-        emailText: "Compra por S/ 50 en Tambo",
-        channel: "whatsapp",
-        userId: "51999999999",
-      }),
-    );
-
-    const dbState = (env.DB as unknown as {
-      __state: {
-        inboundWebhookEvents: Map<
-          string,
-          {
-            id: string;
-            provider: string;
-            event_id: string;
-            status: "PROCESSING" | "PROCESSED" | "FAILED";
-            payload_hash: string;
-            request_id: string | null;
-            attempt_count: number;
-            first_seen_at: string;
-            last_seen_at: string;
-            processed_at: string | null;
-            last_error: string | null;
-          }
-        >;
-      };
-    }).__state;
+    const dbState = (
+      env.DB as unknown as {
+        __state: {
+          inboundWebhookEvents: Map<
+            string,
+            {
+              id: string;
+              provider: string;
+              event_id: string;
+              status: "PROCESSING" | "PROCESSED" | "FAILED";
+              payload_hash: string;
+              request_id: string | null;
+              attempt_count: number;
+              first_seen_at: string;
+              last_seen_at: string;
+              processed_at: string | null;
+              last_error: string | null;
+            }
+          >;
+        };
+      }
+    ).__state;
 
     dbState.inboundWebhookEvents.set("kapso_whatsapp:evt_inflight_1", {
       id: "id_evt_inflight_1",
@@ -382,17 +250,96 @@ describe("whatsapp webhook integration", () => {
       last_error: null,
     });
 
-    const request = await makeSignedWebhookRequest({
-      body: {
-        id: "evt_inflight_1",
-        from: "51999999999",
-        text: "comida",
-        timestamp: Date.now(),
-      },
-      secret: "topsecret",
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_inflight_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getEnqueuedJobs(env)).toHaveLength(0);
+  });
+
+  it("re-enqueues when prior event status is FAILED (RETRY_ALLOWED)", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
+    });
+    const container = createContainer(env);
+
+    await container.webhookEventRepo.tryStartProcessing({
+      provider: "kapso_whatsapp",
+      eventId: "evt_retry_allowed_1",
+      payloadHash: "hash_initial",
+      requestId: "req_1",
+    });
+    await container.webhookEventRepo.markFailed({
+      provider: "kapso_whatsapp",
+      eventId: "evt_retry_allowed_1",
+      errorMessage: "previous error",
     });
 
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_retry_allowed_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
     expect(response.status).toBe(200);
+    expect(getEnqueuedJobs(env)).toHaveLength(1);
+    expect(getEnqueuedJobs(env)[0]?.job.eventId).toBe("evt_retry_allowed_1");
+  });
+
+  it("marks event as failed and returns 500 when enqueue fails", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
+      expenseIngestionEnqueueStatus: 500,
+    });
+
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_enqueue_fail_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(500);
+    expect(getEnqueuedJobs(env)).toHaveLength(0);
+
+    const dbState = (
+      env.DB as unknown as {
+        __state: {
+          inboundWebhookEvents: Map<string, { status: "PROCESSING" | "PROCESSED" | "FAILED" }>;
+        };
+      }
+    ).__state;
+
+    expect(dbState.inboundWebhookEvents.get("kapso_whatsapp:evt_enqueue_fail_1")?.status).toBe(
+      "FAILED",
+    );
   });
 });

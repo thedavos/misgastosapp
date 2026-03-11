@@ -1,6 +1,10 @@
 import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
-import { createContainer } from "@/composition/container";
+import { enqueueExpenseProcessingJob } from "@/agents/expense-ingestion.enqueue";
+import {
+  WHATSAPP_PROVIDER,
+  toExpenseProcessingAttachments,
+} from "@/agents/expense-ingestion.shared";
 import {
   ChannelDisabledError,
   ChannelSettingMissingError,
@@ -9,9 +13,9 @@ import {
   WebhookParseError,
   WebhookVerificationError,
 } from "@/app/errors";
+import { createContainer } from "@/composition/container";
 import { getEffectFailureMeta } from "@/utils/effect-failure";
 
-const WHATSAPP_PROVIDER = "kapso_whatsapp";
 const WEBHOOK_RETENTION_DAYS = 30;
 
 export async function handleWhatsAppWebhook(
@@ -69,7 +73,11 @@ export async function handleWhatsAppWebhook(
       return new Response("Unauthorized", { status: 401 });
     }
 
-    if (signatureMode === "dual" && providedSignature && providedSignature === env.KAPSO_WEBHOOK_SECRET) {
+    if (
+      signatureMode === "dual" &&
+      providedSignature &&
+      providedSignature === env.KAPSO_WEBHOOK_SECRET
+    ) {
       container.logger.warn("whatsapp.webhook_legacy_signature_accepted", { requestId });
     }
 
@@ -107,11 +115,13 @@ export async function handleWhatsAppWebhook(
       return new Response("Customer not found", { status: 404 });
     }
 
-    const authorizationResult = yield* container.authorizeChannel({
-      customerId: customer.id,
-      channelId: incomingMessage.channel,
-      requestId,
-    }).pipe(Effect.either);
+    const authorizationResult = yield* container
+      .authorizeChannel({
+        customerId: customer.id,
+        channelId: incomingMessage.channel,
+        requestId,
+      })
+      .pipe(Effect.either);
 
     if (authorizationResult._tag === "Left") {
       if (authorizationResult.left instanceof ChannelDisabledError) {
@@ -126,7 +136,9 @@ export async function handleWhatsAppWebhook(
       return yield* Effect.fail(authorizationResult.left);
     }
 
-    const eventId = incomingMessage.providerEventId ?? `hash:${incomingMessage.payloadHash ?? crypto.randomUUID()}`;
+    const eventId =
+      incomingMessage.providerEventId ??
+      `hash:${incomingMessage.payloadHash ?? crypto.randomUUID()}`;
     const payloadHash = incomingMessage.payloadHash ?? "missing";
     processingEventId = eventId;
 
@@ -161,33 +173,36 @@ export async function handleWhatsAppWebhook(
       return new Response("ok", { status: 200 });
     }
 
-    yield* container.processChatMessage({
-      customerId: customer.id,
-      channel: incomingMessage.channel,
-      userId: incomingMessage.userId,
-      providerEventId: eventId,
-      text: incomingMessage.text,
-      attachments: incomingMessage.attachments,
-      raw: incomingMessage.raw,
-      timestamp: incomingMessage.timestamp,
-      requestId,
-    });
-
     yield* Effect.tryPromise({
       try: () =>
-        container.webhookEventRepo.markProcessed({
+        enqueueExpenseProcessingJob(env, {
           provider: WHATSAPP_PROVIDER,
           eventId,
+          customerId: customer.id,
+          channel: "whatsapp",
+          userId: incomingMessage.userId,
+          text: incomingMessage.text,
+          attachments: toExpenseProcessingAttachments(incomingMessage.attachments),
+          raw: incomingMessage.raw,
+          timestamp: incomingMessage.timestamp,
+          requestId,
+          attempt: 0,
         }),
       catch: (cause) =>
         new WebhookIdempotencyError({
           requestId,
-          operation: "markProcessed",
+          operation: "enqueue",
           cause,
         }),
     });
 
-    container.logger.info("whatsapp.webhook_idempotency_processed", { requestId, eventId });
+    container.logger.info("whatsapp.webhook_job_enqueued", {
+      requestId,
+      eventId,
+      customerId: customer.id,
+      channel: incomingMessage.channel,
+      userId: incomingMessage.userId,
+    });
 
     return new Response("ok", { status: 200 });
   });
