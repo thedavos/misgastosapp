@@ -18,7 +18,7 @@
     "deploy:release": "npm-run-all deploy sentry:sourcemaps",
     "dev": "wrangler dev",
     "format": "oxfmt --write",
-    "format:check": "oxfmt --check",
+    "format:check": "oxfmt",
     "format:diff": "oxfmt --write && git --no-pager diff",
     "lint": "oxlint --type-aware",
     "sentry:sourcemaps": "npm-run-all sentry:sourcemaps:build sentry:sourcemaps:inject sentry:sourcemaps:upload",
@@ -37,7 +37,7 @@
     "chat": "*",
     "date-fns": "^4.1.0",
     "effect": "^3.19.18",
-    "hono": "^4.12.1",
+    "hono": "4.12.4",
     "postal-mime": "^2.7.3"
   },
   "devDependencies": {
