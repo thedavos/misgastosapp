@@ -18,7 +18,7 @@
     "deploy:release": "npm-run-all deploy sentry:sourcemaps",
     "dev": "wrangler dev",
     "format": "oxfmt --write",
-    "format:check": "oxfmt",
+    "format:check": "oxfmt --check",
     "format:diff": "oxfmt --write && git --no-pager diff",
     "lint": "oxlint --type-aware",
     "sentry:sourcemaps": "npm-run-all sentry:sourcemaps:build sentry:sourcemaps:inject sentry:sourcemaps:upload",
