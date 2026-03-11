@@ -1,6 +1,6 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("d1 expense repo integration", () => {
   it("creates and categorizes an expense", async () => {
@@ -19,7 +19,11 @@ describe("d1 expense repo integration", () => {
 
     expect(created.status).toBe("PENDING_CATEGORY");
 
-    await repo.markCategorized({ id: created.id, customerId: "cust_default", categoryId: "cat_food" });
+    await repo.markCategorized({
+      id: created.id,
+      customerId: "cust_default",
+      categoryId: "cat_food",
+    });
     const updated = await repo.getById({ id: created.id, customerId: "cust_default" });
 
     expect(updated?.status).toBe("CATEGORIZED");

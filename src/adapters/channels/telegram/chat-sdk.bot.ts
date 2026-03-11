@@ -1,9 +1,13 @@
 import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
-import { ChannelDisabledError, ChannelSettingMissingError, SubscriptionFeatureBlockedError } from "@/app/errors";
+import {
+  ChannelDisabledError,
+  ChannelSettingMissingError,
+  SubscriptionFeatureBlockedError,
+} from "@/app/errors";
 import { createContainer } from "@/composition/container";
-import { getEffectFailureMeta } from "@/utils/effect-failure";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
+import { getEffectFailureMeta } from "@/utils/effect-failure";
 import { normalizeText } from "@/utils/string/normalizeText";
 import { isThreadDm } from "@/utils/telegram/isThreadDm";
 import { normalizeTelegramAttachments } from "@/utils/telegram/normalizeTelegramAttachments";
@@ -15,7 +19,8 @@ const TELEGRAM_PROVIDER = "telegram_chat_sdk";
 const TELEGRAM_BLOCKED_MESSAGE =
   "No tienes acceso habilitado para este bot. Escríbenos para activar tu cuenta.";
 const TELEGRAM_DM_ONLY_MESSAGE = "Por ahora el bot solo funciona por mensaje directo (DM).";
-const RETRY_GUIDANCE_MESSAGE = "Tuvimos un problema procesando tu mensaje. Intenta nuevamente en unos segundos.";
+const RETRY_GUIDANCE_MESSAGE =
+  "Tuvimos un problema procesando tu mensaje. Intenta nuevamente en unos segundos.";
 
 type BotRuntime = {
   bot: {
@@ -80,11 +85,13 @@ async function handleTelegramThreadMessage(input: {
   }
 
   const authorization = await Effect.runPromise(
-    container.authorizeChannel({
-      customerId: customer.id,
-      channelId: "telegram",
-      requestId,
-    }).pipe(Effect.either),
+    container
+      .authorizeChannel({
+        customerId: customer.id,
+        channelId: "telegram",
+        requestId,
+      })
+      .pipe(Effect.either),
   );
 
   if (authorization._tag === "Left") {

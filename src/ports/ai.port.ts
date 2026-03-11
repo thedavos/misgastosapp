@@ -24,6 +24,8 @@ export interface MessageGenerationInput {
 
 export interface AiPort {
   extractTransaction(input: string): Promise<ExtractedTransaction | null>;
-  classifyCategory(input: CategoryClassificationInput): Promise<{ categoryId: string | null; confidence: number }>;
+  classifyCategory(
+    input: CategoryClassificationInput,
+  ): Promise<{ categoryId: string | null; confidence: number }>;
   generateMessage(input: MessageGenerationInput): Promise<string>;
 }

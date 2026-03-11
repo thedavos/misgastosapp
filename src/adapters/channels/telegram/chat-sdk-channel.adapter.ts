@@ -14,7 +14,10 @@ async function getTelegramDmRuntime(env: WorkerEnv): Promise<TelegramDmRuntime |
       const telegramAdapterPackageName = "@chat-adapter/telegram";
       try {
         const chatModule = (await import(chatPackageName)) as Record<string, unknown>;
-        const telegramAdapterModule = (await import(telegramAdapterPackageName)) as Record<string, unknown>;
+        const telegramAdapterModule = (await import(telegramAdapterPackageName)) as Record<
+          string,
+          unknown
+        >;
         const ChatCtor = chatModule.Chat as
           | (new (input: {
               userName: string;
@@ -59,16 +62,19 @@ async function sendTelegramDirectMessage(input: {
     return;
   }
 
-  const response = await fetch(`https://api.telegram.org/bot${input.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `https://api.telegram.org/bot${input.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: input.userId,
+        text: input.text,
+      }),
     },
-    body: JSON.stringify({
-      chat_id: input.userId,
-      text: input.text,
-    }),
-  });
+  );
 
   if (!response.ok) {
     const body = await response.text();

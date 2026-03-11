@@ -1,6 +1,6 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { createKapsoChannelAdapter } from "@/adapters/channels/whatsapp/kapso.adapter";
-import { createTestEnv } from "test/helpers/fakes";
 
 async function hmacSignature(secret: string, timestamp: number, rawBody: string): Promise<string> {
   const key = await crypto.subtle.importKey(

@@ -1,11 +1,15 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { handleFetch } from "@/handlers/http/router.handler";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("worker router", () => {
   it("returns health response", async () => {
     const env = createTestEnv();
-    const response = await handleFetch(new Request("https://example.com/health"), env, {} as ExecutionContext);
+    const response = await handleFetch(
+      new Request("https://example.com/health"),
+      env,
+      {} as ExecutionContext,
+    );
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("MisGastos Worker Active - v2.0");
@@ -13,7 +17,11 @@ describe("worker router", () => {
 
   it("returns not found for unknown route", async () => {
     const env = createTestEnv();
-    const response = await handleFetch(new Request("https://example.com/"), env, {} as ExecutionContext);
+    const response = await handleFetch(
+      new Request("https://example.com/"),
+      env,
+      {} as ExecutionContext,
+    );
 
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not Found");

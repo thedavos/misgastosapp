@@ -1,4 +1,9 @@
-import type { AiPort, CategoryClassificationInput, ExtractedTransaction, MessageGenerationInput } from "@/ports/ai.port";
+import type {
+  AiPort,
+  CategoryClassificationInput,
+  ExtractedTransaction,
+  MessageGenerationInput,
+} from "@/ports/ai.port";
 
 export type InflectionClientConfig = {
   apiKey?: string;
@@ -12,7 +17,9 @@ export function createInflectionAiAdapter(config: InflectionClientConfig): AiPor
       if (!config.apiKey || !config.baseUrl) return null;
       return null;
     },
-    async classifyCategory(_input: CategoryClassificationInput): Promise<{ categoryId: string | null; confidence: number }> {
+    async classifyCategory(
+      _input: CategoryClassificationInput,
+    ): Promise<{ categoryId: string | null; confidence: number }> {
       if (!config.apiKey || !config.baseUrl) return { categoryId: null, confidence: 0 };
       return { categoryId: null, confidence: 0 };
     },

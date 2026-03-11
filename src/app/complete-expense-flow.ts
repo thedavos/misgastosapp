@@ -1,10 +1,5 @@
 import { Effect } from "effect";
-import type { AiPort } from "@/ports/ai.port";
-import type { ChannelPort } from "@/ports/channel.port";
-import type { ConversationStatePort } from "@/ports/conversation-state.port";
-import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
-import type { LoggerPort } from "@/ports/logger.port";
-import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import { fromPromise } from "@/app/effects";
 import {
   AiMessageGenerationError,
   ChannelDisabledError,
@@ -15,7 +10,12 @@ import {
   type AppError,
   SubscriptionFeatureBlockedError,
 } from "@/app/errors";
-import { fromPromise } from "@/app/effects";
+import type { AiPort } from "@/ports/ai.port";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import type { ChannelPort } from "@/ports/channel.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
+import type { LoggerPort } from "@/ports/logger.port";
 
 export type CompleteExpenseFlowDeps = {
   ai: AiPort;

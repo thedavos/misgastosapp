@@ -88,7 +88,11 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       return mapExpenseRow(row);
     },
 
-    async markCategorized(input: { id: string; customerId: string; categoryId: string }): Promise<void> {
+    async markCategorized(input: {
+      id: string;
+      customerId: string;
+      categoryId: string;
+    }): Promise<void> {
       const now = new Date().toISOString();
       await env.DB.prepare(
         `UPDATE expenses

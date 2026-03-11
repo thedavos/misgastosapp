@@ -1,7 +1,5 @@
 import { Effect } from "effect";
-import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
-import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
-import type { LoggerPort } from "@/ports/logger.port";
+import { fromPromise } from "@/app/effects";
 import {
   ChannelDisabledError,
   ChannelSettingMissingError,
@@ -10,7 +8,9 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import { fromPromise } from "@/app/effects";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
+import type { LoggerPort } from "@/ports/logger.port";
 
 export type AuthorizeChannelDeps = {
   channelPolicyRepo: ChannelPolicyRepoPort;

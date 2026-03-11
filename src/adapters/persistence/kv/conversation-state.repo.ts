@@ -1,5 +1,8 @@
 import type { WorkerEnv } from "types/env";
-import { buildConversationStateKey, type PendingConversationState } from "@/domain/conversation/entity";
+import {
+  buildConversationStateKey,
+  type PendingConversationState,
+} from "@/domain/conversation/entity";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 
 const DEFAULT_TTL_SECONDS = 60 * 60 * 24;
@@ -13,7 +16,11 @@ export function createKvConversationStateRepo(env: WorkerEnv): ConversationState
       });
     },
 
-    async get(input: { customerId: string; channel: string; userId: string }): Promise<PendingConversationState | null> {
+    async get(input: {
+      customerId: string;
+      channel: string;
+      userId: string;
+    }): Promise<PendingConversationState | null> {
       const key = buildConversationStateKey(input.customerId, input.channel, input.userId);
       const payload = await env.CONVERSATION_STATE_KV.get(key);
       if (!payload) return null;

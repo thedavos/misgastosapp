@@ -1,5 +1,8 @@
 import type { WorkerEnv } from "types/env";
-import type { WebhookEventRepoPort, WebhookProcessingStatus } from "@/ports/webhook-event-repo.port";
+import type {
+  WebhookEventRepoPort,
+  WebhookProcessingStatus,
+} from "@/ports/webhook-event-repo.port";
 
 type InboundWebhookEventRow = {
   provider: string;
@@ -29,7 +32,15 @@ export function createD1WebhookEventRepo(env: WorkerEnv): WebhookEventRepoPort {
             )
             VALUES (?, ?, ?, 'PROCESSING', ?, ?, 1, ?, ?, NULL, NULL)`,
         )
-          .bind(crypto.randomUUID(), input.provider, input.eventId, input.payloadHash, input.requestId ?? null, now, now)
+          .bind(
+            crypto.randomUUID(),
+            input.provider,
+            input.eventId,
+            input.payloadHash,
+            input.requestId ?? null,
+            now,
+            now,
+          )
           .run();
 
         return "NEW";
@@ -123,7 +134,9 @@ export function createD1WebhookEventRepo(env: WorkerEnv): WebhookEventRepoPort {
     },
 
     async cleanupOld(input): Promise<void> {
-      const threshold = new Date(Date.now() - input.retentionDays * 24 * 60 * 60 * 1000).toISOString();
+      const threshold = new Date(
+        Date.now() - input.retentionDays * 24 * 60 * 60 * 1000,
+      ).toISOString();
 
       await env.DB.prepare(
         `DELETE FROM inbound_webhook_events

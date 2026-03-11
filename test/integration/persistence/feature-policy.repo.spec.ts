@@ -1,7 +1,7 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("d1 feature policy repo integration", () => {
   it("falls back to free plan when no active subscription is found", async () => {

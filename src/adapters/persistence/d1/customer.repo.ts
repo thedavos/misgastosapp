@@ -56,7 +56,10 @@ export function createD1CustomerRepo(env: WorkerEnv): CustomerRepoPort {
       return mapCustomer(row);
     },
 
-    async findByChannelExternalId(input: { channel: string; externalUserId: string }): Promise<Customer | null> {
+    async findByChannelExternalId(input: {
+      channel: string;
+      externalUserId: string;
+    }): Promise<Customer | null> {
       const row = await env.DB.prepare(
         `SELECT c.id, c.name, c.status, c.default_currency, c.timezone, c.locale, c.confidence_threshold
          FROM customer_channels cc
@@ -71,7 +74,10 @@ export function createD1CustomerRepo(env: WorkerEnv): CustomerRepoPort {
       return mapCustomer(row);
     },
 
-    async getPrimaryExternalUserId(input: { customerId: string; channel: string }): Promise<string | null> {
+    async getPrimaryExternalUserId(input: {
+      customerId: string;
+      channel: string;
+    }): Promise<string | null> {
       const row = await env.DB.prepare(
         `SELECT external_user_id
          FROM customer_channels

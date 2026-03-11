@@ -21,6 +21,7 @@ wrangler d1 execute misgastos --file db/migrations/010_customer_email_senders.sq
 ### KV namespaces
 
 Crear namespaces:
+
 - `PROMPTS_KV`
 - `CONVERSATION_STATE_KV`
 - `ENTITLEMENTS_KV` (opcional, recomendado)
@@ -47,6 +48,7 @@ wrangler secret put SENTRY_RELEASE
 ## 3) Configuración de vars
 
 Definir en `wrangler.jsonc` (o por ambiente):
+
 - `CLOUDFLARE_AI_MODEL`
 - `CLOUDFLARE_OCR_MODEL`
 - `KAPSO_API_BASE_URL`
@@ -80,9 +82,11 @@ curl -i https://<tu-worker>/health
 ### Webhook WhatsApp
 
 Endpoint:
+
 - `POST https://<tu-worker>/webhooks/whatsapp`
 
 Recomendación:
+
 - Configura `x-kapso-signature` y `x-kapso-timestamp` en Kapso.
 - Firma esperada: `HMAC-SHA256(KAPSO_WEBHOOK_SECRET, "<timestamp>.<rawBody>")`.
 - Usa `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` para exigir HMAC+timestamp.
@@ -90,9 +94,11 @@ Recomendación:
 ### Webhook Telegram (Chat SDK)
 
 Endpoint:
+
 - `POST https://<tu-worker>/webhooks/telegram`
 
 Configuración Telegram:
+
 - Registrar webhook con `setWebhook` a ese endpoint.
 - Operación habilitada solo en DM.
 

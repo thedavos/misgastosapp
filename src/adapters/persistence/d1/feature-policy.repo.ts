@@ -10,7 +10,10 @@ type PlanFeatureRow = {
 
 const ENTITLEMENT_TTL_SECONDS = 60 * 5;
 
-export function createD1FeaturePolicyRepo(env: WorkerEnv, subscriptionRepo: SubscriptionRepoPort): FeaturePolicyPort {
+export function createD1FeaturePolicyRepo(
+  env: WorkerEnv,
+  subscriptionRepo: SubscriptionRepoPort,
+): FeaturePolicyPort {
   return {
     async isFeatureEnabled(input: { customerId: string; featureKey: string }): Promise<boolean> {
       const cacheKey = `entitlement:${input.customerId}:${input.featureKey}`;
@@ -41,7 +44,10 @@ export function createD1FeaturePolicyRepo(env: WorkerEnv, subscriptionRepo: Subs
         .bind(effectivePlanId, input.featureKey)
         .first<PlanFeatureRow>();
 
-      const enabled = feature?.feature_type === "boolean" ? feature.bool_value === 1 : (feature?.limit_value ?? 0) > 0;
+      const enabled =
+        feature?.feature_type === "boolean"
+          ? feature.bool_value === 1
+          : (feature?.limit_value ?? 0) > 0;
 
       if (env.ENTITLEMENTS_KV) {
         await env.ENTITLEMENTS_KV.put(cacheKey, enabled ? "1" : "0", {

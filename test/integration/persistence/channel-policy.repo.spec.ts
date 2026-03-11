@@ -1,6 +1,6 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("d1 channel policy repo integration", () => {
   it("returns true when global channel and customer setting are enabled", async () => {

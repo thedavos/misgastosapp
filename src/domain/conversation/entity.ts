@@ -6,6 +6,10 @@ export interface PendingConversationState {
   createdAt: string;
 }
 
-export function buildConversationStateKey(customerId: string, channel: string, userId: string): string {
+export function buildConversationStateKey(
+  customerId: string,
+  channel: string,
+  userId: string,
+): string {
   return `conv:${customerId}:${channel}:${userId}`;
 }

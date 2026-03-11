@@ -1,5 +1,8 @@
 import type { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
+import { buildClassifyCategoryPrompt } from "@/adapters/ai/prompts/classify-category.prompt";
+import { buildExtractTransactionPrompt } from "@/adapters/ai/prompts/extract-transaction.prompt";
+import { buildGenerateMessagePrompt } from "@/adapters/ai/prompts/generate-message.prompt";
 import type {
   AiPort,
   CategoryClassificationInput,
@@ -7,9 +10,6 @@ import type {
   MessageGenerationInput,
 } from "@/ports/ai.port";
 import { getCurrencySymbol } from "@/utils/currencySymbol";
-import { buildClassifyCategoryPrompt } from "@/adapters/ai/prompts/classify-category.prompt";
-import { buildExtractTransactionPrompt } from "@/adapters/ai/prompts/extract-transaction.prompt";
-import { buildGenerateMessagePrompt } from "@/adapters/ai/prompts/generate-message.prompt";
 
 const AI_MAX_INPUT_CHARS = 6000;
 
@@ -56,10 +56,14 @@ function buildEmailContext(parsedEmail: Email): string {
   return lines.join("\n").slice(0, AI_MAX_INPUT_CHARS);
 }
 
-async function runModel(env: WorkerEnv, messages: Array<{ role: string; content: string }>, schema?: unknown) {
-  const response = await (env.AI as { run: (model: string, input: Record<string, unknown>) => Promise<unknown> }).run(
-    env.CLOUDFLARE_AI_MODEL,
-    {
+async function runModel(
+  env: WorkerEnv,
+  messages: Array<{ role: string; content: string }>,
+  schema?: unknown,
+) {
+  const response = await (
+    env.AI as { run: (model: string, input: Record<string, unknown>) => Promise<unknown> }
+  ).run(env.CLOUDFLARE_AI_MODEL, {
     messages,
     ...(schema
       ? {
@@ -69,14 +73,16 @@ async function runModel(env: WorkerEnv, messages: Array<{ role: string; content:
           },
         }
       : {}),
-    } as Record<string, unknown>,
-  );
+  } as Record<string, unknown>);
 
   const payloadCandidate = (response as { response?: unknown }).response ?? response;
   return payloadCandidate;
 }
 
-function normalizeExtracted(payloadCandidate: unknown, rawInput: string): ExtractedTransaction | null {
+function normalizeExtracted(
+  payloadCandidate: unknown,
+  rawInput: string,
+): ExtractedTransaction | null {
   if (!payloadCandidate || typeof payloadCandidate !== "object") return null;
   const payload = payloadCandidate as Partial<ExtractedTransaction>;
 
@@ -91,7 +97,8 @@ function normalizeExtracted(payloadCandidate: unknown, rawInput: string): Extrac
 
   const rawText =
     typeof payload.rawText === "string" && payload.rawText.length > 0 ? payload.rawText : rawInput;
-  const bank = typeof payload.bank === "string" && payload.bank.length > 0 ? payload.bank : "unknown";
+  const bank =
+    typeof payload.bank === "string" && payload.bank.length > 0 ? payload.bank : "unknown";
 
   return {
     amount: payload.amount,
@@ -105,17 +112,24 @@ function normalizeExtracted(payloadCandidate: unknown, rawInput: string): Extrac
   };
 }
 
-function tryHeuristicCategory(input: CategoryClassificationInput): { categoryId: string | null; confidence: number } {
+function tryHeuristicCategory(input: CategoryClassificationInput): {
+  categoryId: string | null;
+  confidence: number;
+} {
   const normalizedReply = input.userReply.trim().toLowerCase();
   const exact = input.categories.find(
-    (category) => category.name.toLowerCase() === normalizedReply || category.slug.toLowerCase() === normalizedReply,
+    (category) =>
+      category.name.toLowerCase() === normalizedReply ||
+      category.slug.toLowerCase() === normalizedReply,
   );
 
   if (exact) {
     return { categoryId: exact.id, confidence: 0.99 };
   }
 
-  const contains = input.categories.find((category) => normalizedReply.includes(category.name.toLowerCase()));
+  const contains = input.categories.find((category) =>
+    normalizedReply.includes(category.name.toLowerCase()),
+  );
   if (contains) {
     return { categoryId: contains.id, confidence: 0.8 };
   }
@@ -126,7 +140,8 @@ function tryHeuristicCategory(input: CategoryClassificationInput): { categoryId:
 export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
   return {
     async extractTransaction(input: string): Promise<ExtractedTransaction | null> {
-      const systemPrompt = (await env.PROMPTS_KV.get("SYSTEM_PROMPT")) ??
+      const systemPrompt =
+        (await env.PROMPTS_KV.get("SYSTEM_PROMPT")) ??
         "Eres un extractor preciso de transacciones financieras.";
 
       const messages = [
@@ -141,7 +156,9 @@ export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
       return normalizeExtracted(payload, input);
     },
 
-    async classifyCategory(input: CategoryClassificationInput): Promise<{ categoryId: string | null; confidence: number }> {
+    async classifyCategory(
+      input: CategoryClassificationInput,
+    ): Promise<{ categoryId: string | null; confidence: number }> {
       const heuristic = tryHeuristicCategory(input);
       if (heuristic.categoryId) return heuristic;
 
@@ -174,7 +191,12 @@ export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
 
       const payload = await runModel(env, messages);
       if (typeof payload === "string") return payload;
-      if (payload && typeof payload === "object" && "text" in payload && typeof payload.text === "string") {
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "text" in payload &&
+        typeof payload.text === "string"
+      ) {
         return payload.text;
       }
 

@@ -1,6 +1,6 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("d1 webhook event repo integration", () => {
   it("tracks NEW, processed duplicates and inflight duplicates", async () => {
@@ -59,9 +59,11 @@ describe("d1 webhook event repo integration", () => {
     });
     expect(resumed).toBe("RETRY_ALLOWED");
 
-    const dbState = (env.DB as unknown as {
-      __state: { inboundWebhookEvents: Map<string, { last_seen_at: string }> };
-    }).__state;
+    const dbState = (
+      env.DB as unknown as {
+        __state: { inboundWebhookEvents: Map<string, { last_seen_at: string }> };
+      }
+    ).__state;
 
     const key = "kapso_whatsapp:evt_old";
     dbState.inboundWebhookEvents.set(key, {

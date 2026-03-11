@@ -39,7 +39,11 @@ function resolveProviderEventId(payload: Record<string, unknown>): string | null
   const nestedMessage = payload.message;
   if (nestedMessage && typeof nestedMessage === "object") {
     const nestedRecord = nestedMessage as Record<string, unknown>;
-    const nestedCandidates: Array<unknown> = [nestedRecord.id, nestedRecord.messageId, nestedRecord.message_id];
+    const nestedCandidates: Array<unknown> = [
+      nestedRecord.id,
+      nestedRecord.messageId,
+      nestedRecord.message_id,
+    ];
     for (const candidate of nestedCandidates) {
       if (typeof candidate === "string" && candidate.trim().length > 0) {
         return candidate.trim();
@@ -51,7 +55,12 @@ function resolveProviderEventId(payload: Record<string, unknown>): string | null
 }
 
 function extractImageAttachments(payload: Record<string, unknown>) {
-  const attachments: Array<{ type: "image"; url?: string; mimeType?: string; providerFileId?: string }> = [];
+  const attachments: Array<{
+    type: "image";
+    url?: string;
+    mimeType?: string;
+    providerFileId?: string;
+  }> = [];
 
   const maybePush = (url: unknown, mimeType: unknown, providerFileId: unknown) => {
     if (typeof url !== "string" || url.trim().length === 0) return;

@@ -46,7 +46,9 @@ export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
         .first<CategoryRow>();
 
       if (row) return row;
-      return DEFAULT_CATEGORIES.find((category) => normalizeName(category.name) === normalized) ?? null;
+      return (
+        DEFAULT_CATEGORIES.find((category) => normalizeName(category.name) === normalized) ?? null
+      );
     },
 
     async getById(input: { customerId: string; id: string }): Promise<Category | null> {

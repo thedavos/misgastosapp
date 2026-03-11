@@ -1,14 +1,6 @@
 import { Effect } from "effect";
-import type { AiPort } from "@/ports/ai.port";
-import type { CategoryRepoPort } from "@/ports/category-repo.port";
-import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
-import type { ConversationStatePort } from "@/ports/conversation-state.port";
-import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
-import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
-import type { IncomingUserMessage } from "@/ports/channel.port";
-import type { LoggerPort } from "@/ports/logger.port";
 import { createCompleteExpenseFlow } from "@/app/complete-expense-flow";
-import type { ChannelPort } from "@/ports/channel.port";
+import { fromPromise } from "@/app/effects";
 import {
   CategoryClassificationError,
   CategoryLookupError,
@@ -21,7 +13,15 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import { fromPromise } from "@/app/effects";
+import type { AiPort } from "@/ports/ai.port";
+import type { CategoryRepoPort } from "@/ports/category-repo.port";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import type { IncomingUserMessage } from "@/ports/channel.port";
+import type { ChannelPort } from "@/ports/channel.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
+import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
+import type { LoggerPort } from "@/ports/logger.port";
 
 export type HandleUserReplyDeps = {
   ai: AiPort;
@@ -70,7 +70,8 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const expense = yield* fromPromise(
-        () => deps.expenseRepo.getById({ id: pendingState.expenseId, customerId: input.customerId }),
+        () =>
+          deps.expenseRepo.getById({ id: pendingState.expenseId, customerId: input.customerId }),
         (cause) => new ExpensePersistenceError({ operation: "getById", cause }),
       );
 

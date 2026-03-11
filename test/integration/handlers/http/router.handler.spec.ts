@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestEnv } from "test/helpers/fakes";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const healthSpy = vi.hoisted(() => vi.fn(async () => new Response("health", { status: 200 })));
 const whatsappSpy = vi.hoisted(() => vi.fn(async () => new Response("wa", { status: 200 })));
@@ -31,7 +31,11 @@ describe("router handler delegation", () => {
     const { handleFetch } = await import("@/handlers/http/router.handler");
     const env = createTestEnv();
 
-    const response = await handleFetch(new Request("https://example.com/health"), env, {} as ExecutionContext);
+    const response = await handleFetch(
+      new Request("https://example.com/health"),
+      env,
+      {} as ExecutionContext,
+    );
 
     expect(response.status).toBe(200);
     expect(healthSpy).toHaveBeenCalledTimes(1);

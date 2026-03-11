@@ -1,4 +1,7 @@
-import { createIngestExpenseFromEmail, type IngestExpenseFromEmailDeps } from "@/app/ingest-expense-from-email";
+import {
+  createIngestExpenseFromEmail,
+  type IngestExpenseFromEmailDeps,
+} from "@/app/ingest-expense-from-email";
 
 export type IngestPendingExpenseDeps = IngestExpenseFromEmailDeps;
 

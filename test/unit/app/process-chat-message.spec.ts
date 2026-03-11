@@ -38,7 +38,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: vi.fn() as unknown as Parameters<typeof createProcessChatMessage>[0]["ingestPendingExpense"],
+      ingestPendingExpense: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["ingestPendingExpense"],
       handleUserReply,
     });
 
@@ -85,7 +87,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: vi.fn() as unknown as Parameters<typeof createProcessChatMessage>[0]["ingestPendingExpense"],
+      ingestPendingExpense: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["ingestPendingExpense"],
       handleUserReply: vi.fn(),
     });
 
@@ -120,9 +124,11 @@ describe("process chat message", () => {
       expiresAt: "later",
     });
     const linkExpense = vi.fn().mockResolvedValue(undefined);
-    const ingestPendingExpense = vi.fn().mockImplementation((input: { sourceText: string }) =>
-      Effect.succeed(input.sourceText.includes("TAMBO") ? { expenseId: "exp_2" } : null),
-    );
+    const ingestPendingExpense = vi
+      .fn()
+      .mockImplementation((input: { sourceText: string }) =>
+        Effect.succeed(input.sourceText.includes("TAMBO") ? { expenseId: "exp_2" } : null),
+      );
 
     const processChatMessage = createProcessChatMessage({
       conversationState: {
@@ -150,7 +156,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<typeof createProcessChatMessage>[0]["ingestPendingExpense"],
+      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["ingestPendingExpense"],
       handleUserReply: vi.fn(),
       resolveAttachmentData: vi.fn().mockResolvedValue({
         data: new Uint8Array([1, 2, 3]),
@@ -164,7 +172,9 @@ describe("process chat message", () => {
         channel: "whatsapp",
         userId: "51999999999",
         providerEventId: "evt_3",
-        attachments: [{ type: "image", url: "https://example.com/photo.jpg", mimeType: "image/jpeg" }],
+        attachments: [
+          { type: "image", url: "https://example.com/photo.jpg", mimeType: "image/jpeg" },
+        ],
       }),
     );
 

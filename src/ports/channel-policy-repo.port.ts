@@ -6,8 +6,5 @@ export interface ChannelPolicyRepoPort {
     customerId: string;
     channelId: string;
   }): Promise<CustomerChannelSetting | null>;
-  isChannelEnabledForCustomer(input: {
-    customerId: string;
-    channelId: string;
-  }): Promise<boolean>;
+  isChannelEnabledForCustomer(input: { customerId: string; channelId: string }): Promise<boolean>;
 }

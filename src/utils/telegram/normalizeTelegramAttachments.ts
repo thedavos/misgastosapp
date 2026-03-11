@@ -1,6 +1,8 @@
 import type { IncomingAttachment } from "@/ports/channel.port";
 
-export async function normalizeTelegramAttachments(message: unknown): Promise<IncomingAttachment[]> {
+export async function normalizeTelegramAttachments(
+  message: unknown,
+): Promise<IncomingAttachment[]> {
   const msg = (message ?? {}) as Record<string, unknown>;
   const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
 

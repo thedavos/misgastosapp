@@ -3,17 +3,17 @@ import { createCloudflareAiAdapter } from "@/adapters/ai/cloudflare-ai.adapter";
 import { createCloudflareOcrAdapter } from "@/adapters/ai/cloudflare-ocr.adapter";
 import { createTelegramChatSdkChannelAdapter } from "@/adapters/channels/telegram/chat-sdk-channel.adapter";
 import { createKapsoChannelAdapter } from "@/adapters/channels/whatsapp/kapso.adapter";
+import { createLogger } from "@/adapters/observability";
 import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
-import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
-import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
+import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
 import { createD1CustomerEmailSenderRepo } from "@/adapters/persistence/d1/customer-email-sender.repo";
+import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
 import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
-import { createLogger } from "@/adapters/observability";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
 import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
@@ -81,10 +81,7 @@ export function createContainer(
     const buffer = await response.arrayBuffer();
     return {
       data: new Uint8Array(buffer),
-      mimeType:
-        input.attachment.mimeType ??
-        response.headers.get("content-type") ??
-        undefined,
+      mimeType: input.attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
     };
   };
 

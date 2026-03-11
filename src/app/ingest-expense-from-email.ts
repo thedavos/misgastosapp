@@ -1,12 +1,5 @@
 import { Effect } from "effect";
-import type { AiPort } from "@/ports/ai.port";
-import type { ChannelPort } from "@/ports/channel.port";
-import type { ConversationStatePort } from "@/ports/conversation-state.port";
-import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
-import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
-import type { LoggerPort } from "@/ports/logger.port";
-import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
-import { isValidExpenseCandidate } from "@/domain/expense/rules";
+import { fromPromise } from "@/app/effects";
 import {
   AiExtractFailedError,
   ChannelDisabledError,
@@ -20,7 +13,14 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import { fromPromise } from "@/app/effects";
+import { isValidExpenseCandidate } from "@/domain/expense/rules";
+import type { AiPort } from "@/ports/ai.port";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import type { ChannelPort } from "@/ports/channel.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
+import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
+import type { LoggerPort } from "@/ports/logger.port";
 
 export type IngestExpenseFromEmailInput = {
   customerId: string;

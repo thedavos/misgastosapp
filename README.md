@@ -3,6 +3,7 @@
 Worker en Cloudflare para procesar gastos desde email y categorizarlos vía conversación en canales de mensajería.
 
 Estado actual:
+
 - Canal principal implementado: WhatsApp (Kapso).
 - Canal adicional implementado: Telegram (Chat SDK, DM-only).
 - Canal en scaffold: Instagram.
@@ -31,10 +32,12 @@ Estado actual:
 ## Seguridad webhook WhatsApp
 
 Headers esperados:
+
 - `x-kapso-signature`: firma hex (`v1=<hex>` preferido)
 - `x-kapso-timestamp`: epoch en segundos
 
 Validación:
+
 - Se calcula `HMAC-SHA256(secret, "<timestamp>.<rawBody>")`.
 - Se rechaza si la firma no coincide o si el timestamp cae fuera de la ventana configurada.
 - `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp y desactiva fallback legacy.
@@ -92,6 +95,7 @@ src/
 - `REPORTS` (R2)
 
 Importante:
+
 - Configura `CONVERSATION_STATE_KV` y `ENTITLEMENTS_KV` con IDs reales en `wrangler.jsonc`.
 
 ## Setup rápido
@@ -151,6 +155,7 @@ pnpm deploy
 ## Testing
 
 Suite actual:
+
 - Unit tests (`test/unit`)
 - Integration tests (`test/integration`)
 - Contract tests (`test/contract`)

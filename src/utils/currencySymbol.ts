@@ -24,8 +24,8 @@ export type CurrencyCode = keyof typeof CURRENCY_SYMBOL_MAP;
 const CURRENCY_ALIAS_MAP: Record<string, CurrencyCode> = {
   "S/": "PEN",
   "S/.": "PEN",
-  "US$": "USD",
-  "U$S": "USD",
+  US$: "USD",
+  U$S: "USD",
   "€": "EUR",
 };
 

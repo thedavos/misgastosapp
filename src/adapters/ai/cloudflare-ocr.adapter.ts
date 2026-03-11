@@ -45,9 +45,11 @@ export function createCloudflareOcrAdapter(env: WorkerEnv): OcrPort {
       const mimeType = input.mimeType ?? "image/jpeg";
       const imageDataUrl = toDataUrl(input.data, mimeType);
 
-      const response = await (env.AI as {
-        run: (modelName: string, payload: Record<string, unknown>) => Promise<unknown>;
-      }).run(model, {
+      const response = await (
+        env.AI as {
+          run: (modelName: string, payload: Record<string, unknown>) => Promise<unknown>;
+        }
+      ).run(model, {
         messages: [
           {
             role: "system",

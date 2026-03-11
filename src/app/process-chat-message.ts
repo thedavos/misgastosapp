@@ -1,10 +1,5 @@
 import { Effect } from "effect";
-import type { IncomingAttachment, IncomingUserMessage } from "@/ports/channel.port";
-import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
-import type { ConversationStatePort } from "@/ports/conversation-state.port";
-import type { OcrPort } from "@/ports/ocr.port";
-import type { ChannelPort } from "@/ports/channel.port";
-import type { LoggerPort } from "@/ports/logger.port";
+import { fromPromise } from "@/app/effects";
 import {
   ChatMediaPersistenceError,
   ChannelSendError,
@@ -13,7 +8,12 @@ import {
   OcrExtractionError,
   type AppError,
 } from "@/app/errors";
-import { fromPromise } from "@/app/effects";
+import type { IncomingAttachment, IncomingUserMessage } from "@/ports/channel.port";
+import type { ChannelPort } from "@/ports/channel.port";
+import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
+import type { LoggerPort } from "@/ports/logger.port";
+import type { OcrPort } from "@/ports/ocr.port";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -72,7 +72,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             channel: input.channel,
             userId: input.userId,
           }),
-        (cause) => new ConversationStateError({ requestId: input.requestId, operation: "get", cause }),
+        (cause) =>
+          new ConversationStateError({ requestId: input.requestId, operation: "get", cause }),
       );
 
       if (pendingState) {
@@ -162,7 +163,12 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const r2Key = `receipts/${input.customerId}/${input.channel}/${yyyy}/${mm}/${eventPart}.${extension}`;
         const sha256 = yield* fromPromise(
           () => sha256Hex(mediaPayload.data),
-          (cause) => new ChatMediaPersistenceError({ requestId: input.requestId, operation: "create", cause }),
+          (cause) =>
+            new ChatMediaPersistenceError({
+              requestId: input.requestId,
+              operation: "create",
+              cause,
+            }),
         );
 
         const created = yield* fromPromise(
@@ -182,7 +188,12 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               expiresAt: addDays(now, retentionDays).toISOString(),
               data: mediaPayload.data,
             }),
-          (cause) => new ChatMediaPersistenceError({ requestId: input.requestId, operation: "create", cause }),
+          (cause) =>
+            new ChatMediaPersistenceError({
+              requestId: input.requestId,
+              operation: "create",
+              cause,
+            }),
         );
 
         createdMediaIds.push(created.id);
@@ -209,13 +220,15 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         return { categorized: false, guided: true };
       }
 
-      const ingestionResult = yield* deps.ingestPendingExpense({
-        customerId: input.customerId,
-        sourceText,
-        channel: input.channel,
-        userId: input.userId,
-        requestId: input.requestId,
-      }).pipe(Effect.either);
+      const ingestionResult = yield* deps
+        .ingestPendingExpense({
+          customerId: input.customerId,
+          sourceText,
+          channel: input.channel,
+          userId: input.userId,
+          requestId: input.requestId,
+        })
+        .pipe(Effect.either);
 
       if (ingestionResult._tag === "Left") {
         if (ingestionResult.left instanceof InvalidTransactionError) {
@@ -237,7 +250,12 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
                 id: mediaId,
                 expenseId: ingestionResult.right?.expenseId as string,
               }),
-            (cause) => new ChatMediaPersistenceError({ requestId: input.requestId, operation: "linkExpense", cause }),
+            (cause) =>
+              new ChatMediaPersistenceError({
+                requestId: input.requestId,
+                operation: "linkExpense",
+                cause,
+              }),
           );
         }
       }

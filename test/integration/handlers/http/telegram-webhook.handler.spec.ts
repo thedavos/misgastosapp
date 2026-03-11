@@ -1,6 +1,6 @@
+import { createTestEnv } from "test/helpers/fakes";
 import { describe, expect, it } from "vitest";
 import { handleTelegramWebhook } from "@/handlers/http/telegram-webhook.handler";
-import { createTestEnv } from "test/helpers/fakes";
 
 describe("telegram webhook handler integration", () => {
   it("returns 501 when chat sdk packages are not available in runtime", async () => {
