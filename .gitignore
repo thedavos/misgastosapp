@@ -184,5 +184,5 @@ test/fixtures/*
 # macOS
 .DS_Store
 
-# macOS
-.DS_Store
+# Zed
+.zed/

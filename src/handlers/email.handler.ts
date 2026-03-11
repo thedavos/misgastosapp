@@ -85,7 +85,10 @@ export async function handleEmail(
     let customerId: string | null = null;
     for (const senderCandidate of senderCandidates) {
       const resolvedCustomerId = yield* Effect.tryPromise({
-        try: () => container.customerEmailSenderRepo.resolveCustomerIdBySenderEmail(senderCandidate),
+        try: () =>
+          container.customerEmailSenderRepo.resolveCustomerIdBySenderEmail(
+            senderCandidate,
+          ),
         catch: (cause) =>
           new CustomerSenderLookupError({
             requestId,

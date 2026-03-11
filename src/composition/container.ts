@@ -33,7 +33,8 @@ export function createContainer(
   const ocr = createCloudflareOcrAdapter(env);
   const whatsappChannel = createKapsoChannelAdapter(env);
   const telegramChannel = createTelegramChatSdkChannelAdapter(env);
-  const selectedChannel = options?.channelOverride === "telegram" ? telegramChannel : whatsappChannel;
+  const selectedChannel =
+    options?.channelOverride === "telegram" ? telegramChannel : whatsappChannel;
   const expenseRepo = createD1ExpenseRepo(env);
   const categoryRepo = createD1CategoryRepo(env);
   const chatMediaRepo = createD1ChatMediaRepo(env);
@@ -55,7 +56,10 @@ export function createContainer(
     attachment: { data?: Uint8Array; url?: string; mimeType?: string };
   }) => {
     if (input.attachment.data && input.attachment.data.length > 0) {
-      return { data: input.attachment.data, mimeType: input.attachment.mimeType };
+      return {
+        data: input.attachment.data,
+        mimeType: input.attachment.mimeType,
+      };
     }
 
     if (!input.attachment.url) return null;
@@ -77,7 +81,10 @@ export function createContainer(
     const buffer = await response.arrayBuffer();
     return {
       data: new Uint8Array(buffer),
-      mimeType: input.attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
+      mimeType:
+        input.attachment.mimeType ??
+        response.headers.get("content-type") ??
+        undefined,
     };
   };
 
