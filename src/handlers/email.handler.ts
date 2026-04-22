@@ -2,17 +2,12 @@ import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import {
   CustomerSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
-import type {
-  CreateExpenseIntentPayload,
-  DeleteLastExpenseIntentPayload,
-  GetReportIntentPayload,
-  UpdateLastExpenseIntentPayload,
-} from "@/domain/intent/entity";
 import { createContainer } from "@/composition/container";
 import { getEffectFailureMeta } from "@/utils/effect-failure";
 
@@ -53,29 +48,6 @@ function resolveWorkerInbox(env: WorkerEnv): string {
   return "recibos@misgastos.app";
 }
 
-function canApplyCreateExpenseDirectly(payload: CreateExpenseIntentPayload): boolean {
-  return (
-    payload.confidence >= 0.85 &&
-    payload.missingFields.length === 0 &&
-    payload.draft.amountMinor !== undefined &&
-    Boolean(payload.draft.currency) &&
-    Boolean(payload.draft.merchant) &&
-    Boolean(payload.draft.occurredAt)
-  );
-}
-
-function canApplyUpdateIntentDirectly(payload: UpdateLastExpenseIntentPayload): boolean {
-  return payload.confidence >= 0.9 && payload.patch.amountMinor !== undefined;
-}
-
-function canApplyDeleteIntentDirectly(payload: DeleteLastExpenseIntentPayload): boolean {
-  return payload.confidence >= 0.9;
-}
-
-function canApplyReportIntentDirectly(payload: GetReportIntentPayload): boolean {
-  return payload.confidence >= 0.9;
-}
-
 export async function handleEmail(
   message: ForwardableEmailMessage,
   env: WorkerEnv,
@@ -83,6 +55,13 @@ export async function handleEmail(
 ): Promise<void> {
   const requestId = message.headers.get("cf-ray") ?? undefined;
   const container = createContainer(env, requestId);
+
+  const executeChannelIntent = createExecuteChannelIntent({
+    createExpenseFromIntent: container.createExpenseFromIntent,
+    updateLastExpenseFromIntent: container.updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent: container.deleteLastExpenseFromIntent,
+    getReportFromIntent: container.getReportFromIntent,
+  });
 
   const effect = Effect.gen(function* () {
     const parsedEmail = yield* Effect.tryPromise({
@@ -226,85 +205,23 @@ export async function handleEmail(
       confidence: parsedIntent.payload.confidence,
     });
 
-    if (
-      parsedIntent.name === "create_expense" &&
-      canApplyCreateExpenseDirectly(parsedIntent.payload)
-    ) {
-      yield* container.createExpenseFromIntent({
-        customerId,
-        channel: "whatsapp",
-        userId,
-        payload: parsedIntent.payload,
-        requestId,
-      });
+    const directIntentResult = yield* executeChannelIntent({
+      customerId,
+      channel: "whatsapp",
+      userId,
+      parsedIntent,
+      timezone: customer.timezone,
+      nowIso: new Date().toISOString(),
+      requestId,
+    });
+
+    if (directIntentResult.handled) {
       container.logger.info("email.done", {
         requestId,
         customerId,
-        mode: "direct_create_expense",
+        mode: `direct_${parsedIntent.name}`,
       });
       return;
-    }
-
-    if (
-      parsedIntent.name === "update_last_expense" &&
-      canApplyUpdateIntentDirectly(parsedIntent.payload)
-    ) {
-      const updated = yield* container.updateLastExpenseFromIntent({
-        customerId,
-        channel: "whatsapp",
-        userId,
-        payload: parsedIntent.payload,
-        requestId,
-      });
-      if (updated.handled) {
-        container.logger.info("email.done", {
-          requestId,
-          customerId,
-          mode: "direct_update_last_expense",
-        });
-        return;
-      }
-    }
-
-    if (
-      parsedIntent.name === "delete_last_expense" &&
-      canApplyDeleteIntentDirectly(parsedIntent.payload)
-    ) {
-      const deleted = yield* container.deleteLastExpenseFromIntent({
-        customerId,
-        channel: "whatsapp",
-        userId,
-        payload: parsedIntent.payload,
-        requestId,
-      });
-      if (deleted.handled) {
-        container.logger.info("email.done", {
-          requestId,
-          customerId,
-          mode: "direct_delete_last_expense",
-        });
-        return;
-      }
-    }
-
-    if (parsedIntent.name === "get_report" && canApplyReportIntentDirectly(parsedIntent.payload)) {
-      const reported = yield* container.getReportFromIntent({
-        customerId,
-        channel: "whatsapp",
-        userId,
-        payload: parsedIntent.payload,
-        timezone: customer.timezone,
-        nowIso: new Date().toISOString(),
-        requestId,
-      });
-      if (reported.handled) {
-        container.logger.info("email.done", {
-          requestId,
-          customerId,
-          mode: "direct_get_report",
-        });
-        return;
-      }
     }
 
     yield* container.ingestExpenseFromEmail({

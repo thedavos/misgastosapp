@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { fromPromise } from "@/app/effects";
 import {
   ChatMediaPersistenceError,
@@ -94,20 +95,14 @@ export type ProcessChatMessageDeps = {
   mediaRetentionDays?: string;
 };
 
-function canApplyUpdateIntentDirectly(payload: UpdateLastExpenseIntentPayload): boolean {
-  return payload.confidence >= 0.9 && payload.patch.amountMinor !== undefined;
-}
-
-function canApplyDeleteIntentDirectly(payload: DeleteLastExpenseIntentPayload): boolean {
-  return payload.confidence >= 0.9;
-}
-
-function canApplyReportIntentDirectly(payload: GetReportIntentPayload): boolean {
-  return payload.confidence >= 0.9;
-}
-
 export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
   const retentionDays = parsePositiveInt(deps.mediaRetentionDays, 90);
+  const executeChannelIntent = createExecuteChannelIntent({
+    createExpenseFromIntent: deps.createExpenseFromIntent,
+    updateLastExpenseFromIntent: deps.updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent: deps.deleteLastExpenseFromIntent,
+    getReportFromIntent: deps.getReportFromIntent,
+  });
 
   return function processChatMessage(input: {
     customerId: string;
@@ -329,107 +324,39 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         });
       }
 
-      if (
-        input.channel === "whatsapp" &&
-        parsedIntent?.name === "create_expense" &&
-        deps.createExpenseFromIntent
-      ) {
-        const createdFromIntent = yield* deps.createExpenseFromIntent({
+      if (input.channel === "whatsapp" && parsedIntent && resolvedContext) {
+        const directIntentResult = yield* executeChannelIntent({
           customerId: input.customerId,
           channel: input.channel,
           userId: input.userId,
-          payload: parsedIntent.payload,
-          requestId: input.requestId,
-        });
-
-        if (createdFromIntent?.expenseId) {
-          for (const mediaId of createdMediaIds) {
-            yield* fromPromise(
-              () =>
-                deps.chatMediaRepo.linkExpense({
-                  id: mediaId,
-                  expenseId: createdFromIntent.expenseId,
-                }),
-              (cause) =>
-                new ChatMediaPersistenceError({
-                  requestId: input.requestId,
-                  operation: "linkExpense",
-                  cause,
-                }),
-            );
-          }
-
-          return {
-            categorized: false,
-            expenseId: createdFromIntent.expenseId,
-          };
-        }
-      }
-
-      if (
-        input.channel === "whatsapp" &&
-        parsedIntent?.name === "update_last_expense" &&
-        deps.updateLastExpenseFromIntent &&
-        canApplyUpdateIntentDirectly(parsedIntent.payload)
-      ) {
-        const updatedFromIntent = yield* deps.updateLastExpenseFromIntent({
-          customerId: input.customerId,
-          channel: input.channel,
-          userId: input.userId,
-          payload: parsedIntent.payload,
-          requestId: input.requestId,
-        });
-
-        if (updatedFromIntent.handled) {
-          return {
-            categorized: false,
-            expenseId: updatedFromIntent.expenseId,
-          };
-        }
-      }
-
-      if (
-        input.channel === "whatsapp" &&
-        parsedIntent?.name === "delete_last_expense" &&
-        deps.deleteLastExpenseFromIntent &&
-        canApplyDeleteIntentDirectly(parsedIntent.payload)
-      ) {
-        const deletedFromIntent = yield* deps.deleteLastExpenseFromIntent({
-          customerId: input.customerId,
-          channel: input.channel,
-          userId: input.userId,
-          payload: parsedIntent.payload,
-          requestId: input.requestId,
-        });
-
-        if (deletedFromIntent.handled) {
-          return {
-            categorized: false,
-            expenseId: deletedFromIntent.expenseId,
-          };
-        }
-      }
-
-      if (
-        input.channel === "whatsapp" &&
-        parsedIntent?.name === "get_report" &&
-        deps.getReportFromIntent &&
-        resolvedContext &&
-        canApplyReportIntentDirectly(parsedIntent.payload)
-      ) {
-        const reportFromIntent = yield* deps.getReportFromIntent({
-          customerId: input.customerId,
-          channel: input.channel,
-          userId: input.userId,
-          payload: parsedIntent.payload,
+          parsedIntent,
           timezone: resolvedContext.timezone,
           nowIso: resolvedContext.nowIso,
           requestId: input.requestId,
         });
 
-        if (reportFromIntent.handled) {
+        if (directIntentResult.handled) {
+          if (directIntentResult.expenseId) {
+            for (const mediaId of createdMediaIds) {
+              yield* fromPromise(
+                () =>
+                  deps.chatMediaRepo.linkExpense({
+                    id: mediaId,
+                    expenseId: directIntentResult.expenseId as string,
+                  }),
+                (cause) =>
+                  new ChatMediaPersistenceError({
+                    requestId: input.requestId,
+                    operation: "linkExpense",
+                    cause,
+                  }),
+              );
+            }
+          }
+
           return {
             categorized: false,
+            expenseId: directIntentResult.expenseId,
           };
         }
       }
