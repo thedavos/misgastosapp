@@ -88,6 +88,118 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       return mapExpenseRow(row);
     },
 
+    async findLatestByCustomer(input: { customerId: string }): Promise<Expense | null> {
+      const row = await env.DB.prepare(
+        `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
+         FROM expenses
+         WHERE customer_id = ? AND status != ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      )
+        .bind(input.customerId, EXPENSE_STATUS.Discarded)
+        .first<ExpenseRow>();
+
+      if (!row) return null;
+      return mapExpenseRow(row);
+    },
+
+    async update(input: {
+      id: string;
+      customerId: string;
+      amount: number;
+      currency: string;
+      merchant: string;
+      occurredAt: string;
+      rawText: string;
+    }): Promise<Expense | null> {
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `UPDATE expenses
+         SET amount = ?, currency = ?, merchant = ?, occurred_at = ?, raw_text = ?, updated_at = ?
+         WHERE id = ? AND customer_id = ?`,
+      )
+        .bind(
+          input.amount,
+          input.currency,
+          input.merchant,
+          input.occurredAt,
+          input.rawText,
+          now,
+          input.id,
+          input.customerId,
+        )
+        .run();
+
+      await env.DB.prepare(
+        `INSERT INTO expense_events (id, customer_id, expense_id, type, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(
+          crypto.randomUUID(),
+          input.customerId,
+          input.id,
+          "EXPENSE_UPDATED",
+          JSON.stringify({
+            amount: input.amount,
+            currency: input.currency,
+            merchant: input.merchant,
+            occurredAt: input.occurredAt,
+          }),
+          now,
+        )
+        .run();
+
+      const row = await env.DB.prepare(
+        `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
+         FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
+      )
+        .bind(input.id, input.customerId)
+        .first<ExpenseRow>();
+
+      if (!row) return null;
+      return mapExpenseRow(row);
+    },
+
+    async discard(input: { id: string; customerId: string }): Promise<Expense | null> {
+      const existing = await env.DB.prepare(
+        `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
+         FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
+      )
+        .bind(input.id, input.customerId)
+        .first<ExpenseRow>();
+
+      if (!existing) return null;
+
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `UPDATE expenses
+         SET status = ?, category_id = ?, updated_at = ?
+         WHERE id = ? AND customer_id = ?`,
+      )
+        .bind(EXPENSE_STATUS.Discarded, existing.category_id, now, input.id, input.customerId)
+        .run();
+
+      await env.DB.prepare(
+        `INSERT INTO expense_events (id, customer_id, expense_id, type, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(
+          crypto.randomUUID(),
+          input.customerId,
+          input.id,
+          "EXPENSE_DISCARDED",
+          JSON.stringify({ previousStatus: existing.status }),
+          now,
+        )
+        .run();
+
+      return {
+        ...mapExpenseRow(existing),
+        status: EXPENSE_STATUS.Discarded,
+        updatedAt: now,
+      };
+    },
+
     async markCategorized(input: {
       id: string;
       customerId: string;

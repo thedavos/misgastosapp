@@ -102,6 +102,100 @@ describe("expense ingestion logic", () => {
     expect(pendingState).toBeNull();
   });
 
+  it("updates the latest WhatsApp expense directly when the correction patch is explicit", async () => {
+    const env = createTestEnv();
+    const container = createContainer(env);
+
+    await Effect.runPromise(
+      container.processChatMessage({
+        customerId: "cust_default",
+        channel: "whatsapp",
+        userId: "51999999999",
+        providerEventId: "evt_update_seed_1",
+        text: "S/ 50 en Tambo",
+      }),
+    );
+
+    await container.webhookEventRepo.tryStartProcessing({
+      provider: WHATSAPP_PROVIDER,
+      eventId: "evt_update_direct_1",
+      payloadHash: "hash_update_direct_1",
+      requestId: "req_update_direct_1",
+    });
+
+    const result = await runExpenseProcessingJobOnce(
+      env,
+      makeJob({
+        eventId: "evt_update_direct_1",
+        requestId: "req_update_direct_1",
+        text: "Corrige el último gasto, fueron S/ 70",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+
+    const dbState = (
+      env.DB as unknown as {
+        __state: {
+          expenses: Map<string, { amount: number; merchant: string; status: string }>;
+        };
+      }
+    ).__state;
+
+    expect(dbState.expenses.size).toBe(1);
+    expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
+      amount: 70,
+      merchant: "Tambo",
+      status: "PENDING_CATEGORY",
+    });
+  });
+
+  it("discards the latest WhatsApp expense directly when asked to delete it", async () => {
+    const env = createTestEnv();
+    const container = createContainer(env);
+
+    await Effect.runPromise(
+      container.processChatMessage({
+        customerId: "cust_default",
+        channel: "whatsapp",
+        userId: "51999999999",
+        providerEventId: "evt_delete_seed_1",
+        text: "S/ 50 en Tambo",
+      }),
+    );
+
+    await container.webhookEventRepo.tryStartProcessing({
+      provider: WHATSAPP_PROVIDER,
+      eventId: "evt_delete_direct_1",
+      payloadHash: "hash_delete_direct_1",
+      requestId: "req_delete_direct_1",
+    });
+
+    const result = await runExpenseProcessingJobOnce(
+      env,
+      makeJob({
+        eventId: "evt_delete_direct_1",
+        requestId: "req_delete_direct_1",
+        text: "Elimina el último gasto",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+
+    const dbState = (
+      env.DB as unknown as {
+        __state: {
+          expenses: Map<string, { status: string }>;
+        };
+      }
+    ).__state;
+
+    expect(dbState.expenses.size).toBe(1);
+    expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
+      status: "DISCARDED",
+    });
+  });
+
   it("schedules retry for a failed attempt while retries remain", async () => {
     const scheduleRetry = vi.fn().mockResolvedValue(undefined);
     const markFailed = vi.fn().mockResolvedValue(undefined);

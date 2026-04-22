@@ -49,7 +49,13 @@ export class CategoryClassificationError extends Data.TaggedError("CategoryClass
 
 export class ExpensePersistenceError extends Data.TaggedError("ExpensePersistenceError")<{
   requestId?: string;
-  operation: "createPending" | "getById" | "markCategorized";
+  operation:
+    | "createPending"
+    | "getById"
+    | "findLatestByCustomer"
+    | "update"
+    | "discard"
+    | "markCategorized";
   cause: unknown;
 }> {}
 

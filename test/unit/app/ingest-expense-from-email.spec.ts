@@ -44,6 +44,9 @@ describe("ingest expense from email", () => {
       expenseRepo: {
         createPending,
         getById: vi.fn(),
+        findLatestByCustomer: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
         markCategorized: vi.fn(),
       },
       conversationState: {

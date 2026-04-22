@@ -16,11 +16,13 @@ import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-even
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
 import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent";
+import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
 import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
 import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
+import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";
 
 export function createContainer(
   env: WorkerEnv,
@@ -58,6 +60,20 @@ export function createContainer(
     logger,
   });
   const createExpenseFromIntent = createCreateExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const updateLastExpenseFromIntent = createUpdateLastExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const deleteLastExpenseFromIntent = createDeleteLastExpenseFromIntent({
     channel: selectedChannel,
     channelPolicyRepo,
     featurePolicy,
@@ -130,6 +146,8 @@ export function createContainer(
     ingestPendingExpense,
     handleUserReply,
     createExpenseFromIntent,
+    updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent,
     parseUserIntent,
     resolveIntentContext: async ({ customerId }) => {
       const customer = await customerRepo.getById(customerId);

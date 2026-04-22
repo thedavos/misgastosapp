@@ -9,7 +9,7 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import type { CreateExpenseIntentPayload } from "@/domain/intent/entity";
+import type { UpdateLastExpenseIntentPayload } from "@/domain/intent/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
@@ -17,7 +17,7 @@ import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import { getCurrencySymbol } from "@/utils/currencySymbol";
 
-export type CreateExpenseFromIntentDeps = {
+export type UpdateLastExpenseFromIntentDeps = {
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
@@ -30,50 +30,76 @@ function formatAmount(amount: number, currency: string): string {
   return `${symbol} ${amount.toFixed(2)}`;
 }
 
-export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps) {
-  return function createExpenseFromIntent(input: {
+function hasSupportedPatch(payload: UpdateLastExpenseIntentPayload): boolean {
+  return (
+    payload.patch.amountMinor !== undefined ||
+    Boolean(payload.patch.currency) ||
+    Boolean(payload.patch.merchant) ||
+    Boolean(payload.patch.occurredAt)
+  );
+}
+
+export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromIntentDeps) {
+  return function updateLastExpenseFromIntent(input: {
     customerId: string;
     channel: string;
     userId: string;
-    payload: CreateExpenseIntentPayload;
+    payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
-  }): Effect.Effect<{ expenseId: string } | null, AppError> {
+  }): Effect.Effect<{ handled: boolean; expenseId?: string }, AppError> {
     return Effect.gen(function* () {
-      const { draft, missingFields } = input.payload;
-      if (
-        missingFields.length > 0 ||
-        draft.amountMinor === undefined ||
-        !draft.currency ||
-        !draft.merchant ||
-        !draft.occurredAt
-      ) {
-        return null;
+      if (!hasSupportedPatch(input.payload)) {
+        return { handled: false };
       }
 
-      const amount = draft.amountMinor / 100;
-      const currency = draft.currency;
-      const merchant = draft.merchant;
-      const occurredAt = draft.occurredAt;
-      const rawText = draft.description ?? draft.merchant;
+      const latestExpense = yield* fromPromise(
+        () => deps.expenseRepo.findLatestByCustomer({ customerId: input.customerId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "findLatestByCustomer",
+            cause,
+          }),
+      );
 
-      const expense = yield* fromPromise(
+      if (!latestExpense) {
+        yield* fromPromise(
+          () =>
+            deps.channel.sendMessage({
+              userId: input.userId,
+              text: "No encontré un gasto reciente para corregir.",
+            }),
+          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+        );
+
+        return { handled: true };
+      }
+
+      const updatedExpense = yield* fromPromise(
         () =>
-          deps.expenseRepo.createPending({
+          deps.expenseRepo.update({
+            id: latestExpense.id,
             customerId: input.customerId,
-            amount,
-            currency,
-            merchant,
-            occurredAt,
-            bank: "unknown",
-            rawText,
+            amount:
+              input.payload.patch.amountMinor !== undefined
+                ? input.payload.patch.amountMinor / 100
+                : latestExpense.amount,
+            currency: input.payload.patch.currency ?? latestExpense.currency,
+            merchant: input.payload.patch.merchant ?? latestExpense.merchant,
+            occurredAt: input.payload.patch.occurredAt ?? latestExpense.occurredAt,
+            rawText: latestExpense.rawText,
           }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "createPending",
+            operation: "update",
             cause,
           }),
       );
+
+      if (!updatedExpense) {
+        return { handled: true };
+      }
 
       const isEnabled = yield* fromPromise(
         () =>
@@ -124,22 +150,27 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         );
       }
 
-      const message = `Listo. Registré ${formatAmount(expense.amount, expense.currency)} en ${expense.merchant}.`;
-
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () =>
+          deps.channel.sendMessage({
+            userId: input.userId,
+            text: `Listo. Actualicé tu último gasto a ${formatAmount(updatedExpense.amount, updatedExpense.currency)} en ${updatedExpense.merchant}.`,
+          }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
-      deps.logger.info("expense.created_from_intent", {
+      deps.logger.info("expense.updated_from_intent", {
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
         userId: input.userId,
-        expenseId: expense.id,
+        expenseId: updatedExpense.id,
       });
 
-      return { expenseId: expense.id };
+      return {
+        handled: true,
+        expenseId: updatedExpense.id,
+      };
     });
   };
 }

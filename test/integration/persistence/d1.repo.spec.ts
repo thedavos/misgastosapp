@@ -29,4 +29,46 @@ describe("d1 expense repo integration", () => {
     expect(updated?.status).toBe("CATEGORIZED");
     expect(updated?.categoryId).toBe("cat_food");
   });
+
+  it("updates and discards the latest expense", async () => {
+    const env = createTestEnv();
+    const repo = createD1ExpenseRepo(env);
+
+    const created = await repo.createPending({
+      customerId: "cust_default",
+      amount: 23,
+      currency: "PEN",
+      merchant: "Metro",
+      occurredAt: "2026-02-20T10:00:00.000Z",
+      bank: "Interbank",
+      rawText: "raw",
+    });
+
+    const latest = await repo.findLatestByCustomer({ customerId: "cust_default" });
+    expect(latest?.id).toBe(created.id);
+
+    const updated = await repo.update({
+      id: created.id,
+      customerId: "cust_default",
+      amount: 30,
+      currency: "PEN",
+      merchant: "Tambo",
+      occurredAt: "2026-02-21T10:00:00.000Z",
+      rawText: "raw",
+    });
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      amount: 30,
+      merchant: "Tambo",
+    });
+
+    const discarded = await repo.discard({
+      id: created.id,
+      customerId: "cust_default",
+    });
+
+    expect(discarded?.status).toBe("DISCARDED");
+    expect(await repo.findLatestByCustomer({ customerId: "cust_default" })).toBeNull();
+  });
 });

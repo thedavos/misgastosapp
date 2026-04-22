@@ -9,7 +9,7 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import type { CreateExpenseIntentPayload } from "@/domain/intent/entity";
+import type { DeleteLastExpenseIntentPayload } from "@/domain/intent/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
@@ -17,7 +17,7 @@ import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import { getCurrencySymbol } from "@/utils/currencySymbol";
 
-export type CreateExpenseFromIntentDeps = {
+export type DeleteLastExpenseFromIntentDeps = {
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
@@ -30,50 +30,59 @@ function formatAmount(amount: number, currency: string): string {
   return `${symbol} ${amount.toFixed(2)}`;
 }
 
-export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps) {
-  return function createExpenseFromIntent(input: {
+export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromIntentDeps) {
+  return function deleteLastExpenseFromIntent(input: {
     customerId: string;
     channel: string;
     userId: string;
-    payload: CreateExpenseIntentPayload;
+    payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
-  }): Effect.Effect<{ expenseId: string } | null, AppError> {
+  }): Effect.Effect<{ handled: boolean; expenseId?: string }, AppError> {
     return Effect.gen(function* () {
-      const { draft, missingFields } = input.payload;
-      if (
-        missingFields.length > 0 ||
-        draft.amountMinor === undefined ||
-        !draft.currency ||
-        !draft.merchant ||
-        !draft.occurredAt
-      ) {
-        return null;
+      if (input.payload.confidence < 0.9) {
+        return { handled: false };
       }
 
-      const amount = draft.amountMinor / 100;
-      const currency = draft.currency;
-      const merchant = draft.merchant;
-      const occurredAt = draft.occurredAt;
-      const rawText = draft.description ?? draft.merchant;
+      const latestExpense = yield* fromPromise(
+        () => deps.expenseRepo.findLatestByCustomer({ customerId: input.customerId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "findLatestByCustomer",
+            cause,
+          }),
+      );
 
-      const expense = yield* fromPromise(
+      if (!latestExpense) {
+        yield* fromPromise(
+          () =>
+            deps.channel.sendMessage({
+              userId: input.userId,
+              text: "No encontré un gasto reciente para eliminar.",
+            }),
+          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+        );
+
+        return { handled: true };
+      }
+
+      const discardedExpense = yield* fromPromise(
         () =>
-          deps.expenseRepo.createPending({
+          deps.expenseRepo.discard({
+            id: latestExpense.id,
             customerId: input.customerId,
-            amount,
-            currency,
-            merchant,
-            occurredAt,
-            bank: "unknown",
-            rawText,
           }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "createPending",
+            operation: "discard",
             cause,
           }),
       );
+
+      if (!discardedExpense) {
+        return { handled: true };
+      }
 
       const isEnabled = yield* fromPromise(
         () =>
@@ -124,22 +133,27 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         );
       }
 
-      const message = `Listo. Registré ${formatAmount(expense.amount, expense.currency)} en ${expense.merchant}.`;
-
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () =>
+          deps.channel.sendMessage({
+            userId: input.userId,
+            text: `Listo. Eliminé tu último gasto de ${formatAmount(discardedExpense.amount, discardedExpense.currency)} en ${discardedExpense.merchant}.`,
+          }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
-      deps.logger.info("expense.created_from_intent", {
+      deps.logger.info("expense.deleted_from_intent", {
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
         userId: input.userId,
-        expenseId: expense.id,
+        expenseId: discardedExpense.id,
       });
 
-      return { expenseId: expense.id };
+      return {
+        handled: true,
+        expenseId: discardedExpense.id,
+      };
     });
   };
 }

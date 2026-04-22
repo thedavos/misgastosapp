@@ -1,7 +1,7 @@
+import { isValidExpenseCandidate } from "@/domain/expense/rules";
+import type { IntentContext, ParsedIntent } from "@/domain/intent/entity";
 import type { AiPort } from "@/ports/ai.port";
 import type { LoggerPort } from "@/ports/logger.port";
-import type { IntentContext, ParsedIntent } from "@/domain/intent/entity";
-import { isValidExpenseCandidate } from "@/domain/expense/rules";
 
 export type ParseUserIntentDeps = {
   ai: AiPort;
@@ -14,6 +14,39 @@ function toAmountMinor(amount: number): number {
 
 function normalizeText(input: string): string {
   return input.trim().toLowerCase();
+}
+
+function normalizeCurrency(rawCurrency: string | undefined, defaultCurrency: string): string {
+  if (!rawCurrency) return defaultCurrency;
+  const normalized = rawCurrency.trim().toUpperCase();
+  if (normalized === "S/" || normalized === "S/.") return "PEN";
+  return normalized;
+}
+
+function extractUpdateAmountPatch(
+  text: string,
+  defaultCurrency: string,
+): { amountMinor: number; currency: string } | null {
+  const explicitMoneyMatches = Array.from(
+    text.matchAll(/(?:\b(pen|usd|eur)\b|s\/\.?)\s*(\d+(?:[.,]\d{1,2})?)/gi),
+  );
+  const fallbackMatches = Array.from(
+    text.matchAll(/(?:fueron|fue|por|a)\s+(\d+(?:[.,]\d{1,2})?)(?!\s*(?:am|pm))/gi),
+  );
+
+  const lastExplicit = explicitMoneyMatches[explicitMoneyMatches.length - 1];
+  const rawCurrency = lastExplicit?.[1] ?? lastExplicit?.[0].match(/s\/\.?/i)?.[0];
+  const lastFallback = fallbackMatches[fallbackMatches.length - 1];
+  const rawAmount = lastExplicit?.[2] ?? lastFallback?.[1];
+  if (!rawAmount) return null;
+
+  const parsedAmount = Number(rawAmount.replace(",", "."));
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return null;
+
+  return {
+    amountMinor: toAmountMinor(parsedAmount),
+    currency: normalizeCurrency(rawCurrency, defaultCurrency),
+  };
 }
 
 export function createParseUserIntent(deps: ParseUserIntentDeps) {
@@ -104,13 +137,24 @@ export function createParseUserIntent(deps: ParseUserIntentDeps) {
       normalized.includes("no fueron") ||
       normalized.includes("fue ayer")
     ) {
+      const amountPatch = extractUpdateAmountPatch(input.text, input.context.defaultCurrency);
+      if (amountPatch) {
+        return {
+          name: "update_last_expense",
+          payload: {
+            patch: amountPatch,
+            confidence: 0.92,
+          },
+        };
+      }
+
       return {
         name: "update_last_expense",
         payload: {
           patch: {
             description: input.text,
           },
-          confidence: 0.75,
+          confidence: 0.55,
         },
       };
     }

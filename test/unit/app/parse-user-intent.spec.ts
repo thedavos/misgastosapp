@@ -56,4 +56,55 @@ describe("parse user intent", () => {
     expect(result.payload.draft.amountMinor).toBe(1250);
     expect(result.payload.draft.merchant).toBe("Tambo");
   });
+
+  it("detects strong update_last_expense intent for explicit amount corrections", async () => {
+    const parseUserIntent = createParseUserIntent({
+      ai: {
+        extractTransaction: vi.fn(),
+        classifyCategory: vi.fn(),
+        generateMessage: vi.fn(),
+      },
+    });
+
+    const result = await parseUserIntent({
+      text: "Corrige el último gasto, fueron S/ 20",
+      context: baseContext,
+    });
+
+    expect(result).toEqual({
+      name: "update_last_expense",
+      payload: {
+        patch: {
+          amountMinor: 2000,
+          currency: "PEN",
+        },
+        confidence: 0.92,
+      },
+    });
+  });
+
+  it("keeps weak update_last_expense intent as fallback-safe when the patch is not explicit", async () => {
+    const parseUserIntent = createParseUserIntent({
+      ai: {
+        extractTransaction: vi.fn(),
+        classifyCategory: vi.fn(),
+        generateMessage: vi.fn(),
+      },
+    });
+
+    const result = await parseUserIntent({
+      text: "Corrígelo por favor",
+      context: baseContext,
+    });
+
+    expect(result).toEqual({
+      name: "update_last_expense",
+      payload: {
+        patch: {
+          description: "Corrígelo por favor",
+        },
+        confidence: 0.55,
+      },
+    });
+  });
 });

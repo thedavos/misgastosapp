@@ -35,6 +35,9 @@ describe("create expense from intent", () => {
       expenseRepo: {
         createPending,
         getById: vi.fn(),
+        findLatestByCustomer: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
         markCategorized: vi.fn(),
       },
       logger: {
@@ -94,6 +97,9 @@ describe("create expense from intent", () => {
       expenseRepo: {
         createPending: vi.fn(),
         getById: vi.fn(),
+        findLatestByCustomer: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
         markCategorized: vi.fn(),
       },
       logger: {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { createTestEnv } from "test/helpers/fakes";
+import { describe, expect, it } from "vitest";
 import { handleFetch } from "@/handlers/http/router.handler";
 
 describe("mobile intent preview handler integration", () => {

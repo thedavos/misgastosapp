@@ -508,7 +508,7 @@ function createMemoryD1Database(options?: {
         if (query.startsWith("update expenses set status = ?")) {
           const [status, categoryId, updatedAt, id, customerId] = values as [
             string,
-            string,
+            string | null,
             string,
             string,
             string,
@@ -519,6 +519,27 @@ function createMemoryD1Database(options?: {
             ...current,
             status,
             category_id: categoryId,
+            updated_at: updatedAt,
+          });
+          return { success: true };
+        }
+
+        if (
+          query.startsWith(
+            "update expenses set amount = ?, currency = ?, merchant = ?, occurred_at = ?, raw_text = ?, updated_at = ?",
+          )
+        ) {
+          const [amount, currency, merchant, occurredAt, rawText, updatedAt, id, customerId] =
+            values as [number, string, string, string, string, string, string, string];
+          const current = expenses.get(id);
+          if (!current || current.customer_id !== customerId) return { success: false };
+          expenses.set(id, {
+            ...current,
+            amount,
+            currency,
+            merchant,
+            occurred_at: occurredAt,
+            raw_text: rawText,
             updated_at: updatedAt,
           });
           return { success: true };
@@ -764,6 +785,20 @@ function createMemoryD1Database(options?: {
           const row = expenses.get(id);
           if (!row || row.customer_id !== customerId) return null;
           return row as T;
+        }
+
+        if (
+          query.includes("from expenses") &&
+          query.includes("where customer_id = ? and status != ?") &&
+          query.includes("order by created_at desc")
+        ) {
+          const [customerId, excludedStatus] = values as [string, string];
+          const row = Array.from(expenses.values())
+            .filter(
+              (expense) => expense.customer_id === customerId && expense.status !== excludedStatus,
+            )
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+          return (row as T | undefined) ?? null;
         }
 
         if (query.includes("from categories where lower(name) = ?")) {

@@ -8,18 +8,20 @@ import {
   OcrExtractionError,
   type AppError,
 } from "@/app/errors";
+import type {
+  CreateExpenseIntentPayload,
+  DeleteLastExpenseIntentPayload,
+  IntentContext,
+  ParsedIntent,
+  SupportedSourceType,
+  UpdateLastExpenseIntentPayload,
+} from "@/domain/intent/entity";
 import type { IncomingAttachment, IncomingUserMessage } from "@/ports/channel.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { OcrPort } from "@/ports/ocr.port";
-import type {
-  CreateExpenseIntentPayload,
-  IntentContext,
-  ParsedIntent,
-  SupportedSourceType,
-} from "@/domain/intent/entity";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -52,6 +54,20 @@ export type ProcessChatMessageDeps = {
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
+  updateLastExpenseFromIntent?: (input: {
+    customerId: string;
+    channel: string;
+    userId: string;
+    payload: UpdateLastExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
+  deleteLastExpenseFromIntent?: (input: {
+    customerId: string;
+    channel: string;
+    userId: string;
+    payload: DeleteLastExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   parseUserIntent?: (input: {
     text: string;
     context: IntentContext;
@@ -67,6 +83,14 @@ export type ProcessChatMessageDeps = {
   }) => Promise<{ data: Uint8Array; mimeType?: string } | null>;
   mediaRetentionDays?: string;
 };
+
+function canApplyUpdateIntentDirectly(payload: UpdateLastExpenseIntentPayload): boolean {
+  return payload.confidence >= 0.9 && payload.patch.amountMinor !== undefined;
+}
+
+function canApplyDeleteIntentDirectly(payload: DeleteLastExpenseIntentPayload): boolean {
+  return payload.confidence >= 0.9;
+}
 
 export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
   const retentionDays = parsePositiveInt(deps.mediaRetentionDays, 90);
@@ -323,6 +347,50 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           return {
             categorized: false,
             expenseId: createdFromIntent.expenseId,
+          };
+        }
+      }
+
+      if (
+        input.channel === "whatsapp" &&
+        parsedIntent?.name === "update_last_expense" &&
+        deps.updateLastExpenseFromIntent &&
+        canApplyUpdateIntentDirectly(parsedIntent.payload)
+      ) {
+        const updatedFromIntent = yield* deps.updateLastExpenseFromIntent({
+          customerId: input.customerId,
+          channel: input.channel,
+          userId: input.userId,
+          payload: parsedIntent.payload,
+          requestId: input.requestId,
+        });
+
+        if (updatedFromIntent.handled) {
+          return {
+            categorized: false,
+            expenseId: updatedFromIntent.expenseId,
+          };
+        }
+      }
+
+      if (
+        input.channel === "whatsapp" &&
+        parsedIntent?.name === "delete_last_expense" &&
+        deps.deleteLastExpenseFromIntent &&
+        canApplyDeleteIntentDirectly(parsedIntent.payload)
+      ) {
+        const deletedFromIntent = yield* deps.deleteLastExpenseFromIntent({
+          customerId: input.customerId,
+          channel: input.channel,
+          userId: input.userId,
+          payload: parsedIntent.payload,
+          requestId: input.requestId,
+        });
+
+        if (deletedFromIntent.handled) {
+          return {
+            categorized: false,
+            expenseId: deletedFromIntent.expenseId,
           };
         }
       }
