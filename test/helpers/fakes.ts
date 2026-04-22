@@ -342,7 +342,6 @@ function createMemoryD1Database(options?: {
   const defaultChannels: ChannelRow[] = [
     { id: "whatsapp", name: "WhatsApp", status: "ACTIVE" },
     { id: "telegram", name: "Telegram", status: "ACTIVE" },
-    { id: "instagram", name: "Instagram", status: "INACTIVE" },
   ];
 
   for (const channel of options?.channels ?? defaultChannels) {
@@ -416,14 +415,6 @@ function createMemoryD1Database(options?: {
       limit_value: null,
     },
     {
-      id: "pf_free_instagram",
-      plan_id: "free",
-      feature_key: "channels.instagram",
-      feature_type: "boolean",
-      bool_value: 0,
-      limit_value: null,
-    },
-    {
       id: "pf_pro_whatsapp",
       plan_id: "pro",
       feature_key: "channels.whatsapp",
@@ -435,14 +426,6 @@ function createMemoryD1Database(options?: {
       id: "pf_pro_telegram",
       plan_id: "pro",
       feature_key: "channels.telegram",
-      feature_type: "boolean",
-      bool_value: 1,
-      limit_value: null,
-    },
-    {
-      id: "pf_pro_instagram",
-      plan_id: "pro",
-      feature_key: "channels.instagram",
       feature_type: "boolean",
       bool_value: 1,
       limit_value: null,

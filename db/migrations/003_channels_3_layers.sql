@@ -31,8 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_channel_settings_channel
 INSERT OR IGNORE INTO channels (id, name, status, created_at, updated_at)
 VALUES
   ('whatsapp', 'WhatsApp', 'ACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('telegram', 'Telegram', 'INACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('instagram', 'Instagram', 'INACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  ('telegram', 'Telegram', 'INACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 
 INSERT OR IGNORE INTO customer_channel_settings (id, customer_id, channel_id, enabled, is_primary, config_json, created_at, updated_at)
 SELECT

@@ -269,8 +269,7 @@ VALUES ('cust_default', 'Default Customer', 'ACTIVE', 'PEN', 'America/Lima', 'es
 INSERT OR IGNORE INTO channels (id, name, status, created_at, updated_at)
 VALUES
   ('whatsapp', 'WhatsApp', 'ACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('telegram', 'Telegram', 'ACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('instagram', 'Instagram', 'INACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  ('telegram', 'Telegram', 'ACTIVE', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 
 INSERT OR IGNORE INTO plans (id, name, price_amount, price_currency, billing_interval, status, version, created_at, updated_at)
 VALUES
@@ -281,10 +280,8 @@ INSERT OR IGNORE INTO plan_features (id, plan_id, feature_key, feature_type, boo
 VALUES
   ('pf_free_whatsapp', 'free', 'channels.whatsapp', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   ('pf_free_telegram', 'free', 'channels.telegram', 'boolean', 0, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_free_instagram', 'free', 'channels.instagram', 'boolean', 0, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   ('pf_pro_whatsapp', 'pro', 'channels.whatsapp', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_pro_telegram', 'pro', 'channels.telegram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_pro_instagram', 'pro', 'channels.instagram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  ('pf_pro_telegram', 'pro', 'channels.telegram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 
 INSERT OR IGNORE INTO categories (id, customer_id, name, slug) VALUES
   ('cat_food', NULL, 'Comida', 'comida'),

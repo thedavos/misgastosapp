@@ -1,12 +1,12 @@
 # MisGastosApp
 
-Worker en Cloudflare para procesar gastos desde email y categorizarlos vía conversación en canales de mensajería.
+Worker en Cloudflare para procesar gastos con WhatsApp como canal principal, email como canal soportado y Telegram conservado para una segunda iteración del producto.
 
 Estado actual:
 
 - Canal principal implementado: WhatsApp (Kapso).
-- Canal adicional implementado: Telegram (Chat SDK, DM-only).
-- Canal en scaffold: Instagram.
+- Canal secundario conservado: Telegram (Chat SDK, DM-only, segunda iteración).
+- Canal soportado para creación de gastos: email.
 - IA principal: Cloudflare Workers AI.
 - IA alterna en scaffold: Inflection API.
 
@@ -27,7 +27,6 @@ Estado actual:
 - `GET /health`
 - `POST /webhooks/whatsapp`
 - `POST /webhooks/telegram`
-- `POST /webhooks/instagram` (placeholder, `501`)
 
 ## Seguridad webhook WhatsApp
 

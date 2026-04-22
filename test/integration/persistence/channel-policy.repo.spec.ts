@@ -20,7 +20,6 @@ describe("d1 channel policy repo integration", () => {
       channels: [
         { id: "whatsapp", name: "WhatsApp", status: "INACTIVE" },
         { id: "telegram", name: "Telegram", status: "INACTIVE" },
-        { id: "instagram", name: "Instagram", status: "INACTIVE" },
       ],
     });
     const repo = createD1ChannelPolicyRepo(env);
