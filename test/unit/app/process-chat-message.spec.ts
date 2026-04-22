@@ -107,6 +107,79 @@ describe("process chat message", () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 
+  it("uses real create_expense path for WhatsApp when parser returns a complete intent", async () => {
+    const createExpenseFromIntent = vi.fn().mockImplementation(() =>
+      Effect.succeed({ expenseId: "exp_intent_1" }),
+    );
+    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue(null),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["ingestPendingExpense"],
+      handleUserReply: vi.fn(),
+      createExpenseFromIntent: createExpenseFromIntent as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["createExpenseFromIntent"],
+      parseUserIntent: vi.fn().mockResolvedValue({
+        name: "create_expense",
+        payload: {
+          draft: {
+            amountMinor: 1800,
+            currency: "PEN",
+            merchant: "Tambo",
+            occurredAt: "2026-04-22T10:00:00.000Z",
+          },
+          missingFields: [],
+          confidence: 0.9,
+        },
+      }),
+      resolveIntentContext: vi.fn().mockResolvedValue({
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+      }),
+    });
+
+    const result = await Effect.runPromise(
+      processChatMessage({
+        customerId: "cust_default",
+        channel: "whatsapp",
+        userId: "51999999999",
+        providerEventId: "evt_intent_1",
+        text: "S/ 18 en Tambo",
+      }),
+    );
+
+    expect(result.expenseId).toBe("exp_intent_1");
+    expect(createExpenseFromIntent).toHaveBeenCalledTimes(1);
+    expect(ingestPendingExpense).not.toHaveBeenCalled();
+  });
+
   it("processes OCR attachment and links media to created expense", async () => {
     const createMedia = vi.fn().mockResolvedValue({
       id: "media_1",

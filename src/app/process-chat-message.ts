@@ -14,7 +14,12 @@ import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { OcrPort } from "@/ports/ocr.port";
-import type { IntentContext, ParsedIntent, SupportedSourceType } from "@/domain/intent/entity";
+import type {
+  CreateExpenseIntentPayload,
+  IntentContext,
+  ParsedIntent,
+  SupportedSourceType,
+} from "@/domain/intent/entity";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -40,6 +45,13 @@ export type ProcessChatMessageDeps = {
     customerId: string;
     message: IncomingUserMessage;
   }) => Effect.Effect<{ categorized: boolean }, AppError>;
+  createExpenseFromIntent?: (input: {
+    customerId: string;
+    channel: string;
+    userId: string;
+    payload: CreateExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   parseUserIntent?: (input: {
     text: string;
     context: IntentContext;
@@ -230,6 +242,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         return { categorized: false, guided: true };
       }
 
+      let parsedIntent: ParsedIntent | null = null;
       if (deps.parseUserIntent) {
         const resolvedContext = yield* fromPromise(
           async () => {
@@ -253,7 +266,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             }),
         );
 
-        const parsedIntent = yield* fromPromise(
+        parsedIntent = yield* fromPromise(
           () =>
             deps.parseUserIntent?.({
               text: sourceText,
@@ -275,6 +288,43 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           intentName: parsedIntent.name,
           confidence: parsedIntent.payload.confidence,
         });
+      }
+
+      if (
+        input.channel === "whatsapp" &&
+        parsedIntent?.name === "create_expense" &&
+        deps.createExpenseFromIntent
+      ) {
+        const createdFromIntent = yield* deps.createExpenseFromIntent({
+          customerId: input.customerId,
+          channel: input.channel,
+          userId: input.userId,
+          payload: parsedIntent.payload,
+          requestId: input.requestId,
+        });
+
+        if (createdFromIntent?.expenseId) {
+          for (const mediaId of createdMediaIds) {
+            yield* fromPromise(
+              () =>
+                deps.chatMediaRepo.linkExpense({
+                  id: mediaId,
+                  expenseId: createdFromIntent.expenseId,
+                }),
+              (cause) =>
+                new ChatMediaPersistenceError({
+                  requestId: input.requestId,
+                  operation: "linkExpense",
+                  cause,
+                }),
+            );
+          }
+
+          return {
+            categorized: false,
+            expenseId: createdFromIntent.expenseId,
+          };
+        }
       }
 
       const ingestionResult = yield* deps

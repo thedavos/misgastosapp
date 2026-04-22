@@ -15,6 +15,7 @@ import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription
 import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
+import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
 import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
@@ -54,6 +55,13 @@ export function createContainer(
   });
   const parseUserIntent = createParseUserIntent({
     ai,
+    logger,
+  });
+  const createExpenseFromIntent = createCreateExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
     logger,
   });
   const telegramAttachmentResolver = async (input: {
@@ -121,6 +129,7 @@ export function createContainer(
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
     ingestPendingExpense,
     handleUserReply,
+    createExpenseFromIntent,
     parseUserIntent,
     resolveIntentContext: async ({ customerId }) => {
       const customer = await customerRepo.getById(customerId);

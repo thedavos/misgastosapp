@@ -60,6 +60,48 @@ describe("expense ingestion logic", () => {
     expect(dbState.inboundWebhookEvents.get("kapso_whatsapp:evt_1")?.status).toBe("PROCESSED");
   });
 
+  it("creates the expense directly for WhatsApp without opening pending conversation state", async () => {
+    const env = createTestEnv();
+    const container = createContainer(env);
+
+    await container.webhookEventRepo.tryStartProcessing({
+      provider: WHATSAPP_PROVIDER,
+      eventId: "evt_direct_1",
+      payloadHash: "hash_direct_1",
+      requestId: "req_direct_1",
+    });
+
+    const result = await runExpenseProcessingJobOnce(
+      env,
+      makeJob({
+        eventId: "evt_direct_1",
+        requestId: "req_direct_1",
+        text: "S/ 50 en Tambo",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+
+    const dbState = (
+      env.DB as unknown as {
+        __state: {
+          expenses: Map<string, { merchant: string; status: string }>;
+        };
+      }
+    ).__state;
+
+    expect(dbState.expenses.size).toBe(1);
+    expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
+      merchant: "Tambo",
+      status: "PENDING_CATEGORY",
+    });
+
+    const pendingState = await env.CONVERSATION_STATE_KV.get(
+      "conv:cust_default:whatsapp:51999999999",
+    );
+    expect(pendingState).toBeNull();
+  });
+
   it("schedules retry for a failed attempt while retries remain", async () => {
     const scheduleRetry = vi.fn().mockResolvedValue(undefined);
     const markFailed = vi.fn().mockResolvedValue(undefined);
