@@ -19,8 +19,8 @@ import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent"
 import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
 import { createGetReportFromIntent } from "@/app/get-report-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
-import { createCaptureExpenseWithClarification } from "@/app/ingest-expense-from-email";
-import { createFallbackExpenseCapture } from "@/app/ingest-pending-expense";
+import { createCaptureExpenseWithClarification } from "@/app/capture-expense-with-clarification";
+import { createFallbackExpenseCapture } from "@/app/fallback-expense-capture";
 import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
 import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";

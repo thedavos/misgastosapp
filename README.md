@@ -15,12 +15,12 @@ Estado actual:
 1. Llega un email de consumo al trigger `email` del Worker.
 2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve `customer` por remitente en `customer_email_senders`.
 3. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
-4. Se guarda gasto en D1 con estado `PENDING_CATEGORY`.
+4. Se guarda gasto en D1 con estado `needs_clarification`.
 5. Se guarda estado conversacional en KV (`conv:{customerId}:{channel}:{userId}`).
 6. Se envía mensaje por WhatsApp pidiendo categoría.
 7. Webhook de WhatsApp recibe respuesta del usuario.
 8. Se clasifica categoría con AI + reglas heurísticas.
-9. Se actualiza gasto a `CATEGORIZED`, se limpia KV y se confirma por WhatsApp.
+9. Se actualiza gasto a `confirmed`, se limpia KV y se confirma por WhatsApp.
 
 ## Endpoints HTTP
 

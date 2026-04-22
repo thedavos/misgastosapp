@@ -1,7 +1,7 @@
 import {
   createCaptureExpenseWithClarification,
   type CaptureExpenseWithClarificationDeps,
-} from "@/app/ingest-expense-from-email";
+} from "@/app/capture-expense-with-clarification";
 
 export type FallbackExpenseCaptureDeps = CaptureExpenseWithClarificationDeps;
 

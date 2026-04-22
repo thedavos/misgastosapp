@@ -96,8 +96,9 @@ SELECT
   e.category_id,
   e.occurred_at,
   CASE
-    WHEN e.status = 'CATEGORIZED' THEN 'confirmed'
-    WHEN e.status = 'PENDING_CATEGORY' THEN 'needs_clarification'
+    WHEN e.status IN ('CATEGORIZED', 'CONFIRMED', 'confirmed') THEN 'confirmed'
+    WHEN e.status IN ('PENDING_CATEGORY', 'NEEDS_CLARIFICATION', 'needs_clarification') THEN 'needs_clarification'
+    WHEN e.status IN ('DISCARDED', 'DELETED', 'deleted') THEN 'deleted'
     ELSE lower(e.status)
   END,
   'migration',

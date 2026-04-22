@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
-import { createCaptureExpenseWithClarification } from "@/app/ingest-expense-from-email";
+import { createCaptureExpenseWithClarification } from "@/app/capture-expense-with-clarification";
 
 describe("ingest expense from email", () => {
   it("creates pending expense and stores conversation state", async () => {

@@ -789,6 +789,21 @@ function createMemoryD1Database(options?: {
 
         if (
           query.includes("from expenses") &&
+          query.includes("where customer_id = ? and status not in") &&
+          query.includes("order by created_at desc")
+        ) {
+          const [customerId, ...excludedStatuses] = values as [string, ...string[]];
+          const excluded = new Set(excludedStatuses);
+          const row = Array.from(expenses.values())
+            .filter(
+              (expense) => expense.customer_id === customerId && !excluded.has(expense.status),
+            )
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+          return (row as T | undefined) ?? null;
+        }
+
+        if (
+          query.includes("from expenses") &&
           query.includes("where customer_id = ? and status != ?") &&
           query.includes("order by created_at desc")
         ) {
@@ -944,6 +959,24 @@ function createMemoryD1Database(options?: {
           }
 
           return { results: Array.from(categories.values()) as T[] };
+        }
+
+        if (
+          query.includes("from expenses") &&
+          query.includes("where customer_id = ? and status not in") &&
+          query.includes("order by occurred_at desc, created_at desc")
+        ) {
+          const [customerId, ...excludedStatuses] = values as [string, ...string[]];
+          const excluded = new Set(excludedStatuses);
+          return {
+            results: Array.from(expenses.values())
+              .filter((row) => row.customer_id === customerId && !excluded.has(row.status))
+              .sort((a, b) => {
+                const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
+                if (occurredDiff !== 0) return occurredDiff;
+                return b.created_at.localeCompare(a.created_at);
+              }) as T[],
+          };
         }
 
         if (

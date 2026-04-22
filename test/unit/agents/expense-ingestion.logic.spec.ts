@@ -93,7 +93,7 @@ describe("expense ingestion logic", () => {
     expect(dbState.expenses.size).toBe(1);
     expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
       merchant: "Tambo",
-      status: "PENDING_CATEGORY",
+      status: "needs_clarification",
     });
 
     const pendingState = await env.CONVERSATION_STATE_KV.get(
@@ -146,7 +146,7 @@ describe("expense ingestion logic", () => {
     expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
       amount: 70,
       merchant: "Tambo",
-      status: "PENDING_CATEGORY",
+      status: "needs_clarification",
     });
   });
 
@@ -192,7 +192,7 @@ describe("expense ingestion logic", () => {
 
     expect(dbState.expenses.size).toBe(1);
     expect(Array.from(dbState.expenses.values())[0]).toMatchObject({
-      status: "DISCARDED",
+      status: "deleted",
     });
   });
 

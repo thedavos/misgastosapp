@@ -20,7 +20,7 @@ describe("email handler integration", () => {
     expect(dbState.expenses.size).toBe(1);
 
     const expense = Array.from(dbState.expenses.values())[0];
-    expect(expense.status).toBe("PENDING_CATEGORY");
+    expect(expense.status).toBe("needs_clarification");
     expect(expense.customer_id).toBe("cust_default");
     expect(expense.merchant).toBe("Tambo");
 

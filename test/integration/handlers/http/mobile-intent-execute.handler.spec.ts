@@ -63,7 +63,7 @@ describe("mobile intent execute handler integration", () => {
       occurred_at: "2026-04-22T10:00:00.000Z",
       bank: "mobile",
       raw_text: "x",
-      status: "PENDING_CATEGORY",
+      status: "needs_clarification",
       category_id: null,
       created_at: "2026-04-22T10:00:00.000Z",
       updated_at: "2026-04-22T10:00:00.000Z",

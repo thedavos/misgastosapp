@@ -109,7 +109,7 @@ describe("whatsapp webhook integration", () => {
       }
     ).__state;
 
-    expect(dbState.expenses.get(expenseId)?.status).toBe("PENDING_CATEGORY");
+    expect(dbState.expenses.get(expenseId)?.status).toBe("needs_clarification");
     const pending = await env.CONVERSATION_STATE_KV.get("conv:cust_default:whatsapp:51999999999");
     expect(pending).not.toBeNull();
   });

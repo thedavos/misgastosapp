@@ -17,7 +17,7 @@ describe("d1 expense repo integration", () => {
       rawText: "raw",
     });
 
-    expect(created.status).toBe("PENDING_CATEGORY");
+    expect(created.status).toBe("needs_clarification");
 
     await repo.markCategorized({
       id: created.id,
@@ -26,7 +26,7 @@ describe("d1 expense repo integration", () => {
     });
     const updated = await repo.getById({ id: created.id, customerId: "cust_default" });
 
-    expect(updated?.status).toBe("CATEGORIZED");
+    expect(updated?.status).toBe("confirmed");
     expect(updated?.categoryId).toBe("cat_food");
   });
 
@@ -99,7 +99,7 @@ describe("d1 expense repo integration", () => {
       customerId: "cust_default",
     });
 
-    expect(discarded?.status).toBe("DISCARDED");
+    expect(discarded?.status).toBe("deleted");
     expect(await repo.findLatestByCustomer({ customerId: "cust_default" })).toBeNull();
   });
 });

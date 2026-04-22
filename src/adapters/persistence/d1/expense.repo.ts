@@ -18,6 +18,25 @@ type ExpenseRow = {
   updated_at: string;
 };
 
+function normalizeExpenseStatus(status: string): Expense["status"] {
+  switch (status) {
+    case "PENDING_CATEGORY":
+    case "NEEDS_CLARIFICATION":
+    case "needs_clarification":
+      return EXPENSE_STATUS.NeedsClarification;
+    case "CATEGORIZED":
+    case "CONFIRMED":
+    case "confirmed":
+      return EXPENSE_STATUS.Confirmed;
+    case "DISCARDED":
+    case "DELETED":
+    case "deleted":
+      return EXPENSE_STATUS.Deleted;
+    default:
+      return status as Expense["status"];
+  }
+}
+
 function mapExpenseRow(row: ExpenseRow): Expense {
   return {
     id: row.id,
@@ -28,7 +47,7 @@ function mapExpenseRow(row: ExpenseRow): Expense {
     occurredAt: row.occurred_at,
     bank: row.bank,
     rawText: row.raw_text,
-    status: row.status as Expense["status"],
+    status: normalizeExpenseStatus(row.status),
     categoryId: row.category_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -92,10 +111,10 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       const rows = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses
-         WHERE customer_id = ? AND status != ?
+         WHERE customer_id = ? AND status NOT IN (?, ?, ?)
          ORDER BY occurred_at DESC, created_at DESC`,
       )
-        .bind(input.customerId, EXPENSE_STATUS.Discarded)
+        .bind(input.customerId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
         .all<ExpenseRow>();
 
       return rows.results.map(mapExpenseRow);
@@ -105,11 +124,11 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       const row = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses
-         WHERE customer_id = ? AND status != ?
+         WHERE customer_id = ? AND status NOT IN (?, ?, ?)
          ORDER BY created_at DESC
          LIMIT 1`,
       )
-        .bind(input.customerId, EXPENSE_STATUS.Discarded)
+        .bind(input.customerId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
         .first<ExpenseRow>();
 
       if (!row) return null;
@@ -189,7 +208,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
          SET status = ?, category_id = ?, updated_at = ?
          WHERE id = ? AND customer_id = ?`,
       )
-        .bind(EXPENSE_STATUS.Discarded, existing.category_id, now, input.id, input.customerId)
+        .bind(EXPENSE_STATUS.Deleted, existing.category_id, now, input.id, input.customerId)
         .run();
 
       await env.DB.prepare(
@@ -208,7 +227,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
 
       return {
         ...mapExpenseRow(existing),
-        status: EXPENSE_STATUS.Discarded,
+        status: EXPENSE_STATUS.Deleted,
         updatedAt: now,
       };
     },
@@ -224,7 +243,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
          SET status = ?, category_id = ?, updated_at = ?
          WHERE id = ? AND customer_id = ?`,
       )
-        .bind(EXPENSE_STATUS.Categorized, input.categoryId, now, input.id, input.customerId)
+        .bind(EXPENSE_STATUS.Confirmed, input.categoryId, now, input.id, input.customerId)
         .run();
 
       await env.DB.prepare(

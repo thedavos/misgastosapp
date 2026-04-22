@@ -13,7 +13,7 @@ describe("create expense from intent", () => {
       occurredAt: "2026-04-22T10:00:00.000Z",
       bank: "unknown",
       rawText: "S/ 18 en Tambo",
-      status: "PENDING_CATEGORY",
+      status: "needs_clarification",
       categoryId: null,
       createdAt: "now",
       updatedAt: "now",
