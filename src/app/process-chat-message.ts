@@ -14,6 +14,7 @@ import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { OcrPort } from "@/ports/ocr.port";
+import type { IntentContext, ParsedIntent, SupportedSourceType } from "@/domain/intent/entity";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -39,6 +40,15 @@ export type ProcessChatMessageDeps = {
     customerId: string;
     message: IncomingUserMessage;
   }) => Effect.Effect<{ categorized: boolean }, AppError>;
+  parseUserIntent?: (input: {
+    text: string;
+    context: IntentContext;
+    requestId?: string;
+  }) => Promise<ParsedIntent>;
+  resolveIntentContext?: (input: {
+    customerId: string;
+    channel: string;
+  }) => Promise<Omit<IntentContext, "sourceType" | "nowIso"> | null>;
   resolveAttachmentData?: (input: {
     channel: string;
     attachment: IncomingAttachment;
@@ -218,6 +228,53 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           channel: input.channel,
         });
         return { categorized: false, guided: true };
+      }
+
+      if (deps.parseUserIntent) {
+        const resolvedContext = yield* fromPromise(
+          async () => {
+            const base = await deps.resolveIntentContext?.({
+              customerId: input.customerId,
+              channel: input.channel,
+            });
+
+            return {
+              sourceType: input.channel as SupportedSourceType,
+              timezone: base?.timezone ?? "America/Lima",
+              defaultCurrency: base?.defaultCurrency ?? "PEN",
+              nowIso: input.timestamp ?? new Date().toISOString(),
+            } satisfies IntentContext;
+          },
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "get",
+              cause,
+            }),
+        );
+
+        const parsedIntent = yield* fromPromise(
+          () =>
+            deps.parseUserIntent?.({
+              text: sourceText,
+              context: resolvedContext,
+              requestId: input.requestId,
+            }) as Promise<ParsedIntent>,
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "get",
+              cause,
+            }),
+        );
+
+        deps.logger.info("intent.shadow_parsed", {
+          requestId: input.requestId,
+          customerId: input.customerId,
+          channel: input.channel,
+          intentName: parsedIntent.name,
+          confidence: parsedIntent.payload.confidence,
+        });
       }
 
       const ingestionResult = yield* deps

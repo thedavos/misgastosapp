@@ -18,6 +18,7 @@ import { createAuthorizeChannel } from "@/app/authorize-channel";
 import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
 import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
+import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
 
 export function createContainer(
@@ -50,6 +51,10 @@ export function createContainer(
     featurePolicy,
     logger,
     strictPolicyMode: env.STRICT_POLICY_MODE !== "false",
+  });
+  const parseUserIntent = createParseUserIntent({
+    ai,
+    logger,
   });
   const telegramAttachmentResolver = async (input: {
     channel: string;
@@ -116,6 +121,15 @@ export function createContainer(
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
     ingestPendingExpense,
     handleUserReply,
+    parseUserIntent,
+    resolveIntentContext: async ({ customerId }) => {
+      const customer = await customerRepo.getById(customerId);
+      if (!customer) return null;
+      return {
+        timezone: customer.timezone,
+        defaultCurrency: customer.defaultCurrency,
+      };
+    },
     resolveAttachmentData: telegramAttachmentResolver,
   });
 
@@ -142,6 +156,7 @@ export function createContainer(
       conversationState,
       logger,
     }),
+    parseUserIntent,
     handleUserReply,
     ingestPendingExpense,
     chatMediaRepo,

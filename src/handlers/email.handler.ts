@@ -175,6 +175,28 @@ export async function handleEmail(
 
     const emailText = emailToAiInput(parsedEmail);
 
+    const parsedIntent = yield* Effect.tryPromise({
+      try: () =>
+        container.parseUserIntent({
+          text: emailText,
+          context: {
+            sourceType: "email",
+            timezone: customer.timezone,
+            defaultCurrency: customer.defaultCurrency,
+            nowIso: new Date().toISOString(),
+          },
+          requestId,
+        }),
+      catch: (cause) => new EmailParseFailedError({ requestId, cause }),
+    });
+
+    container.logger.info("email.intent_shadow_parsed", {
+      requestId,
+      customerId,
+      intentName: parsedIntent.name,
+      confidence: parsedIntent.payload.confidence,
+    });
+
     yield* container.ingestExpenseFromEmail({
       customerId,
       emailText,
