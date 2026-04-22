@@ -7,6 +7,12 @@ import {
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
+import type {
+  CreateExpenseIntentPayload,
+  DeleteLastExpenseIntentPayload,
+  GetReportIntentPayload,
+  UpdateLastExpenseIntentPayload,
+} from "@/domain/intent/entity";
 import { createContainer } from "@/composition/container";
 import { getEffectFailureMeta } from "@/utils/effect-failure";
 
@@ -45,6 +51,29 @@ function resolveWorkerInbox(env: WorkerEnv): string {
   const configured = env.EMAIL_WORKER_INBOX?.trim().toLowerCase();
   if (configured && configured.length > 0) return configured;
   return "recibos@misgastos.app";
+}
+
+function canApplyCreateExpenseDirectly(payload: CreateExpenseIntentPayload): boolean {
+  return (
+    payload.confidence >= 0.85 &&
+    payload.missingFields.length === 0 &&
+    payload.draft.amountMinor !== undefined &&
+    Boolean(payload.draft.currency) &&
+    Boolean(payload.draft.merchant) &&
+    Boolean(payload.draft.occurredAt)
+  );
+}
+
+function canApplyUpdateIntentDirectly(payload: UpdateLastExpenseIntentPayload): boolean {
+  return payload.confidence >= 0.9 && payload.patch.amountMinor !== undefined;
+}
+
+function canApplyDeleteIntentDirectly(payload: DeleteLastExpenseIntentPayload): boolean {
+  return payload.confidence >= 0.9;
+}
+
+function canApplyReportIntentDirectly(payload: GetReportIntentPayload): boolean {
+  return payload.confidence >= 0.9;
 }
 
 export async function handleEmail(
@@ -197,6 +226,87 @@ export async function handleEmail(
       confidence: parsedIntent.payload.confidence,
     });
 
+    if (
+      parsedIntent.name === "create_expense" &&
+      canApplyCreateExpenseDirectly(parsedIntent.payload)
+    ) {
+      yield* container.createExpenseFromIntent({
+        customerId,
+        channel: "whatsapp",
+        userId,
+        payload: parsedIntent.payload,
+        requestId,
+      });
+      container.logger.info("email.done", {
+        requestId,
+        customerId,
+        mode: "direct_create_expense",
+      });
+      return;
+    }
+
+    if (
+      parsedIntent.name === "update_last_expense" &&
+      canApplyUpdateIntentDirectly(parsedIntent.payload)
+    ) {
+      const updated = yield* container.updateLastExpenseFromIntent({
+        customerId,
+        channel: "whatsapp",
+        userId,
+        payload: parsedIntent.payload,
+        requestId,
+      });
+      if (updated.handled) {
+        container.logger.info("email.done", {
+          requestId,
+          customerId,
+          mode: "direct_update_last_expense",
+        });
+        return;
+      }
+    }
+
+    if (
+      parsedIntent.name === "delete_last_expense" &&
+      canApplyDeleteIntentDirectly(parsedIntent.payload)
+    ) {
+      const deleted = yield* container.deleteLastExpenseFromIntent({
+        customerId,
+        channel: "whatsapp",
+        userId,
+        payload: parsedIntent.payload,
+        requestId,
+      });
+      if (deleted.handled) {
+        container.logger.info("email.done", {
+          requestId,
+          customerId,
+          mode: "direct_delete_last_expense",
+        });
+        return;
+      }
+    }
+
+    if (parsedIntent.name === "get_report" && canApplyReportIntentDirectly(parsedIntent.payload)) {
+      const reported = yield* container.getReportFromIntent({
+        customerId,
+        channel: "whatsapp",
+        userId,
+        payload: parsedIntent.payload,
+        timezone: customer.timezone,
+        nowIso: new Date().toISOString(),
+        requestId,
+      });
+      if (reported.handled) {
+        container.logger.info("email.done", {
+          requestId,
+          customerId,
+          mode: "direct_get_report",
+        });
+        return;
+      }
+    }
+
     yield* container.ingestExpenseFromEmail({
       customerId,
       emailText,
@@ -205,7 +315,7 @@ export async function handleEmail(
       requestId,
     });
 
-    container.logger.info("email.done", { requestId, customerId });
+    container.logger.info("email.done", { requestId, customerId, mode: "fallback_pending" });
   });
 
   const result = await Effect.runPromiseExit(effect);
