@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { WorkerEnv } from "types/env";
 import { handleHealth } from "@/handlers/http/health.handler";
+import { handleMobileIntentExecute } from "@/handlers/http/mobile-intent-execute.handler";
 import { handleMobileIntentPreview } from "@/handlers/http/mobile-intent-preview.handler";
 import { handleTelegramWebhook } from "@/handlers/http/telegram-webhook.handler";
 import { handleWhatsAppWebhook } from "@/handlers/http/whatsapp-webhook.handler";
@@ -17,9 +18,13 @@ app.post("/webhooks/telegram", (c) => handleTelegramWebhook(c.req.raw, c.env, c.
 app.post("/api/mobile/intents/preview", (c) =>
   handleMobileIntentPreview(c.req.raw, c.env, c.executionCtx),
 );
+app.post("/api/mobile/intents/execute", (c) =>
+  handleMobileIntentExecute(c.req.raw, c.env, c.executionCtx),
+);
 app.get("/webhooks/whatsapp", () => new Response("Method Not Allowed", { status: 405 }));
 app.get("/webhooks/telegram", () => new Response("Method Not Allowed", { status: 405 }));
 app.get("/api/mobile/intents/preview", () => new Response("Method Not Allowed", { status: 405 }));
+app.get("/api/mobile/intents/execute", () => new Response("Method Not Allowed", { status: 405 }));
 app.notFound(() => new Response("Not Found", { status: 404 }));
 
 export async function handleFetch(

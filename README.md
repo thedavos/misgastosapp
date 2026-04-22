@@ -27,7 +27,8 @@ Estado actual:
 - `GET /health`
 - `POST /webhooks/whatsapp`
 - `POST /webhooks/telegram`
-- `POST /api/mobile/intents/preview` (base API para mobile)
+- `POST /api/mobile/intents/preview` (preview del parser para mobile)
+- `POST /api/mobile/intents/execute` (base de ejecución real para mobile)
 
 ## Seguridad webhook WhatsApp
 
