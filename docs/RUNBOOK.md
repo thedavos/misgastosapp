@@ -112,7 +112,7 @@ wrangler tail misgastosapp
 
 ### Señales esperadas
 
-- `expense.pending_category_created`
+- `expense.needs_clarification_created`
 - `expense.flow_completed`
 - `whatsapp.webhook_unauthorized` (si firma incorrecta)
 - `whatsapp.webhook_duplicate_ignored` (si llega evento repetido)

@@ -37,7 +37,7 @@ function mapExpenseRow(row: ExpenseRow): Expense {
 
 export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
   return {
-    async createPending(input: NewExpense): Promise<Expense> {
+    async createExpenseRecord(input: NewExpense): Promise<Expense> {
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
 
@@ -54,7 +54,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
           input.occurredAt,
           input.bank,
           input.rawText,
-          EXPENSE_STATUS.PendingCategory,
+          EXPENSE_STATUS.NeedsClarification,
           now,
           now,
         )
@@ -69,7 +69,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
         occurredAt: input.occurredAt,
         bank: input.bank,
         rawText: input.rawText,
-        status: EXPENSE_STATUS.PendingCategory,
+        status: EXPENSE_STATUS.NeedsClarification,
         categoryId: null,
         createdAt: now,
         updatedAt: now,

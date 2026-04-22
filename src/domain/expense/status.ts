@@ -1,5 +1,5 @@
 export const EXPENSE_STATUS = {
-  PendingCategory: "PENDING_CATEGORY",
+  NeedsClarification: "PENDING_CATEGORY",
   Categorized: "CATEGORIZED",
   Discarded: "DISCARDED",
 } as const;

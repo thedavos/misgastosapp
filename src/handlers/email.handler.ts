@@ -181,12 +181,12 @@ export async function handleEmail(
       senderEmail: matchedSenderEmail ?? senderCandidates[0],
     });
 
-    const emailText = emailToAiInput(parsedEmail);
+    const sourceText = emailToAiInput(parsedEmail);
 
     const parsedIntent = yield* Effect.tryPromise({
       try: () =>
         container.parseUserIntent({
-          text: emailText,
+          text: sourceText,
           context: {
             sourceType: "email",
             timezone: customer.timezone,
@@ -224,15 +224,15 @@ export async function handleEmail(
       return;
     }
 
-    yield* container.ingestExpenseFromEmail({
+    yield* container.captureExpenseWithClarification({
       customerId,
-      emailText,
+      sourceText,
       channel: "whatsapp",
       userId,
       requestId,
     });
 
-    container.logger.info("email.done", { requestId, customerId, mode: "fallback_pending" });
+    container.logger.info("email.done", { requestId, customerId, mode: "fallback_clarification" });
   });
 
   const result = await Effect.runPromiseExit(effect);

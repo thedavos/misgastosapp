@@ -7,7 +7,7 @@ describe("d1 expense repo integration", () => {
     const env = createTestEnv();
     const repo = createD1ExpenseRepo(env);
 
-    const created = await repo.createPending({
+    const created = await repo.createExpenseRecord({
       customerId: "cust_default",
       amount: 23,
       currency: "PEN",
@@ -34,7 +34,7 @@ describe("d1 expense repo integration", () => {
     const env = createTestEnv();
     const repo = createD1ExpenseRepo(env);
 
-    await repo.createPending({
+    await repo.createExpenseRecord({
       customerId: "cust_default",
       amount: 10,
       currency: "PEN",
@@ -44,7 +44,7 @@ describe("d1 expense repo integration", () => {
       rawText: "old",
     });
 
-    await repo.createPending({
+    await repo.createExpenseRecord({
       customerId: "cust_default",
       amount: 20,
       currency: "PEN",
@@ -65,7 +65,7 @@ describe("d1 expense repo integration", () => {
     const env = createTestEnv();
     const repo = createD1ExpenseRepo(env);
 
-    const created = await repo.createPending({
+    const created = await repo.createExpenseRecord({
       customerId: "cust_default",
       amount: 23,
       currency: "PEN",

@@ -50,7 +50,7 @@ export class CategoryClassificationError extends Data.TaggedError("CategoryClass
 export class ExpensePersistenceError extends Data.TaggedError("ExpensePersistenceError")<{
   requestId?: string;
   operation:
-    | "createPending"
+    | "createExpenseRecord"
     | "getById"
     | "listByCustomer"
     | "findLatestByCustomer"

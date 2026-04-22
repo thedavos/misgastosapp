@@ -1,23 +1,23 @@
 import {
-  createIngestExpenseFromEmail,
-  type IngestExpenseFromEmailDeps,
+  createCaptureExpenseWithClarification,
+  type CaptureExpenseWithClarificationDeps,
 } from "@/app/ingest-expense-from-email";
 
-export type IngestPendingExpenseDeps = IngestExpenseFromEmailDeps;
+export type FallbackExpenseCaptureDeps = CaptureExpenseWithClarificationDeps;
 
-export function createIngestPendingExpense(deps: IngestPendingExpenseDeps) {
-  const ingestExpenseFromEmail = createIngestExpenseFromEmail(deps);
+export function createFallbackExpenseCapture(deps: FallbackExpenseCaptureDeps) {
+  const captureExpenseWithClarification = createCaptureExpenseWithClarification(deps);
 
-  return function ingestPendingExpense(input: {
+  return function fallbackExpenseCapture(input: {
     customerId: string;
     sourceText: string;
     channel: string;
     userId: string;
     requestId?: string;
   }) {
-    return ingestExpenseFromEmail({
+    return captureExpenseWithClarification({
       customerId: input.customerId,
-      emailText: input.sourceText,
+      sourceText: input.sourceText,
       channel: input.channel,
       userId: input.userId,
       requestId: input.requestId,

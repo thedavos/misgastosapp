@@ -38,7 +38,7 @@ export type ProcessChatMessageDeps = {
   ocr: OcrPort;
   chatMediaRepo: ChatMediaRepoPort;
   logger: LoggerPort;
-  ingestPendingExpense: (input: {
+  fallbackExpenseCapture: (input: {
     customerId: string;
     sourceText: string;
     channel: string;
@@ -362,7 +362,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       }
 
       const ingestionResult = yield* deps
-        .ingestPendingExpense({
+        .fallbackExpenseCapture({
           customerId: input.customerId,
           sourceText,
           channel: input.channel,

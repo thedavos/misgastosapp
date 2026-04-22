@@ -19,8 +19,8 @@ import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent"
 import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
 import { createGetReportFromIntent } from "@/app/get-report-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
-import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
-import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
+import { createCaptureExpenseWithClarification } from "@/app/ingest-expense-from-email";
+import { createFallbackExpenseCapture } from "@/app/ingest-pending-expense";
 import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
 import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";
@@ -134,7 +134,7 @@ export function createContainer(
     confidenceThreshold: 0.75,
   });
 
-  const ingestPendingExpense = createIngestPendingExpense({
+  const fallbackExpenseCapture = createFallbackExpenseCapture({
     ai,
     channel: selectedChannel,
     channelPolicyRepo,
@@ -151,7 +151,7 @@ export function createContainer(
     chatMediaRepo,
     logger,
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
-    ingestPendingExpense,
+    fallbackExpenseCapture,
     handleUserReply,
     createExpenseFromIntent,
     updateLastExpenseFromIntent,
@@ -183,7 +183,7 @@ export function createContainer(
     webhookEventRepo,
     conversationState,
     authorizeChannel,
-    ingestExpenseFromEmail: createIngestExpenseFromEmail({
+    captureExpenseWithClarification: createCaptureExpenseWithClarification({
       ai,
       channel: whatsappChannel,
       channelPolicyRepo,
@@ -198,7 +198,7 @@ export function createContainer(
     getReportFromIntent,
     parseUserIntent,
     handleUserReply,
-    ingestPendingExpense,
+    fallbackExpenseCapture,
     chatMediaRepo,
     ocr,
     processChatMessage,

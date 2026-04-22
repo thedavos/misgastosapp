@@ -19,7 +19,7 @@ describe("get report from intent", () => {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending: vi.fn(),
+        createExpenseRecord: vi.fn(),
         getById: vi.fn(),
         listByCustomer: vi.fn().mockResolvedValue([
           {
@@ -101,7 +101,7 @@ describe("get report from intent", () => {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending: vi.fn(),
+        createExpenseRecord: vi.fn(),
         getById: vi.fn(),
         listByCustomer: vi.fn().mockResolvedValue([
           {

@@ -58,7 +58,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
 
       const expense = yield* fromPromise(
         () =>
-          deps.expenseRepo.createPending({
+          deps.expenseRepo.createExpenseRecord({
             customerId: input.customerId,
             amount,
             currency,
@@ -70,7 +70,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "createPending",
+            operation: "createExpenseRecord",
             cause,
           }),
       );

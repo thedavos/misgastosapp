@@ -4,7 +4,7 @@ import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent"
 
 describe("create expense from intent", () => {
   it("persists and confirms when the payload is sufficient", async () => {
-    const createPending = vi.fn().mockResolvedValue({
+    const createExpenseRecord = vi.fn().mockResolvedValue({
       id: "exp_1",
       customerId: "cust_default",
       amount: 18,
@@ -33,7 +33,7 @@ describe("create expense from intent", () => {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending,
+        createExpenseRecord,
         getById: vi.fn(),
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
@@ -67,7 +67,7 @@ describe("create expense from intent", () => {
       }),
     );
 
-    expect(createPending).toHaveBeenCalledWith(
+    expect(createExpenseRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 18,
         currency: "PEN",
@@ -95,7 +95,7 @@ describe("create expense from intent", () => {
         isFeatureEnabled: vi.fn(),
       },
       expenseRepo: {
-        createPending: vi.fn(),
+        createExpenseRecord: vi.fn(),
         getById: vi.fn(),
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),

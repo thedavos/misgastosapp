@@ -76,7 +76,7 @@ export async function handleMobileIntentExecute(
   });
 
   if (canApplyCreateExpenseDirectly(parsedIntent)) {
-    const created = await container.expenseRepo.createPending({
+    const created = await container.expenseRepo.createExpenseRecord({
       customerId,
       amount: parsedIntent.payload.draft.amountMinor! / 100,
       currency: parsedIntent.payload.draft.currency!,

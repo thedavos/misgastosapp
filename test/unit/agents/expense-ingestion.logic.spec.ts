@@ -30,9 +30,9 @@ describe("expense ingestion logic", () => {
     const container = createContainer(env);
 
     const created = await Effect.runPromise(
-      container.ingestExpenseFromEmail({
+      container.captureExpenseWithClarification({
         customerId: "cust_default",
-        emailText: "Compra por S/ 50 en Tambo",
+        sourceText: "Compra por S/ 50 en Tambo",
         channel: "whatsapp",
         userId: "51999999999",
       }),

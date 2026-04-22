@@ -28,7 +28,7 @@ describe("handle user reply", () => {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending: vi.fn(),
+        createExpenseRecord: vi.fn(),
         getById: vi.fn().mockResolvedValue({ id: "exp_1", customerId: "cust_default" }),
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),

@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
-import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
+import { createCaptureExpenseWithClarification } from "@/app/ingest-expense-from-email";
 
 describe("ingest expense from email", () => {
   it("creates pending expense and stores conversation state", async () => {
-    const createPending = vi.fn().mockResolvedValue({
+    const createExpenseRecord = vi.fn().mockResolvedValue({
       id: "exp_1",
       customerId: "cust_default",
       amount: 55,
@@ -14,7 +14,7 @@ describe("ingest expense from email", () => {
     const put = vi.fn().mockResolvedValue(undefined);
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
 
-    const ingest = createIngestExpenseFromEmail({
+    const ingest = createCaptureExpenseWithClarification({
       ai: {
         extractTransaction: vi.fn().mockResolvedValue({
           amount: 55,
@@ -42,7 +42,7 @@ describe("ingest expense from email", () => {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending,
+        createExpenseRecord,
         getById: vi.fn(),
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
@@ -65,14 +65,14 @@ describe("ingest expense from email", () => {
     const result = await Effect.runPromise(
       ingest({
         customerId: "cust_default",
-        emailText: "mail text",
+        sourceText: "mail text",
         channel: "whatsapp",
         userId: "51999999999",
       }),
     );
 
     expect(result).toEqual({ expenseId: "exp_1" });
-    expect(createPending).toHaveBeenCalledWith(
+    expect(createExpenseRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         customerId: "cust_default",
       }),

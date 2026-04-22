@@ -22,15 +22,15 @@ import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 
-export type IngestExpenseFromEmailInput = {
+export type CaptureExpenseWithClarificationInput = {
   customerId: string;
-  emailText: string;
+  sourceText: string;
   channel: string;
   userId: string;
   requestId?: string;
 };
 
-export type IngestExpenseFromEmailDeps = {
+export type CaptureExpenseWithClarificationDeps = {
   ai: AiPort;
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
@@ -40,13 +40,13 @@ export type IngestExpenseFromEmailDeps = {
   logger: LoggerPort;
 };
 
-export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
-  return function ingestExpenseFromEmail(
-    input: IngestExpenseFromEmailInput,
+export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithClarificationDeps) {
+  return function captureExpenseWithClarification(
+    input: CaptureExpenseWithClarificationInput,
   ): Effect.Effect<{ expenseId: string } | null, AppError> {
     return Effect.gen(function* () {
       const transaction = yield* fromPromise(
-        () => deps.ai.extractTransaction(input.emailText),
+        () => deps.ai.extractTransaction(input.sourceText),
         (cause) => new AiExtractFailedError({ requestId: input.requestId, cause }),
       );
 
@@ -62,7 +62,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
 
       const expense = yield* fromPromise(
         () =>
-          deps.expenseRepo.createPending({
+          deps.expenseRepo.createExpenseRecord({
             customerId: input.customerId,
             amount: transaction.amount,
             currency: transaction.currency,
@@ -74,7 +74,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "createPending",
+            operation: "createExpenseRecord",
             cause,
           }),
       );
@@ -171,7 +171,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
-      deps.logger.info("expense.pending_category_created", {
+      deps.logger.info("expense.needs_clarification_created", {
         requestId: input.requestId,
         expenseId: expense.id,
         channel: input.channel,

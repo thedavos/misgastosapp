@@ -38,9 +38,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: vi.fn() as unknown as Parameters<
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply,
     });
 
@@ -87,9 +87,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: vi.fn() as unknown as Parameters<
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
     });
 
@@ -111,7 +111,7 @@ describe("process chat message", () => {
     const createExpenseFromIntent = vi
       .fn()
       .mockImplementation(() => Effect.succeed({ expenseId: "exp_intent_1" }));
-    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+    const fallbackExpenseCapture = vi.fn().mockImplementation(() => Effect.succeed(null));
 
     const processChatMessage = createProcessChatMessage({
       conversationState: {
@@ -139,9 +139,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       createExpenseFromIntent: createExpenseFromIntent as unknown as Parameters<
         typeof createProcessChatMessage
@@ -177,14 +177,14 @@ describe("process chat message", () => {
 
     expect(result.expenseId).toBe("exp_intent_1");
     expect(createExpenseFromIntent).toHaveBeenCalledTimes(1);
-    expect(ingestPendingExpense).not.toHaveBeenCalled();
+    expect(fallbackExpenseCapture).not.toHaveBeenCalled();
   });
 
   it("uses direct update_last_expense path for WhatsApp when the parser returns a strong patch", async () => {
     const updateLastExpenseFromIntent = vi
       .fn()
       .mockImplementation(() => Effect.succeed({ handled: true, expenseId: "exp_updated_1" }));
-    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+    const fallbackExpenseCapture = vi.fn().mockImplementation(() => Effect.succeed(null));
 
     const processChatMessage = createProcessChatMessage({
       conversationState: {
@@ -212,9 +212,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       updateLastExpenseFromIntent: updateLastExpenseFromIntent as unknown as Parameters<
         typeof createProcessChatMessage
@@ -247,14 +247,14 @@ describe("process chat message", () => {
 
     expect(result.expenseId).toBe("exp_updated_1");
     expect(updateLastExpenseFromIntent).toHaveBeenCalledTimes(1);
-    expect(ingestPendingExpense).not.toHaveBeenCalled();
+    expect(fallbackExpenseCapture).not.toHaveBeenCalled();
   });
 
   it("uses direct delete_last_expense path for WhatsApp when confidence is sufficient", async () => {
     const deleteLastExpenseFromIntent = vi
       .fn()
       .mockImplementation(() => Effect.succeed({ handled: true, expenseId: "exp_deleted_1" }));
-    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+    const fallbackExpenseCapture = vi.fn().mockImplementation(() => Effect.succeed(null));
 
     const processChatMessage = createProcessChatMessage({
       conversationState: {
@@ -282,9 +282,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       deleteLastExpenseFromIntent: deleteLastExpenseFromIntent as unknown as Parameters<
         typeof createProcessChatMessage
@@ -313,12 +313,12 @@ describe("process chat message", () => {
 
     expect(result.expenseId).toBe("exp_deleted_1");
     expect(deleteLastExpenseFromIntent).toHaveBeenCalledTimes(1);
-    expect(ingestPendingExpense).not.toHaveBeenCalled();
+    expect(fallbackExpenseCapture).not.toHaveBeenCalled();
   });
 
   it("uses direct get_report path for WhatsApp when confidence is sufficient", async () => {
     const getReportFromIntent = vi.fn().mockImplementation(() => Effect.succeed({ handled: true }));
-    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+    const fallbackExpenseCapture = vi.fn().mockImplementation(() => Effect.succeed(null));
 
     const processChatMessage = createProcessChatMessage({
       conversationState: {
@@ -346,9 +346,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       getReportFromIntent: getReportFromIntent as unknown as Parameters<
         typeof createProcessChatMessage
@@ -378,7 +378,7 @@ describe("process chat message", () => {
 
     expect(result.expenseId).toBeUndefined();
     expect(getReportFromIntent).toHaveBeenCalledTimes(1);
-    expect(ingestPendingExpense).not.toHaveBeenCalled();
+    expect(fallbackExpenseCapture).not.toHaveBeenCalled();
   });
 
   it("falls back when update_last_expense intent is too weak to apply safely", async () => {
@@ -387,7 +387,7 @@ describe("process chat message", () => {
       .mockImplementation(() =>
         Effect.succeed({ handled: true, expenseId: "exp_updated_ignored" }),
       );
-    const ingestPendingExpense = vi
+    const fallbackExpenseCapture = vi
       .fn()
       .mockImplementation(() => Effect.succeed({ expenseId: "exp_fallback_1" }));
 
@@ -417,9 +417,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       updateLastExpenseFromIntent: updateLastExpenseFromIntent as unknown as Parameters<
         typeof createProcessChatMessage
@@ -451,7 +451,7 @@ describe("process chat message", () => {
 
     expect(result.expenseId).toBe("exp_fallback_1");
     expect(updateLastExpenseFromIntent).not.toHaveBeenCalled();
-    expect(ingestPendingExpense).toHaveBeenCalledTimes(1);
+    expect(fallbackExpenseCapture).toHaveBeenCalledTimes(1);
   });
 
   it("processes OCR attachment and links media to created expense", async () => {
@@ -471,7 +471,7 @@ describe("process chat message", () => {
       expiresAt: "later",
     });
     const linkExpense = vi.fn().mockResolvedValue(undefined);
-    const ingestPendingExpense = vi
+    const fallbackExpenseCapture = vi
       .fn()
       .mockImplementation((input: { sourceText: string }) =>
         Effect.succeed(input.sourceText.includes("TAMBO") ? { expenseId: "exp_2" } : null),
@@ -503,9 +503,9 @@ describe("process chat message", () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
         typeof createProcessChatMessage
-      >[0]["ingestPendingExpense"],
+      >[0]["fallbackExpenseCapture"],
       handleUserReply: vi.fn(),
       resolveAttachmentData: vi.fn().mockResolvedValue({
         data: new Uint8Array([1, 2, 3]),
