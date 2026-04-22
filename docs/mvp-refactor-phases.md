@@ -32,6 +32,14 @@ Reorientar el proyecto actual para que el núcleo del producto quede centrado en
 - revisar adapters y repos sin uso real antes de eliminarlos
 - dejar README y RUNBOOK alineados al nuevo foco del producto
 
+## Artefactos ya creados
+
+- `docs/mvp-db-model-draft.md`
+- `db/migrations/011_mvp_core_schema.sql`
+- `db/migrations/012_backfill_mvp_core_from_legacy.sql`
+- `docs/mvp-intents-and-flow.md`
+- `src/domain/intent/entity.ts`
+
 ## Fase 2. Nuevo modelo DB MVP
 
 ### Objetivo
