@@ -3,6 +3,7 @@ import type { Expense, NewExpense } from "@/domain/expense/entity";
 export interface ExpenseRepoPort {
   createPending(input: NewExpense): Promise<Expense>;
   getById(input: { id: string; customerId: string }): Promise<Expense | null>;
+  listByCustomer(input: { customerId: string }): Promise<Expense[]>;
   findLatestByCustomer(input: { customerId: string }): Promise<Expense | null>;
   update(input: {
     id: string;

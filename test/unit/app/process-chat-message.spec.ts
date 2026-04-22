@@ -316,6 +316,71 @@ describe("process chat message", () => {
     expect(ingestPendingExpense).not.toHaveBeenCalled();
   });
 
+  it("uses direct get_report path for WhatsApp when confidence is sufficient", async () => {
+    const getReportFromIntent = vi.fn().mockImplementation(() => Effect.succeed({ handled: true }));
+    const ingestPendingExpense = vi.fn().mockImplementation(() => Effect.succeed(null));
+
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue(null),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      ingestPendingExpense: ingestPendingExpense as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["ingestPendingExpense"],
+      handleUserReply: vi.fn(),
+      getReportFromIntent: getReportFromIntent as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["getReportFromIntent"],
+      parseUserIntent: vi.fn().mockResolvedValue({
+        name: "get_report",
+        payload: {
+          periodKind: "month",
+          confidence: 0.96,
+        },
+      }),
+      resolveIntentContext: vi.fn().mockResolvedValue({
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+      }),
+    });
+
+    const result = await Effect.runPromise(
+      processChatMessage({
+        customerId: "cust_default",
+        channel: "whatsapp",
+        userId: "51999999999",
+        providerEventId: "evt_report_1",
+        text: "Resumen del mes",
+      }),
+    );
+
+    expect(result.expenseId).toBeUndefined();
+    expect(getReportFromIntent).toHaveBeenCalledTimes(1);
+    expect(ingestPendingExpense).not.toHaveBeenCalled();
+  });
+
   it("falls back when update_last_expense intent is too weak to apply safely", async () => {
     const updateLastExpenseFromIntent = vi
       .fn()

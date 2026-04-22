@@ -17,6 +17,7 @@ import { createKvConversationStateRepo } from "@/adapters/persistence/kv/convers
 import { createAuthorizeChannel } from "@/app/authorize-channel";
 import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent";
 import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
+import { createGetReportFromIntent } from "@/app/get-report-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
 import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
@@ -74,6 +75,13 @@ export function createContainer(
     logger,
   });
   const deleteLastExpenseFromIntent = createDeleteLastExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const getReportFromIntent = createGetReportFromIntent({
     channel: selectedChannel,
     channelPolicyRepo,
     featurePolicy,
@@ -148,6 +156,7 @@ export function createContainer(
     createExpenseFromIntent,
     updateLastExpenseFromIntent,
     deleteLastExpenseFromIntent,
+    getReportFromIntent,
     parseUserIntent,
     resolveIntentContext: async ({ customerId }) => {
       const customer = await customerRepo.getById(customerId);

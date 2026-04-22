@@ -11,6 +11,7 @@ import {
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
+  GetReportIntentPayload,
   IntentContext,
   ParsedIntent,
   SupportedSourceType,
@@ -68,6 +69,15 @@ export type ProcessChatMessageDeps = {
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
+  getReportFromIntent?: (input: {
+    customerId: string;
+    channel: string;
+    userId: string;
+    payload: GetReportIntentPayload;
+    timezone: string;
+    nowIso: string;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean }, AppError>;
   parseUserIntent?: (input: {
     text: string;
     context: IntentContext;
@@ -89,6 +99,10 @@ function canApplyUpdateIntentDirectly(payload: UpdateLastExpenseIntentPayload): 
 }
 
 function canApplyDeleteIntentDirectly(payload: DeleteLastExpenseIntentPayload): boolean {
+  return payload.confidence >= 0.9;
+}
+
+function canApplyReportIntentDirectly(payload: GetReportIntentPayload): boolean {
   return payload.confidence >= 0.9;
 }
 
@@ -267,8 +281,9 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       }
 
       let parsedIntent: ParsedIntent | null = null;
+      let resolvedContext: IntentContext | null = null;
       if (deps.parseUserIntent) {
-        const resolvedContext = yield* fromPromise(
+        resolvedContext = yield* fromPromise(
           async () => {
             const base = await deps.resolveIntentContext?.({
               customerId: input.customerId,
@@ -391,6 +406,30 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           return {
             categorized: false,
             expenseId: deletedFromIntent.expenseId,
+          };
+        }
+      }
+
+      if (
+        input.channel === "whatsapp" &&
+        parsedIntent?.name === "get_report" &&
+        deps.getReportFromIntent &&
+        resolvedContext &&
+        canApplyReportIntentDirectly(parsedIntent.payload)
+      ) {
+        const reportFromIntent = yield* deps.getReportFromIntent({
+          customerId: input.customerId,
+          channel: input.channel,
+          userId: input.userId,
+          payload: parsedIntent.payload,
+          timezone: resolvedContext.timezone,
+          nowIso: resolvedContext.nowIso,
+          requestId: input.requestId,
+        });
+
+        if (reportFromIntent.handled) {
+          return {
+            categorized: false,
           };
         }
       }

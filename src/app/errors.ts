@@ -52,6 +52,7 @@ export class ExpensePersistenceError extends Data.TaggedError("ExpensePersistenc
   operation:
     | "createPending"
     | "getById"
+    | "listByCustomer"
     | "findLatestByCustomer"
     | "update"
     | "discard"

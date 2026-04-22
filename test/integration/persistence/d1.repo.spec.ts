@@ -30,6 +30,37 @@ describe("d1 expense repo integration", () => {
     expect(updated?.categoryId).toBe("cat_food");
   });
 
+  it("lists expenses by customer ordered newest first", async () => {
+    const env = createTestEnv();
+    const repo = createD1ExpenseRepo(env);
+
+    await repo.createPending({
+      customerId: "cust_default",
+      amount: 10,
+      currency: "PEN",
+      merchant: "Old",
+      occurredAt: "2026-02-20T10:00:00.000Z",
+      bank: "Interbank",
+      rawText: "old",
+    });
+
+    await repo.createPending({
+      customerId: "cust_default",
+      amount: 20,
+      currency: "PEN",
+      merchant: "New",
+      occurredAt: "2026-02-21T10:00:00.000Z",
+      bank: "Interbank",
+      rawText: "new",
+    });
+
+    const expenses = await repo.listByCustomer({ customerId: "cust_default" });
+
+    expect(expenses).toHaveLength(2);
+    expect(expenses[0]?.merchant).toBe("New");
+    expect(expenses[1]?.merchant).toBe("Old");
+  });
+
   it("updates and discards the latest expense", async () => {
     const env = createTestEnv();
     const repo = createD1ExpenseRepo(env);

@@ -947,6 +947,25 @@ function createMemoryD1Database(options?: {
         }
 
         if (
+          query.includes("from expenses") &&
+          query.includes("where customer_id = ? and status != ?") &&
+          query.includes("order by occurred_at desc, created_at desc")
+        ) {
+          const [customerId, excludedStatus] = values as [string, string];
+          return {
+            results: Array.from(expenses.values())
+              .filter(
+                (row) => row.customer_id === customerId && row.status !== excludedStatus,
+              )
+              .sort((a, b) => {
+                const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
+                if (occurredDiff !== 0) return occurredDiff;
+                return b.created_at.localeCompare(a.created_at);
+              }) as T[],
+          };
+        }
+
+        if (
           query.includes("from chat_media") &&
           query.includes("where customer_id = ? and expense_id = ?")
         ) {

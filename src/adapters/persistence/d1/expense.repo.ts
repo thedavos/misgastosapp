@@ -88,6 +88,19 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       return mapExpenseRow(row);
     },
 
+    async listByCustomer(input: { customerId: string }): Promise<Expense[]> {
+      const rows = await env.DB.prepare(
+        `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
+         FROM expenses
+         WHERE customer_id = ? AND status != ?
+         ORDER BY occurred_at DESC, created_at DESC`,
+      )
+        .bind(input.customerId, EXPENSE_STATUS.Discarded)
+        .all<ExpenseRow>();
+
+      return rows.results.map(mapExpenseRow);
+    },
+
     async findLatestByCustomer(input: { customerId: string }): Promise<Expense | null> {
       const row = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
