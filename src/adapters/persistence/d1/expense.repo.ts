@@ -232,7 +232,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       };
     },
 
-    async markCategorized(input: {
+    async markConfirmed(input: {
       id: string;
       customerId: string;
       categoryId: string;
@@ -254,7 +254,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
           crypto.randomUUID(),
           input.customerId,
           input.id,
-          "EXPENSE_CATEGORIZED",
+          "EXPENSE_CONFIRMED",
           JSON.stringify({ categoryId: input.categoryId }),
           now,
         )

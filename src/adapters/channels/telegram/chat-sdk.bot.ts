@@ -70,12 +70,12 @@ async function handleTelegramThreadMessage(input: {
     }),
   );
 
-  const customer = await container.customerRepo.findByChannelExternalId({
+  const user = await container.userRepo.findByChannelExternalId({
     channel: "telegram",
     externalUserId: userId,
   });
 
-  if (!customer) {
+  if (!user) {
     container.logger.warn("telegram.unknown_customer_blocked", {
       requestId,
       userId,
@@ -87,7 +87,7 @@ async function handleTelegramThreadMessage(input: {
   const authorization = await Effect.runPromise(
     container
       .authorizeChannel({
-        customerId: customer.id,
+        customerId: user.id,
         channelId: "telegram",
         requestId,
       })
@@ -132,7 +132,7 @@ async function handleTelegramThreadMessage(input: {
 
   const processResult = await Effect.runPromiseExit(
     container.processChatMessage({
-      customerId: customer.id,
+      customerId: user.id,
       channel: "telegram",
       userId,
       providerEventId: eventId,

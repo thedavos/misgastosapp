@@ -47,7 +47,7 @@ describe("ingest expense from email", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       },
       conversationState: {
         put,

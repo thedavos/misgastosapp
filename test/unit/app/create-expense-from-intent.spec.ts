@@ -38,7 +38,7 @@ describe("create expense from intent", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       },
       logger: {
         debug: vi.fn(),
@@ -100,7 +100,7 @@ describe("create expense from intent", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       },
       logger: {
         debug: vi.fn(),

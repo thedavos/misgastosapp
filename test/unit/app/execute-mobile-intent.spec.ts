@@ -40,7 +40,7 @@ describe("execute mobile intent", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
     });
 
@@ -96,7 +96,7 @@ describe("execute mobile intent", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
     });
 
@@ -129,7 +129,7 @@ describe("execute mobile intent", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized: vi.fn(),
+        markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
     });
 

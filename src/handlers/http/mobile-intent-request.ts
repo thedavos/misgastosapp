@@ -1,10 +1,10 @@
-import type { Customer } from "@/domain/customer/entity";
-import type { CustomerRepoPort } from "@/ports/customer-repo.port";
+import type { User } from "@/domain/user/entity";
+import type { UserRepoPort } from "@/ports/user-repo.port";
 
 export type ResolvedMobileIntentRequest = {
   customerId: string;
   text: string;
-  customer: Customer;
+  user: User;
 };
 
 export type ResolveMobileIntentRequestResult =
@@ -19,7 +19,7 @@ export type ResolveMobileIntentRequestResult =
 
 export async function resolveMobileIntentRequest(input: {
   request: Request;
-  customerRepo: CustomerRepoPort;
+  userRepo: UserRepoPort;
 }): Promise<ResolveMobileIntentRequestResult> {
   let payload: unknown;
   try {
@@ -49,8 +49,8 @@ export async function resolveMobileIntentRequest(input: {
     };
   }
 
-  const customer = await input.customerRepo.getById(customerId);
-  if (!customer) {
+  const user = await input.userRepo.getById(customerId);
+  if (!user) {
     return {
       ok: false,
       response: Response.json({ error: "customer_not_found" }, { status: 404 }),
@@ -62,7 +62,7 @@ export async function resolveMobileIntentRequest(input: {
     value: {
       customerId,
       text,
-      customer,
+      user,
     },
   };
 }

@@ -98,16 +98,16 @@ export async function handleWhatsAppWebhook(
       return new Response("Invalid payload", { status: 400 });
     }
 
-    const customer = yield* Effect.tryPromise({
+    const user = yield* Effect.tryPromise({
       try: () =>
-        container.customerRepo.findByChannelExternalId({
+        container.userRepo.findByChannelExternalId({
           channel: incomingMessage.channel,
           externalUserId: incomingMessage.userId,
         }),
       catch: (cause) => new WebhookParseError({ requestId, cause }),
     });
 
-    if (!customer) {
+    if (!user) {
       container.logger.warn("whatsapp.webhook_customer_not_found", {
         requestId,
         externalUserId: incomingMessage.userId,
@@ -117,7 +117,7 @@ export async function handleWhatsAppWebhook(
 
     const authorizationResult = yield* container
       .authorizeChannel({
-        customerId: customer.id,
+        customerId: user.id,
         channelId: incomingMessage.channel,
         requestId,
       })
@@ -178,7 +178,7 @@ export async function handleWhatsAppWebhook(
         enqueueExpenseProcessingJob(env, {
           provider: WHATSAPP_PROVIDER,
           eventId,
-          customerId: customer.id,
+          customerId: user.id,
           channel: "whatsapp",
           userId: incomingMessage.userId,
           text: incomingMessage.text,
@@ -199,7 +199,7 @@ export async function handleWhatsAppWebhook(
     container.logger.info("whatsapp.webhook_job_enqueued", {
       requestId,
       eventId,
-      customerId: customer.id,
+      customerId: user.id,
       channel: incomingMessage.channel,
       userId: incomingMessage.userId,
     });

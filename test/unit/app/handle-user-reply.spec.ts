@@ -4,7 +4,7 @@ import { createHandleUserReply } from "@/app/handle-user-reply";
 
 describe("handle user reply", () => {
   it("categorizes expense when confidence is above threshold", async () => {
-    const markCategorized = vi.fn().mockResolvedValue(undefined);
+    const markConfirmed = vi.fn().mockResolvedValue(undefined);
     const deleteState = vi.fn().mockResolvedValue(undefined);
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
 
@@ -33,7 +33,7 @@ describe("handle user reply", () => {
         findLatestByCustomer: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
-        markCategorized,
+        markConfirmed,
       },
       categoryRepo: {
         listAll: vi.fn().mockResolvedValue([{ id: "cat_food", name: "Comida", slug: "comida" }]),
@@ -74,7 +74,7 @@ describe("handle user reply", () => {
     );
 
     expect(result).toEqual({ categorized: true });
-    expect(markCategorized).toHaveBeenCalledWith({
+    expect(markConfirmed).toHaveBeenCalledWith({
       id: "exp_1",
       customerId: "cust_default",
       categoryId: "cat_food",

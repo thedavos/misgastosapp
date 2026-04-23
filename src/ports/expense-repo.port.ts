@@ -15,5 +15,5 @@ export interface ExpenseRepoPort {
     rawText: string;
   }): Promise<Expense | null>;
   discard(input: { id: string; customerId: string }): Promise<Expense | null>;
-  markCategorized(input: { id: string; customerId: string; categoryId: string }): Promise<void>;
+  markConfirmed(input: { id: string; customerId: string; categoryId: string }): Promise<void>;
 }

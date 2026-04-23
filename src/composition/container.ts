@@ -8,7 +8,7 @@ import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
 import { createD1CustomerEmailSenderRepo } from "@/adapters/persistence/d1/customer-email-sender.repo";
-import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
+import { createD1UserRepo } from "@/adapters/persistence/d1/user.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
@@ -44,7 +44,7 @@ export function createContainer(
   const categoryRepo = createD1CategoryRepo(env);
   const chatMediaRepo = createD1ChatMediaRepo(env);
   const channelPolicyRepo = createD1ChannelPolicyRepo(env);
-  const customerRepo = createD1CustomerRepo(env);
+  const userRepo = createD1UserRepo(env);
   const customerEmailSenderRepo = createD1CustomerEmailSenderRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
   const webhookEventRepo = createD1WebhookEventRepo(env);
@@ -159,11 +159,11 @@ export function createContainer(
     getReportFromIntent,
     parseUserIntent,
     resolveIntentContext: async ({ customerId }) => {
-      const customer = await customerRepo.getById(customerId);
-      if (!customer) return null;
+      const user = await userRepo.getById(customerId);
+      if (!user) return null;
       return {
-        timezone: customer.timezone,
-        defaultCurrency: customer.defaultCurrency,
+        timezone: user.timezone,
+        defaultCurrency: user.defaultCurrency,
       };
     },
     resolveAttachmentData: telegramAttachmentResolver,
@@ -178,7 +178,7 @@ export function createContainer(
     channelPolicyRepo,
     featurePolicy,
     subscriptionRepo,
-    customerRepo,
+    userRepo,
     customerEmailSenderRepo,
     webhookEventRepo,
     conversationState,

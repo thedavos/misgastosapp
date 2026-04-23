@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { resolveMobileIntentRequest } from "@/handlers/http/mobile-intent-request";
-import type { CustomerRepoPort } from "@/ports/customer-repo.port";
+import type { UserRepoPort } from "@/ports/user-repo.port";
 
 describe("resolve mobile intent request", () => {
   it("returns invalid_json when the body is not valid json", async () => {
@@ -14,12 +14,12 @@ describe("resolve mobile intent request", () => {
 
     const result = await resolveMobileIntentRequest({
       request,
-      customerRepo: {
+      userRepo: {
         getById: vi.fn(),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
-      } as unknown as CustomerRepoPort,
+      } as unknown as UserRepoPort,
     });
 
     expect(result.ok).toBe(false);
@@ -39,12 +39,12 @@ describe("resolve mobile intent request", () => {
 
     const result = await resolveMobileIntentRequest({
       request,
-      customerRepo: {
+      userRepo: {
         getById: vi.fn(),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
-      } as unknown as CustomerRepoPort,
+      } as unknown as UserRepoPort,
     });
 
     expect(result.ok).toBe(false);
@@ -64,12 +64,12 @@ describe("resolve mobile intent request", () => {
 
     const result = await resolveMobileIntentRequest({
       request,
-      customerRepo: {
+      userRepo: {
         getById: vi.fn().mockResolvedValue(null),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
-      } as unknown as CustomerRepoPort,
+      } as unknown as UserRepoPort,
     });
 
     expect(result.ok).toBe(false);
@@ -89,7 +89,7 @@ describe("resolve mobile intent request", () => {
 
     const result = await resolveMobileIntentRequest({
       request,
-      customerRepo: {
+      userRepo: {
         getById: vi.fn().mockResolvedValue({
           id: "cust_1",
           name: "David",
@@ -102,7 +102,7 @@ describe("resolve mobile intent request", () => {
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
-      } as unknown as CustomerRepoPort,
+      } as unknown as UserRepoPort,
     });
 
     expect(result.ok).toBe(true);
@@ -110,7 +110,7 @@ describe("resolve mobile intent request", () => {
     expect(result.value).toEqual({
       customerId: "cust_1",
       text: "S/ 18 en Tambo",
-      customer: {
+      user: {
         id: "cust_1",
         name: "David",
         status: "ACTIVE",

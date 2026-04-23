@@ -13,14 +13,14 @@ export async function handleMobileIntentExecute(
 
   const resolvedRequest = await resolveMobileIntentRequest({
     request,
-    customerRepo: container.customerRepo,
+    userRepo: container.userRepo,
   });
 
   if (!resolvedRequest.ok) {
     return resolvedRequest.response;
   }
 
-  const { customerId, text, customer } = resolvedRequest.value;
+  const { customerId, text, user } = resolvedRequest.value;
 
   const executeMobileIntent = createExecuteMobileIntent({
     parseUserIntent: container.parseUserIntent,
@@ -30,8 +30,8 @@ export async function handleMobileIntentExecute(
   const result = await executeMobileIntent({
     customerId,
     text,
-    timezone: customer.timezone,
-    defaultCurrency: customer.defaultCurrency,
+    timezone: user.timezone,
+    defaultCurrency: user.defaultCurrency,
     nowIso: new Date().toISOString(),
     requestId,
   });

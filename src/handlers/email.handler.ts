@@ -118,8 +118,8 @@ export async function handleEmail(
       return;
     }
 
-    const customer = yield* Effect.tryPromise({
-      try: () => container.customerRepo.getById(customerId),
+    const user = yield* Effect.tryPromise({
+      try: () => container.userRepo.getById(customerId),
       catch: (cause) =>
         new CustomerSenderLookupError({
           requestId,
@@ -128,7 +128,7 @@ export async function handleEmail(
         }),
     });
 
-    if (!customer) {
+    if (!user) {
       container.logger.warn("email.customer_not_found_skip", {
         requestId,
         customerId,
@@ -138,21 +138,21 @@ export async function handleEmail(
       return;
     }
 
-    if (customer.status !== "ACTIVE") {
+    if (user.status !== "ACTIVE") {
       container.logger.warn("email.customer_inactive_skip", {
         requestId,
-        customerId: customer.id,
+        customerId: user.id,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
-        status: customer.status,
+        status: user.status,
       });
       return;
     }
 
     const userId = yield* Effect.tryPromise({
       try: () =>
-        container.customerRepo.getPrimaryExternalUserId({
-          customerId,
+        container.userRepo.getPrimaryExternalUserId({
+          userId: customerId,
           channel: "whatsapp",
         }),
       catch: (cause) =>
@@ -189,8 +189,8 @@ export async function handleEmail(
           text: sourceText,
           context: {
             sourceType: "email",
-            timezone: customer.timezone,
-            defaultCurrency: customer.defaultCurrency,
+            timezone: user.timezone,
+            defaultCurrency: user.defaultCurrency,
             nowIso: new Date().toISOString(),
           },
           requestId,
@@ -210,7 +210,7 @@ export async function handleEmail(
       channel: "whatsapp",
       userId,
       parsedIntent,
-      timezone: customer.timezone,
+      timezone: user.timezone,
       nowIso: new Date().toISOString(),
       requestId,
     });

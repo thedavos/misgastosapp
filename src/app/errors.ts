@@ -56,7 +56,7 @@ export class ExpensePersistenceError extends Data.TaggedError("ExpensePersistenc
     | "findLatestByCustomer"
     | "update"
     | "discard"
-    | "markCategorized";
+    | "markConfirmed";
   cause: unknown;
 }> {}
 

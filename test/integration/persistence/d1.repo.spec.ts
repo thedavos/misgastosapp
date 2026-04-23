@@ -19,7 +19,7 @@ describe("d1 expense repo integration", () => {
 
     expect(created.status).toBe("needs_clarification");
 
-    await repo.markCategorized({
+    await repo.markConfirmed({
       id: created.id,
       customerId: "cust_default",
       categoryId: "cat_food",

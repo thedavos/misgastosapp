@@ -172,12 +172,12 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
 
       yield* fromPromise(
         () =>
-          deps.expenseRepo.markCategorized({
+          deps.expenseRepo.markConfirmed({
             id: expense.id,
             customerId: input.customerId,
             categoryId: category.id,
           }),
-        (cause) => new ExpensePersistenceError({ operation: "markCategorized", cause }),
+        (cause) => new ExpensePersistenceError({ operation: "markConfirmed", cause }),
       );
 
       yield* completeExpenseFlow({
