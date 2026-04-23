@@ -130,6 +130,104 @@ flowchart TD
     end
 ```
 
+## Diagrama Mermaid de arquitectura actual
+
+```mermaid
+flowchart LR
+    subgraph Channels[Canales de entrada y salida]
+        WA[WhatsApp / Kapso]
+        EM[Email Worker]
+        MO[Mobile API]
+        TG[Telegram]
+    end
+
+    subgraph Handlers[Handlers HTTP / Email]
+        WAH[whatsapp-webhook.handler]
+        EMH[email handler]
+        MPH[mobile-intent-preview.handler]
+        MEH[mobile-intent-execute.handler]
+        TGH[telegram-webhook.handler]
+    end
+
+    subgraph App[App layer]
+        PUI[parse-user-intent]
+        ECI[execute-channel-intent]
+        EMI[execute-mobile-intent]
+        CEI[create-expense-from-intent]
+        ULI[update-last-expense-from-intent]
+        DLI[delete-last-expense-from-intent]
+        GRI[get-report-from-intent]
+        CEC[capture-expense-with-clarification]
+        HUR[handle-user-reply]
+    end
+
+    subgraph Persistence[Persistencia]
+        URepo[user.repo]
+        ERepo[expense.repo]
+        CRepo[category.repo]
+        CSRepo[conversation-state.repo]
+        WRepo[webhook-event.repo]
+        CMRepo[chat-media.repo]
+        FRepo[feature-policy.repo]
+    end
+
+    subgraph Infra[Infraestructura]
+        D1[(D1\nusers / user_sources / transactions / categories_v2)]
+        KV[(KV\nconversation state / entitlements)]
+        R2[(R2\nreports / media)]
+        AI[Workers AI]
+    end
+
+    WA --> WAH
+    EM --> EMH
+    MO --> MPH
+    MO --> MEH
+    TG --> TGH
+
+    WAH --> WRepo
+    WAH --> URepo
+    WAH --> PUI
+    WAH --> ECI
+    WAH --> CEC
+    WAH --> HUR
+
+    EMH --> URepo
+    EMH --> PUI
+    EMH --> ECI
+    EMH --> CEC
+
+    MPH --> PUI
+    MEH --> PUI
+    MEH --> EMI
+    TGH --> PUI
+    TGH --> ECI
+
+    PUI --> AI
+    ECI --> CEI
+    ECI --> ULI
+    ECI --> DLI
+    ECI --> GRI
+
+    CEI --> ERepo
+    ULI --> ERepo
+    DLI --> ERepo
+    GRI --> ERepo
+    CEC --> ERepo
+    CEC --> CSRepo
+    HUR --> CSRepo
+    HUR --> CRepo
+    EMI --> ERepo
+
+    URepo --> D1
+    ERepo --> D1
+    CRepo --> D1
+    WRepo --> D1
+    CMRepo --> D1
+    FRepo --> D1
+    CSRepo --> KV
+    CMRepo --> R2
+```
+
 ## Regla de diseño clave
 
 El parser de intención no debe depender de un canal concreto.
