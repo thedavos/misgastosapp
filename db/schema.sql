@@ -474,3 +474,145 @@ CREATE INDEX IF NOT EXISTS idx_report_requests_user
 
 CREATE INDEX IF NOT EXISTS idx_report_requests_status
   ON report_requests(status);
+
+
+CREATE TABLE IF NOT EXISTS user_channel_settings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  is_primary INTEGER NOT NULL DEFAULT 0,
+  config_json TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_channel_settings_pair
+  ON user_channel_settings(user_id, channel_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_settings_user
+  ON user_channel_settings(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_channel_settings_channel
+  ON user_channel_settings(channel_id);
+
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  plan_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  start_at TEXT NOT NULL,
+  current_period_start TEXT NOT NULL,
+  current_period_end TEXT NOT NULL,
+  cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+  provider TEXT NOT NULL DEFAULT 'manual',
+  provider_subscription_id TEXT,
+  plan_version_at_start INTEGER NOT NULL DEFAULT 1,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (plan_id) REFERENCES plans(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user
+  ON user_subscriptions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_status
+  ON user_subscriptions(status);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_active_subscription
+  ON user_subscriptions(user_id)
+  WHERE status IN ('TRIALING', 'ACTIVE', 'PAST_DUE');
+
+CREATE TABLE IF NOT EXISTS user_email_routes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  recipient_email TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email_routes_recipient
+  ON user_email_routes(recipient_email);
+
+CREATE INDEX IF NOT EXISTS idx_user_email_routes_user
+  ON user_email_routes(user_id);
+
+INSERT OR IGNORE INTO user_channel_settings (
+  id,
+  user_id,
+  channel_id,
+  enabled,
+  is_primary,
+  config_json,
+  created_at,
+  updated_at
+)
+SELECT
+  ccs.id,
+  ccs.customer_id,
+  ccs.channel_id,
+  ccs.enabled,
+  ccs.is_primary,
+  ccs.config_json,
+  ccs.created_at,
+  ccs.updated_at
+FROM customer_channel_settings ccs
+JOIN users u ON u.id = ccs.customer_id;
+
+INSERT OR IGNORE INTO user_subscriptions (
+  id,
+  user_id,
+  plan_id,
+  status,
+  start_at,
+  current_period_start,
+  current_period_end,
+  cancel_at_period_end,
+  provider,
+  provider_subscription_id,
+  plan_version_at_start,
+  metadata_json,
+  created_at,
+  updated_at
+)
+SELECT
+  cs.id,
+  cs.customer_id,
+  cs.plan_id,
+  cs.status,
+  cs.start_at,
+  cs.current_period_start,
+  cs.current_period_end,
+  cs.cancel_at_period_end,
+  cs.provider,
+  cs.provider_subscription_id,
+  cs.plan_version_at_start,
+  cs.metadata_json,
+  cs.created_at,
+  cs.updated_at
+FROM customer_subscriptions cs
+JOIN users u ON u.id = cs.customer_id;
+
+INSERT OR IGNORE INTO user_email_routes (
+  id,
+  user_id,
+  recipient_email,
+  enabled,
+  created_at,
+  updated_at
+)
+SELECT
+  cer.id,
+  cer.customer_id,
+  cer.recipient_email,
+  cer.enabled,
+  cer.created_at,
+  cer.updated_at
+FROM customer_email_routes cer
+JOIN users u ON u.id = cer.customer_id;

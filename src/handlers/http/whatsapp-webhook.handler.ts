@@ -108,11 +108,11 @@ export async function handleWhatsAppWebhook(
     });
 
     if (!user) {
-      container.logger.warn("whatsapp.webhook_customer_not_found", {
+      container.logger.warn("whatsapp.webhook_user_not_found", {
         requestId,
         externalUserId: incomingMessage.userId,
       });
-      return new Response("Customer not found", { status: 404 });
+      return new Response("User not found", { status: 404 });
     }
 
     const authorizationResult = yield* container

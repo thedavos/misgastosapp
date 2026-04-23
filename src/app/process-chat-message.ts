@@ -278,7 +278,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       let parsedIntent: ParsedIntent | null = null;
       let resolvedContext: IntentContext | null = null;
       if (deps.parseUserIntent) {
-        resolvedContext = yield* fromPromise(
+        const context = yield* fromPromise(
           async () => {
             const base = await deps.resolveIntentContext?.({
               customerId: input.customerId,
@@ -299,12 +299,13 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               cause,
             }),
         );
+        resolvedContext = context;
 
         parsedIntent = yield* fromPromise(
           () =>
             deps.parseUserIntent?.({
               text: sourceText,
-              context: resolvedContext,
+              context,
               requestId: input.requestId,
             }) as Promise<ParsedIntent>,
           (cause) =>

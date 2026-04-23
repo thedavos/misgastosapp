@@ -76,7 +76,7 @@ async function handleTelegramThreadMessage(input: {
   });
 
   if (!user) {
-    container.logger.warn("telegram.unknown_customer_blocked", {
+    container.logger.warn("telegram.unknown_user_blocked", {
       requestId,
       userId,
     });

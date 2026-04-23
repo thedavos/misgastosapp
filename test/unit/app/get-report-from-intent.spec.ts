@@ -13,7 +13,7 @@ describe("get report from intent", () => {
         verifyWebhook: vi.fn(),
       },
       channelPolicyRepo: {
-        isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(true),
       },
       featurePolicy: {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
@@ -95,7 +95,7 @@ describe("get report from intent", () => {
         verifyWebhook: vi.fn(),
       },
       channelPolicyRepo: {
-        isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(true),
       },
       featurePolicy: {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),

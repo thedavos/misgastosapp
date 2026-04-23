@@ -19,7 +19,7 @@ export async function handleMobileIntentPreview(
     return resolvedRequest.response;
   }
 
-  const { customerId, text, user } = resolvedRequest.value;
+  const { userId, text, user } = resolvedRequest.value;
 
   const parsedIntent = await container.parseUserIntent({
     text,
@@ -34,7 +34,8 @@ export async function handleMobileIntentPreview(
 
   return Response.json(
     {
-      customerId,
+      customerId: userId,
+      userId,
       sourceType: "mobile",
       parsedIntent,
     },

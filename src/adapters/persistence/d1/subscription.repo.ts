@@ -1,10 +1,11 @@
 import type { WorkerEnv } from "types/env";
-import type { CustomerSubscription, Plan } from "@/domain/subscription/entity";
+import type { UserSubscription, Plan } from "@/domain/subscription/entity";
 import type { SubscriptionRepoPort } from "@/ports/subscription-repo.port";
 
 type SubscriptionRow = {
   id: string;
-  customer_id: string;
+  user_id?: string;
+  customer_id?: string;
   plan_id: string;
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "EXPIRED";
   start_at: string;
@@ -27,10 +28,10 @@ type PlanRow = {
   version: number;
 };
 
-function mapSubscription(row: SubscriptionRow): CustomerSubscription {
+function mapSubscription(row: SubscriptionRow): UserSubscription {
   return {
     id: row.id,
-    customerId: row.customer_id,
+    customerId: row.user_id ?? row.customer_id ?? "",
     planId: row.plan_id,
     status: row.status,
     startAt: row.start_at,
@@ -58,18 +59,30 @@ function mapPlan(row: PlanRow): Plan {
 
 export function createD1SubscriptionRepo(env: WorkerEnv): SubscriptionRepoPort {
   return {
-    async getEffectiveSubscription(customerId: string): Promise<CustomerSubscription | null> {
-      const row = await env.DB.prepare(
-        `SELECT id, customer_id, plan_id, status, start_at, current_period_start, current_period_end,
-                cancel_at_period_end, provider, provider_subscription_id, plan_version_at_start, metadata_json
-         FROM customer_subscriptions
-         WHERE customer_id = ? AND status IN ('TRIALING', 'ACTIVE', 'PAST_DUE')
-         ORDER BY CASE status WHEN 'ACTIVE' THEN 0 WHEN 'TRIALING' THEN 1 ELSE 2 END ASC,
-                  current_period_end DESC
-         LIMIT 1`,
-      )
-        .bind(customerId)
-        .first<SubscriptionRow>();
+    async getEffectiveSubscription(userId: string): Promise<UserSubscription | null> {
+      const row =
+        (await env.DB.prepare(
+          `SELECT id, user_id, plan_id, status, start_at, current_period_start, current_period_end,
+                  cancel_at_period_end, provider, provider_subscription_id, plan_version_at_start, metadata_json
+           FROM user_subscriptions
+           WHERE user_id = ? AND status IN ('TRIALING', 'ACTIVE', 'PAST_DUE')
+           ORDER BY CASE status WHEN 'ACTIVE' THEN 0 WHEN 'TRIALING' THEN 1 ELSE 2 END ASC,
+                    current_period_end DESC
+           LIMIT 1`,
+        )
+          .bind(userId)
+          .first<SubscriptionRow>()) ??
+        (await env.DB.prepare(
+          `SELECT id, customer_id, plan_id, status, start_at, current_period_start, current_period_end,
+                  cancel_at_period_end, provider, provider_subscription_id, plan_version_at_start, metadata_json
+           FROM customer_subscriptions
+           WHERE customer_id = ? AND status IN ('TRIALING', 'ACTIVE', 'PAST_DUE')
+           ORDER BY CASE status WHEN 'ACTIVE' THEN 0 WHEN 'TRIALING' THEN 1 ELSE 2 END ASC,
+                    current_period_end DESC
+           LIMIT 1`,
+        )
+          .bind(userId)
+          .first<SubscriptionRow>());
 
       if (!row) return null;
       return mapSubscription(row);

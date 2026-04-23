@@ -61,7 +61,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
 
       const isEnabled = yield* fromPromise(
         () =>
-          deps.channelPolicyRepo.isChannelEnabledForCustomer({
+          deps.channelPolicyRepo.isChannelEnabledForUser({
             customerId: input.customerId,
             channelId: input.channel,
           }),
@@ -92,7 +92,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            customerId: input.customerId,
+            userId: input.customerId,
             featureKey,
           }),
         (cause) =>

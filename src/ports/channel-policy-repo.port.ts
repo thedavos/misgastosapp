@@ -1,10 +1,10 @@
-import type { Channel, CustomerChannelSetting } from "@/domain/channel/entity";
+import type { Channel, UserChannelSetting } from "@/domain/channel/entity";
 
 export interface ChannelPolicyRepoPort {
   getChannel(channelId: string): Promise<Channel | null>;
-  getCustomerChannelSetting(input: {
+  getUserChannelSetting(input: {
     customerId: string;
     channelId: string;
-  }): Promise<CustomerChannelSetting | null>;
-  isChannelEnabledForCustomer(input: { customerId: string; channelId: string }): Promise<boolean>;
+  }): Promise<UserChannelSetting | null>;
+  isChannelEnabledForUser(input: { customerId: string; channelId: string }): Promise<boolean>;
 }

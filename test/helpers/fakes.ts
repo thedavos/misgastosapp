@@ -45,7 +45,7 @@ type ChannelRow = {
   status: "ACTIVE" | "INACTIVE";
 };
 
-type CustomerChannelSettingRow = {
+type UserChannelSettingRow = {
   id: string;
   customer_id: string;
   channel_id: string;
@@ -87,7 +87,7 @@ type PlanFeatureRow = {
   limit_value: number | null;
 };
 
-type CustomerSubscriptionRow = {
+type UserSubscriptionRow = {
   id: string;
   customer_id: string;
   plan_id: string;
@@ -255,10 +255,10 @@ function createMemoryD1Database(options?: {
   customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
-  channelSettings?: CustomerChannelSettingRow[];
+  channelSettings?: UserChannelSettingRow[];
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
-  subscriptions?: CustomerSubscriptionRow[];
+  subscriptions?: UserSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
   emailSenders?: CustomerEmailSenderRow[];
 }) {
@@ -267,10 +267,10 @@ function createMemoryD1Database(options?: {
   const customers = new Map<string, CustomerRow>();
   const customerChannels = new Map<string, CustomerChannelRow>();
   const channels = new Map<string, ChannelRow>();
-  const channelSettings = new Map<string, CustomerChannelSettingRow>();
+  const channelSettings = new Map<string, UserChannelSettingRow>();
   const plans = new Map<string, PlanRow>();
   const planFeatures = new Map<string, PlanFeatureRow>();
-  const subscriptions = new Map<string, CustomerSubscriptionRow>();
+  const subscriptions = new Map<string, UserSubscriptionRow>();
   const emailRoutes = new Map<string, CustomerEmailRouteRow>();
   const emailSenders = new Map<string, CustomerEmailSenderRow>();
   const inboundWebhookEvents = new Map<string, InboundWebhookEventRow>();
@@ -348,7 +348,7 @@ function createMemoryD1Database(options?: {
     channels.set(channel.id, channel);
   }
 
-  const defaultSettings: CustomerChannelSettingRow[] = [
+  const defaultSettings: UserChannelSettingRow[] = [
     {
       id: "ccs_cust_default_whatsapp",
       customer_id: "cust_default",
@@ -436,7 +436,7 @@ function createMemoryD1Database(options?: {
     planFeatures.set(`${feature.plan_id}:${feature.feature_key}`, feature);
   }
 
-  const defaultSubscriptions: CustomerSubscriptionRow[] = [
+  const defaultSubscriptions: UserSubscriptionRow[] = [
     {
       id: "sub_cust_default_free",
       customer_id: "cust_default",
@@ -1067,10 +1067,10 @@ function createMemoryD1Database(options?: {
       customers: Map<string, CustomerRow>;
       customerChannels: Map<string, CustomerChannelRow>;
       channels: Map<string, ChannelRow>;
-      channelSettings: Map<string, CustomerChannelSettingRow>;
+      channelSettings: Map<string, UserChannelSettingRow>;
       plans: Map<string, PlanRow>;
       planFeatures: Map<string, PlanFeatureRow>;
-      subscriptions: Map<string, CustomerSubscriptionRow>;
+      subscriptions: Map<string, UserSubscriptionRow>;
       emailRoutes: Map<string, CustomerEmailRouteRow>;
       emailSenders: Map<string, CustomerEmailSenderRow>;
       expenseEvents: Array<{
@@ -1092,10 +1092,10 @@ export function createTestEnv(options?: {
   customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
-  channelSettings?: CustomerChannelSettingRow[];
+  channelSettings?: UserChannelSettingRow[];
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
-  subscriptions?: CustomerSubscriptionRow[];
+  subscriptions?: UserSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
   emailSenders?: CustomerEmailSenderRow[];
   strictPolicyMode?: "true" | "false";

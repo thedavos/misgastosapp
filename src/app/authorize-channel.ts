@@ -28,7 +28,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
     return Effect.gen(function* () {
       const isChannelEnabled = yield* fromPromise(
         () =>
-          deps.channelPolicyRepo.isChannelEnabledForCustomer({
+          deps.channelPolicyRepo.isChannelEnabledForUser({
             customerId: input.customerId,
             channelId: input.channelId,
           }),
@@ -43,7 +43,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       if (deps.strictPolicyMode) {
         const setting = yield* fromPromise(
           () =>
-            deps.channelPolicyRepo.getCustomerChannelSetting({
+            deps.channelPolicyRepo.getUserChannelSetting({
               customerId: input.customerId,
               channelId: input.channelId,
             }),
@@ -90,7 +90,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            customerId: input.customerId,
+            userId: input.customerId,
             featureKey,
           }),
         (cause) =>

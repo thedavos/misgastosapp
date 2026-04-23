@@ -86,7 +86,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
 
       const isEnabled = yield* fromPromise(
         () =>
-          deps.channelPolicyRepo.isChannelEnabledForCustomer({
+          deps.channelPolicyRepo.isChannelEnabledForUser({
             customerId: input.customerId,
             channelId: input.channel,
           }),
@@ -112,7 +112,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            customerId: input.customerId,
+            userId: input.customerId,
             featureKey,
           }),
         (cause) =>

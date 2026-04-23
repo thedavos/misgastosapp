@@ -28,7 +28,7 @@ describe("resolve mobile intent request", () => {
     expect(await result.response.json()).toEqual({ error: "invalid_json" });
   });
 
-  it("returns customerId_and_text_required when required fields are missing", async () => {
+  it("returns userId_or_customerId_and_text_required when required fields are missing", async () => {
     const request = new Request("https://example.com", {
       method: "POST",
       headers: {
@@ -50,10 +50,10 @@ describe("resolve mobile intent request", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected missing fields result");
     expect(result.response.status).toBe(400);
-    expect(await result.response.json()).toEqual({ error: "customerId_and_text_required" });
+    expect(await result.response.json()).toEqual({ error: "userId_or_customerId_and_text_required" });
   });
 
-  it("returns customer_not_found when the customer does not exist", async () => {
+  it("returns user_not_found when the user does not exist", async () => {
     const request = new Request("https://example.com", {
       method: "POST",
       headers: {
@@ -73,9 +73,9 @@ describe("resolve mobile intent request", () => {
     });
 
     expect(result.ok).toBe(false);
-    if (result.ok) throw new Error("expected customer_not_found result");
+    if (result.ok) throw new Error("expected user_not_found result");
     expect(result.response.status).toBe(404);
-    expect(await result.response.json()).toEqual({ error: "customer_not_found" });
+    expect(await result.response.json()).toEqual({ error: "user_not_found" });
   });
 
   it("returns normalized request data when the payload is valid", async () => {
@@ -108,7 +108,7 @@ describe("resolve mobile intent request", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("expected success result");
     expect(result.value).toEqual({
-      customerId: "cust_1",
+      userId: "cust_1",
       text: "S/ 18 en Tambo",
       user: {
         id: "cust_1",

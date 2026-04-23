@@ -16,6 +16,11 @@ wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
 wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
 wrangler d1 execute misgastos --file db/migrations/009_default_email_route_recibos.sql
 wrangler d1 execute misgastos --file db/migrations/010_customer_email_senders.sql
+wrangler d1 execute misgastos --file db/migrations/011_mvp_core_schema.sql
+wrangler d1 execute misgastos --file db/migrations/012_backfill_mvp_core_from_legacy.sql
+wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuses.sql
+wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
 ```
 
 ### KV namespaces
@@ -28,9 +33,9 @@ Crear namespaces:
 
 Actualizar `wrangler.jsonc` con IDs reales.
 
-### Mapeo de remitentes por customer
+### Mapeo de remitentes por usuario
 
-El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente en `customer_email_senders`.
+El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente priorizando `user_sources` (`source_type = 'email'`) y manteniendo fallback a `customer_email_senders`.
 Si un remitente no está mapeado, el email se ignora (skip con log).
 
 ## 2) Configuración de secretos
@@ -116,7 +121,7 @@ wrangler tail misgastosapp
 - `expense.flow_completed`
 - `whatsapp.webhook_unauthorized` (si firma incorrecta)
 - `whatsapp.webhook_duplicate_ignored` (si llega evento repetido)
-- `telegram.unknown_customer_blocked` (si user Telegram no está mapeado)
+- `telegram.unknown_user_blocked` (si user Telegram no está mapeado)
 - `chat.media_stored` (si se guarda evidencia de imagen en R2)
 
 ## 7) Troubleshooting

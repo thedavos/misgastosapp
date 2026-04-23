@@ -48,7 +48,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
 
       const isEnabled = yield* fromPromise(
         () =>
-          deps.channelPolicyRepo.isChannelEnabledForCustomer({
+          deps.channelPolicyRepo.isChannelEnabledForUser({
             customerId: input.customerId,
             channelId: input.channel,
           }),
@@ -72,7 +72,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
 
       const featureKey = `channels.${input.channel}`;
       const featureEnabled = yield* fromPromise(
-        () => deps.featurePolicy.isFeatureEnabled({ customerId: input.customerId, featureKey }),
+        () => deps.featurePolicy.isFeatureEnabled({ userId: input.customerId, featureKey }),
         (cause) => new FeaturePolicyError({ requestId: input.requestId, featureKey, cause }),
       );
 

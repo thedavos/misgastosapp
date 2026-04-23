@@ -5,23 +5,23 @@ export class MissingDefaultUserError extends Data.TaggedError("MissingDefaultUse
   message: string;
 }> {}
 
-export class CustomerUnresolvedError extends Data.TaggedError("CustomerUnresolvedError")<{
+export class UserUnresolvedError extends Data.TaggedError("UserUnresolvedError")<{
   requestId?: string;
   recipientEmail: string;
 }> {}
 
-export class CustomerRouteNotFoundError extends Data.TaggedError("CustomerRouteNotFoundError")<{
+export class UserRouteNotFoundError extends Data.TaggedError("UserRouteNotFoundError")<{
   requestId?: string;
   recipientEmail: string;
 }> {}
 
-export class CustomerRouteLookupError extends Data.TaggedError("CustomerRouteLookupError")<{
+export class UserRouteLookupError extends Data.TaggedError("UserRouteLookupError")<{
   requestId?: string;
   recipientEmail: string;
   cause: unknown;
 }> {}
 
-export class CustomerSenderLookupError extends Data.TaggedError("CustomerSenderLookupError")<{
+export class UserSenderLookupError extends Data.TaggedError("UserSenderLookupError")<{
   requestId?: string;
   senderEmail: string;
   cause: unknown;
@@ -142,10 +142,10 @@ export class InvalidTransactionError extends Data.TaggedError("InvalidTransactio
 
 export type AppError =
   | MissingDefaultUserError
-  | CustomerUnresolvedError
-  | CustomerRouteNotFoundError
-  | CustomerRouteLookupError
-  | CustomerSenderLookupError
+  | UserUnresolvedError
+  | UserRouteNotFoundError
+  | UserRouteLookupError
+  | UserSenderLookupError
   | EmailParseFailedError
   | AiExtractFailedError
   | AiMessageGenerationError

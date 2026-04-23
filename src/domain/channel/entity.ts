@@ -6,7 +6,7 @@ export interface Channel {
   status: ChannelStatus;
 }
 
-export interface CustomerChannelSetting {
+export interface UserChannelSetting {
   id: string;
   customerId: string;
   channelId: string;

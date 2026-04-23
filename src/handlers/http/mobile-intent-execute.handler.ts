@@ -20,7 +20,7 @@ export async function handleMobileIntentExecute(
     return resolvedRequest.response;
   }
 
-  const { customerId, text, user } = resolvedRequest.value;
+  const { userId, text, user } = resolvedRequest.value;
 
   const executeMobileIntent = createExecuteMobileIntent({
     parseUserIntent: container.parseUserIntent,
@@ -28,7 +28,7 @@ export async function handleMobileIntentExecute(
   });
 
   const result = await executeMobileIntent({
-    customerId,
+    userId,
     text,
     timezone: user.timezone,
     defaultCurrency: user.defaultCurrency,

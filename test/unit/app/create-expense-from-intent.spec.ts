@@ -27,7 +27,7 @@ describe("create expense from intent", () => {
         verifyWebhook: vi.fn(),
       },
       channelPolicyRepo: {
-        isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(true),
       },
       featurePolicy: {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
@@ -89,7 +89,7 @@ describe("create expense from intent", () => {
         verifyWebhook: vi.fn(),
       },
       channelPolicyRepo: {
-        isChannelEnabledForCustomer: vi.fn(),
+        isChannelEnabledForUser: vi.fn(),
       },
       featurePolicy: {
         isFeatureEnabled: vi.fn(),

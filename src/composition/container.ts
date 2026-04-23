@@ -7,7 +7,7 @@ import { createLogger } from "@/adapters/observability";
 import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
-import { createD1CustomerEmailSenderRepo } from "@/adapters/persistence/d1/customer-email-sender.repo";
+import { createD1UserEmailSenderRepo } from "@/adapters/persistence/d1/user-email-sender.repo";
 import { createD1UserRepo } from "@/adapters/persistence/d1/user.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
@@ -45,7 +45,7 @@ export function createContainer(
   const chatMediaRepo = createD1ChatMediaRepo(env);
   const channelPolicyRepo = createD1ChannelPolicyRepo(env);
   const userRepo = createD1UserRepo(env);
-  const customerEmailSenderRepo = createD1CustomerEmailSenderRepo(env);
+  const userEmailSenderRepo = createD1UserEmailSenderRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
   const webhookEventRepo = createD1WebhookEventRepo(env);
   const featurePolicy = createD1FeaturePolicyRepo(env, subscriptionRepo);
@@ -179,7 +179,7 @@ export function createContainer(
     featurePolicy,
     subscriptionRepo,
     userRepo,
-    customerEmailSenderRepo,
+    userEmailSenderRepo,
     webhookEventRepo,
     conversationState,
     authorizeChannel,

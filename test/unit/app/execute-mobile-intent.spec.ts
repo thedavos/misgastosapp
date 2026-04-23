@@ -45,7 +45,7 @@ describe("execute mobile intent", () => {
     });
 
     const result = await executeMobileIntent({
-      customerId: "cust_1",
+      userId: "cust_1",
       text: "S/ 18 en Tambo",
       timezone: "America/Lima",
       defaultCurrency: "PEN",
@@ -101,7 +101,7 @@ describe("execute mobile intent", () => {
     });
 
     const result = await executeMobileIntent({
-      customerId: "cust_1",
+      userId: "cust_1",
       text: "Resumen del mes",
       timezone: "America/Lima",
       defaultCurrency: "PEN",
@@ -134,7 +134,7 @@ describe("execute mobile intent", () => {
     });
 
     const result = await executeMobileIntent({
-      customerId: "cust_1",
+      userId: "cust_1",
       text: "ayuda",
       timezone: "America/Lima",
       defaultCurrency: "PEN",

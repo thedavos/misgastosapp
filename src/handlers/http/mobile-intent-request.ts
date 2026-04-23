@@ -2,7 +2,7 @@ import type { User } from "@/domain/user/entity";
 import type { UserRepoPort } from "@/ports/user-repo.port";
 
 export type ResolvedMobileIntentRequest = {
-  customerId: string;
+  userId: string;
   text: string;
   user: User;
 };
@@ -39,28 +39,33 @@ export async function resolveMobileIntentRequest(input: {
   }
 
   const record = payload as Record<string, unknown>;
-  const customerId = typeof record.customerId === "string" ? record.customerId.trim() : "";
+  const userId =
+    typeof record.userId === "string"
+      ? record.userId.trim()
+      : typeof record.customerId === "string"
+        ? record.customerId.trim()
+        : "";
   const text = typeof record.text === "string" ? record.text.trim() : "";
 
-  if (!customerId || !text) {
+  if (!userId || !text) {
     return {
       ok: false,
-      response: Response.json({ error: "customerId_and_text_required" }, { status: 400 }),
+      response: Response.json({ error: "userId_or_customerId_and_text_required" }, { status: 400 }),
     };
   }
 
-  const user = await input.userRepo.getById(customerId);
+  const user = await input.userRepo.getById(userId);
   if (!user) {
     return {
       ok: false,
-      response: Response.json({ error: "customer_not_found" }, { status: 404 }),
+      response: Response.json({ error: "user_not_found" }, { status: 404 }),
     };
   }
 
   return {
     ok: true,
     value: {
-      customerId,
+      userId,
       text,
       user,
     },

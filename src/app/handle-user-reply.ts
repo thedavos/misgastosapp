@@ -114,7 +114,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       if (!categoryId || classification.confidence < threshold) {
         const isEnabled = yield* fromPromise(
           () =>
-            deps.channelPolicyRepo.isChannelEnabledForCustomer({
+            deps.channelPolicyRepo.isChannelEnabledForUser({
               customerId: input.customerId,
               channelId: message.channel,
             }),
@@ -134,7 +134,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         const featureEnabled = yield* fromPromise(
           () =>
             deps.featurePolicy.isFeatureEnabled({
-              customerId: input.customerId,
+              userId: input.customerId,
               featureKey,
             }),
           (cause) => new FeaturePolicyError({ featureKey, cause }),

@@ -4,7 +4,7 @@ import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
 import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import {
-  CustomerSenderLookupError,
+  UserSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
@@ -94,9 +94,9 @@ export async function handleEmail(
     for (const senderCandidate of senderCandidates) {
       const resolvedCustomerId = yield* Effect.tryPromise({
         try: () =>
-          container.customerEmailSenderRepo.resolveCustomerIdBySenderEmail(senderCandidate),
+          container.userEmailSenderRepo.resolveUserIdBySenderEmail(senderCandidate),
         catch: (cause) =>
-          new CustomerSenderLookupError({
+          new UserSenderLookupError({
             requestId,
             senderEmail: senderCandidate,
             cause,
@@ -121,7 +121,7 @@ export async function handleEmail(
     const user = yield* Effect.tryPromise({
       try: () => container.userRepo.getById(customerId),
       catch: (cause) =>
-        new CustomerSenderLookupError({
+        new UserSenderLookupError({
           requestId,
           senderEmail: matchedSenderEmail ?? senderCandidates[0],
           cause,
@@ -129,7 +129,7 @@ export async function handleEmail(
     });
 
     if (!user) {
-      container.logger.warn("email.customer_not_found_skip", {
+      container.logger.warn("email.user_not_found_skip", {
         requestId,
         customerId,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
@@ -139,7 +139,7 @@ export async function handleEmail(
     }
 
     if (user.status !== "ACTIVE") {
-      container.logger.warn("email.customer_inactive_skip", {
+      container.logger.warn("email.user_inactive_skip", {
         requestId,
         customerId: user.id,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
@@ -158,7 +158,7 @@ export async function handleEmail(
       catch: (cause) =>
         new MissingDefaultUserError({
           requestId,
-          message: `Unable to resolve primary whatsapp user for customer ${customerId}: ${String(cause)}`,
+          message: `Unable to resolve primary whatsapp user for user ${customerId}: ${String(cause)}`,
         }),
     });
 
@@ -166,7 +166,7 @@ export async function handleEmail(
       return yield* Effect.fail(
         new MissingDefaultUserError({
           requestId,
-          message: `No primary whatsapp user configured for customer ${customerId}`,
+          message: `No primary whatsapp user configured for user ${customerId}`,
         }),
       );
     }

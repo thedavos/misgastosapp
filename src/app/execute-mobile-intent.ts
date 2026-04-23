@@ -18,7 +18,7 @@ export type ExecuteMobileIntentDeps = {
 };
 
 export type ExecuteMobileIntentInput = {
-  customerId: string;
+  userId: string;
   text: string;
   timezone: string;
   defaultCurrency: string;
@@ -61,7 +61,7 @@ export type MobileIntentExecutionResult =
       error: "intent_not_executable";
     };
 
-function canApplyCreateIntentDirectly(intent: ParsedIntent): boolean {
+function canApplyCreateIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "create_expense" }> {
   return (
     intent.name === "create_expense" &&
     intent.payload.confidence >= 0.85 &&
@@ -73,7 +73,7 @@ function canApplyCreateIntentDirectly(intent: ParsedIntent): boolean {
   );
 }
 
-function canApplyUpdateIntentDirectly(intent: ParsedIntent): boolean {
+function canApplyUpdateIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "update_last_expense" }> {
   return (
     intent.name === "update_last_expense" &&
     intent.payload.confidence >= 0.9 &&
@@ -81,11 +81,11 @@ function canApplyUpdateIntentDirectly(intent: ParsedIntent): boolean {
   );
 }
 
-function canApplyDeleteIntentDirectly(intent: ParsedIntent): boolean {
+function canApplyDeleteIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "delete_last_expense" }> {
   return intent.name === "delete_last_expense" && intent.payload.confidence >= 0.9;
 }
 
-function canApplyReportIntentDirectly(intent: ParsedIntent): boolean {
+function canApplyReportIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "get_report" }> {
   return intent.name === "get_report" && intent.payload.confidence >= 0.9;
 }
 
@@ -106,7 +106,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
     if (canApplyCreateIntentDirectly(parsedIntent)) {
       const created = await deps.expenseRepo.createExpenseRecord({
-        customerId: input.customerId,
+        customerId: input.userId,
         amount: parsedIntent.payload.draft.amountMinor! / 100,
         currency: parsedIntent.payload.draft.currency!,
         merchant: parsedIntent.payload.draft.merchant!,
@@ -128,7 +128,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
     if (canApplyUpdateIntentDirectly(parsedIntent)) {
       const latestExpense = await deps.expenseRepo.findLatestByCustomer({
-        customerId: input.customerId,
+        customerId: input.userId,
       });
 
       if (!latestExpense) {
@@ -145,7 +145,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
       const updated = await deps.expenseRepo.update({
         id: latestExpense.id,
-        customerId: input.customerId,
+        customerId: input.userId,
         amount: parsedIntent.payload.patch.amountMinor! / 100,
         currency: parsedIntent.payload.patch.currency ?? latestExpense.currency,
         merchant: parsedIntent.payload.patch.merchant ?? latestExpense.merchant,
@@ -166,7 +166,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
     if (canApplyDeleteIntentDirectly(parsedIntent)) {
       const latestExpense = await deps.expenseRepo.findLatestByCustomer({
-        customerId: input.customerId,
+        customerId: input.userId,
       });
 
       if (!latestExpense) {
@@ -183,7 +183,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
       const discarded = await deps.expenseRepo.discard({
         id: latestExpense.id,
-        customerId: input.customerId,
+        customerId: input.userId,
       });
 
       return {
@@ -198,7 +198,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
     }
 
     if (canApplyReportIntentDirectly(parsedIntent)) {
-      const expenses = await deps.expenseRepo.listByCustomer({ customerId: input.customerId });
+      const expenses = await deps.expenseRepo.listByCustomer({ customerId: input.userId });
       const periodExpenses = buildPeriodExpenses({
         expenses,
         nowIso: input.nowIso,

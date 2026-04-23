@@ -1,3 +1,3 @@
 export interface FeaturePolicyPort {
-  isFeatureEnabled(input: { customerId: string; featureKey: string }): Promise<boolean>;
+  isFeatureEnabled(input: { userId: string; featureKey: string }): Promise<boolean>;
 }
