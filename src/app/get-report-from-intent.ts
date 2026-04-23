@@ -27,7 +27,7 @@ export type GetReportFromIntentDeps = {
 
 export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
   return function getReportFromIntent(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: GetReportIntentPayload;
@@ -37,11 +37,11 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
   }): Effect.Effect<{ handled: boolean }, AppError> {
     return Effect.gen(function* () {
       const expenses = yield* fromPromise(
-        () => deps.expenseRepo.listByCustomer({ customerId: input.customerId }),
+        () => deps.expenseRepo.listByUser({ userId: input.userId }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "listByCustomer",
+            operation: "listByUser",
             cause,
           }),
       );
@@ -49,7 +49,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -64,7 +64,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -72,7 +72,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
 
       const featureKey = `channels.${input.channel}`;
       const featureEnabled = yield* fromPromise(
-        () => deps.featurePolicy.isFeatureEnabled({ userId: input.customerId, featureKey }),
+        () => deps.featurePolicy.isFeatureEnabled({ userId: input.userId, featureKey }),
         (cause) => new FeaturePolicyError({ requestId: input.requestId, featureKey, cause }),
       );
 
@@ -80,7 +80,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
@@ -107,7 +107,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
 
       deps.logger.info("report.generated_from_intent", {
         requestId: input.requestId,
-        customerId: input.customerId,
+        userId: input.userId,
         channel: input.channel,
         externalUserId: input.externalUserId,
         periodKind: input.payload.periodKind,

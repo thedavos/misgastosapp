@@ -465,7 +465,7 @@ function createMemoryD1Database(options?: {
         if (query.startsWith("insert into expenses")) {
           const [
             id,
-            customerId,
+            userId,
             amount,
             currency,
             merchant,
@@ -490,7 +490,7 @@ function createMemoryD1Database(options?: {
           ];
           expenses.set(id, {
             id,
-            customer_id: customerId,
+            customer_id: userId,
             amount,
             currency,
             merchant,
@@ -506,7 +506,7 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("update expenses set status = ?")) {
-          const [status, categoryId, updatedAt, id, customerId] = values as [
+          const [status, categoryId, updatedAt, id, userId] = values as [
             string,
             string | null,
             string,
@@ -514,7 +514,7 @@ function createMemoryD1Database(options?: {
             string,
           ];
           const current = expenses.get(id);
-          if (!current || current.customer_id !== customerId) return { success: false };
+          if (!current || current.customer_id !== userId) return { success: false };
           expenses.set(id, {
             ...current,
             status,
@@ -529,10 +529,10 @@ function createMemoryD1Database(options?: {
             "update expenses set amount = ?, currency = ?, merchant = ?, occurred_at = ?, raw_text = ?, updated_at = ?",
           )
         ) {
-          const [amount, currency, merchant, occurredAt, rawText, updatedAt, id, customerId] =
+          const [amount, currency, merchant, occurredAt, rawText, updatedAt, id, userId] =
             values as [number, string, string, string, string, string, string, string];
           const current = expenses.get(id);
-          if (!current || current.customer_id !== customerId) return { success: false };
+          if (!current || current.customer_id !== userId) return { success: false };
           expenses.set(id, {
             ...current,
             amount,
@@ -546,7 +546,7 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("insert into expense_events")) {
-          const [id, customerId, expenseId, type, payloadJson, createdAt] = values as [
+          const [id, userId, expenseId, type, payloadJson, createdAt] = values as [
             string,
             string,
             string,
@@ -556,7 +556,7 @@ function createMemoryD1Database(options?: {
           ];
           expenseEvents.push({
             id,
-            customer_id: customerId,
+            customer_id: userId,
             expense_id: expenseId,
             type,
             payload_json: payloadJson,
@@ -595,7 +595,7 @@ function createMemoryD1Database(options?: {
         if (query.startsWith("insert into chat_media")) {
           const [
             id,
-            customerId,
+            userId,
             channel,
             externalUserId,
             providerEventId,
@@ -625,7 +625,7 @@ function createMemoryD1Database(options?: {
 
           chatMedia.set(id, {
             id,
-            customer_id: customerId,
+            customer_id: userId,
             channel,
             external_user_id: externalUserId,
             provider_event_id: providerEventId,
@@ -642,7 +642,7 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("insert or replace into customer_channels")) {
-          const [id, customerId, channel, externalUserId, isPrimary] = values as [
+          const [id, userId, channel, externalUserId, isPrimary] = values as [
             string,
             string,
             string,
@@ -653,7 +653,7 @@ function createMemoryD1Database(options?: {
           ];
           customerChannels.set(`${channel}:${externalUserId}`, {
             id,
-            customer_id: customerId,
+            customer_id: userId,
             channel,
             external_user_id: externalUserId,
             is_primary: isPrimary,
@@ -781,9 +781,9 @@ function createMemoryD1Database(options?: {
 
       async first<T>() {
         if (query.includes("from expenses where id = ? and customer_id = ?")) {
-          const [id, customerId] = values as [string, string];
+          const [id, userId] = values as [string, string];
           const row = expenses.get(id);
-          if (!row || row.customer_id !== customerId) return null;
+          if (!row || row.customer_id !== userId) return null;
           return row as T;
         }
 
@@ -792,11 +792,11 @@ function createMemoryD1Database(options?: {
           query.includes("where customer_id = ? and status not in") &&
           query.includes("order by created_at desc")
         ) {
-          const [customerId, ...excludedStatuses] = values as [string, ...string[]];
+          const [userId, ...excludedStatuses] = values as [string, ...string[]];
           const excluded = new Set(excludedStatuses);
           const row = Array.from(expenses.values())
             .filter(
-              (expense) => expense.customer_id === customerId && !excluded.has(expense.status),
+              (expense) => expense.customer_id === userId && !excluded.has(expense.status),
             )
             .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
           return (row as T | undefined) ?? null;
@@ -807,21 +807,21 @@ function createMemoryD1Database(options?: {
           query.includes("where customer_id = ? and status != ?") &&
           query.includes("order by created_at desc")
         ) {
-          const [customerId, excludedStatus] = values as [string, string];
+          const [userId, excludedStatus] = values as [string, string];
           const row = Array.from(expenses.values())
             .filter(
-              (expense) => expense.customer_id === customerId && expense.status !== excludedStatus,
+              (expense) => expense.customer_id === userId && expense.status !== excludedStatus,
             )
             .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
           return (row as T | undefined) ?? null;
         }
 
         if (query.includes("from categories where lower(name) = ?")) {
-          const [name, customerId] = values as [string, string];
+          const [name, userId] = values as [string, string];
           const found = Array.from(categories.values()).find(
             (category) =>
               category.name.toLowerCase() === name &&
-              (category.customer_id === customerId || category.customer_id === null),
+              (category.customer_id === userId || category.customer_id === null),
           );
           return (found as T | undefined) ?? null;
         }
@@ -831,10 +831,10 @@ function createMemoryD1Database(options?: {
             "from categories where id = ? and (customer_id = ? or customer_id is null)",
           )
         ) {
-          const [id, customerId] = values as [string, string];
+          const [id, userId] = values as [string, string];
           const category = categories.get(id);
           if (!category) return null;
-          if (category.customer_id !== customerId && category.customer_id !== null) return null;
+          if (category.customer_id !== userId && category.customer_id !== null) return null;
           return category as T;
         }
 
@@ -860,10 +860,10 @@ function createMemoryD1Database(options?: {
           query.includes("from customer_channels") &&
           query.includes("where customer_id = ? and channel = ? and is_primary = 1")
         ) {
-          const [customerId, channel] = values as [string, string];
+          const [userId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
             (row) =>
-              row.customer_id === customerId && row.channel === channel && row.is_primary === 1,
+              row.customer_id === userId && row.channel === channel && row.is_primary === 1,
           );
           if (!match) return null;
           return { external_user_id: match.external_user_id } as T;
@@ -878,8 +878,8 @@ function createMemoryD1Database(options?: {
           query.includes("from customer_channel_settings") &&
           query.includes("where customer_id = ? and channel_id = ?")
         ) {
-          const [customerId, channelId] = values as [string, string];
-          return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
+          const [userId, channelId] = values as [string, string];
+          return (channelSettings.get(`${userId}:${channelId}`) as T | undefined) ?? null;
         }
 
         if (
@@ -907,12 +907,12 @@ function createMemoryD1Database(options?: {
           query.includes("where customer_id = ?") &&
           query.includes("status in")
         ) {
-          const [customerId] = values as [string];
+          const [userId] = values as [string];
           const validStatuses = new Set(["TRIALING", "ACTIVE", "PAST_DUE"]);
           const candidate = Array.from(subscriptions.values())
             .filter(
               (subscription) =>
-                subscription.customer_id === customerId && validStatuses.has(subscription.status),
+                subscription.customer_id === userId && validStatuses.has(subscription.status),
             )
             .sort((a, b) => {
               const rank = (s: string) => (s === "ACTIVE" ? 0 : s === "TRIALING" ? 1 : 2);
@@ -950,10 +950,10 @@ function createMemoryD1Database(options?: {
       async all<T>() {
         if (query.includes("from categories")) {
           if (values.length === 1) {
-            const [customerId] = values as [string];
+            const [userId] = values as [string];
             return {
               results: Array.from(categories.values()).filter(
-                (category) => category.customer_id === customerId || category.customer_id === null,
+                (category) => category.customer_id === userId || category.customer_id === null,
               ) as T[],
             };
           }
@@ -966,11 +966,11 @@ function createMemoryD1Database(options?: {
           query.includes("where customer_id = ? and status not in") &&
           query.includes("order by occurred_at desc, created_at desc")
         ) {
-          const [customerId, ...excludedStatuses] = values as [string, ...string[]];
+          const [userId, ...excludedStatuses] = values as [string, ...string[]];
           const excluded = new Set(excludedStatuses);
           return {
             results: Array.from(expenses.values())
-              .filter((row) => row.customer_id === customerId && !excluded.has(row.status))
+              .filter((row) => row.customer_id === userId && !excluded.has(row.status))
               .sort((a, b) => {
                 const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
                 if (occurredDiff !== 0) return occurredDiff;
@@ -984,11 +984,11 @@ function createMemoryD1Database(options?: {
           query.includes("where customer_id = ? and status != ?") &&
           query.includes("order by occurred_at desc, created_at desc")
         ) {
-          const [customerId, excludedStatus] = values as [string, string];
+          const [userId, excludedStatus] = values as [string, string];
           return {
             results: Array.from(expenses.values())
               .filter(
-                (row) => row.customer_id === customerId && row.status !== excludedStatus,
+                (row) => row.customer_id === userId && row.status !== excludedStatus,
               )
               .sort((a, b) => {
                 const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
@@ -1002,10 +1002,10 @@ function createMemoryD1Database(options?: {
           query.includes("from chat_media") &&
           query.includes("where customer_id = ? and expense_id = ?")
         ) {
-          const [customerId, expenseId] = values as [string, string];
+          const [userId, expenseId] = values as [string, string];
           return {
             results: Array.from(chatMedia.values()).filter(
-              (row) => row.customer_id === customerId && row.expense_id === expenseId,
+              (row) => row.customer_id === userId && row.expense_id === expenseId,
             ) as T[],
           };
         }

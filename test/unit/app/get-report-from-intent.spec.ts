@@ -21,10 +21,10 @@ describe("get report from intent", () => {
       expenseRepo: {
         createExpenseRecord: vi.fn(),
         getById: vi.fn(),
-        listByCustomer: vi.fn().mockResolvedValue([
+        listByUser: vi.fn().mockResolvedValue([
           {
             id: "exp_1",
-            customerId: "cust_default",
+            userId: "cust_default",
             amount: 18,
             currency: "PEN",
             merchant: "Tambo",
@@ -38,7 +38,7 @@ describe("get report from intent", () => {
           },
           {
             id: "exp_2",
-            customerId: "cust_default",
+            userId: "cust_default",
             amount: 25,
             currency: "PEN",
             merchant: "Metro",
@@ -51,7 +51,7 @@ describe("get report from intent", () => {
             updatedAt: "2026-04-20T10:00:00.000Z",
           },
         ]),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -66,7 +66,7 @@ describe("get report from intent", () => {
 
     await Effect.runPromise(
       getReportFromIntent({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         payload: { periodKind: "month", confidence: 0.96 },
@@ -103,10 +103,10 @@ describe("get report from intent", () => {
       expenseRepo: {
         createExpenseRecord: vi.fn(),
         getById: vi.fn(),
-        listByCustomer: vi.fn().mockResolvedValue([
+        listByUser: vi.fn().mockResolvedValue([
           {
             id: "exp_1",
-            customerId: "cust_default",
+            userId: "cust_default",
             amount: 18,
             currency: "PEN",
             merchant: "Tambo",
@@ -120,7 +120,7 @@ describe("get report from intent", () => {
           },
           {
             id: "exp_2",
-            customerId: "cust_default",
+            userId: "cust_default",
             amount: 30,
             currency: "PEN",
             merchant: "Metro",
@@ -134,7 +134,7 @@ describe("get report from intent", () => {
           },
           {
             id: "exp_3",
-            customerId: "cust_default",
+            userId: "cust_default",
             amount: 12,
             currency: "PEN",
             merchant: "Metro",
@@ -147,7 +147,7 @@ describe("get report from intent", () => {
             updatedAt: "2026-04-18T10:00:00.000Z",
           },
         ]),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -162,7 +162,7 @@ describe("get report from intent", () => {
 
     await Effect.runPromise(
       getReportFromIntent({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         payload: { periodKind: "top_spend", confidence: 0.96 },

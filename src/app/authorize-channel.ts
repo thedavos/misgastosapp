@@ -21,7 +21,7 @@ export type AuthorizeChannelDeps = {
 
 export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
   return function authorizeChannel(input: {
-    customerId: string;
+    userId: string;
     channelId: string;
     requestId?: string;
   }): Effect.Effect<void, AppError> {
@@ -29,7 +29,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       const isChannelEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channelId,
           }),
         (cause) =>
@@ -44,7 +44,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
         const setting = yield* fromPromise(
           () =>
             deps.channelPolicyRepo.getUserChannelSetting({
-              userId: input.customerId,
+              userId: input.userId,
               channelId: input.channelId,
             }),
           (cause) =>
@@ -58,13 +58,13 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
         if (!setting) {
           deps.logger.warn("channel.setting_missing_blocked", {
             requestId: input.requestId,
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channelId,
           });
           return yield* Effect.fail(
             new ChannelSettingMissingError({
               requestId: input.requestId,
-              customerId: input.customerId,
+              userId: input.userId,
               channelId: input.channelId,
             }),
           );
@@ -74,13 +74,13 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       if (!isChannelEnabled) {
         deps.logger.warn("channel.disabled", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channelId: input.channelId,
         });
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channelId,
           }),
         );
@@ -90,7 +90,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -104,13 +104,13 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       if (!featureEnabled) {
         deps.logger.warn("subscription.feature_blocked", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           featureKey,
         });
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );

@@ -46,7 +46,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
   });
 
   return function handleUserReply(input: {
-    customerId: string;
+    userId: string;
     message: IncomingUserMessage;
   }): Effect.Effect<{ categorized: boolean }, AppError> {
     return Effect.gen(function* () {
@@ -54,7 +54,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            userId: input.customerId,
+            userId: input.userId,
             channel: message.channel,
             externalUserId: message.externalUserId,
           }),
@@ -71,7 +71,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
 
       const expense = yield* fromPromise(
         () =>
-          deps.expenseRepo.getById({ id: pendingState.expenseId, customerId: input.customerId }),
+          deps.expenseRepo.getById({ id: pendingState.expenseId, userId: input.userId }),
         (cause) => new ExpensePersistenceError({ operation: "getById", cause }),
       );
 
@@ -85,7 +85,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         yield* fromPromise(
           () =>
             deps.conversationState.delete({
-              userId: input.customerId,
+              userId: input.userId,
               channel: message.channel,
               externalUserId: message.externalUserId,
             }),
@@ -96,7 +96,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const categories = yield* fromPromise(
-        () => deps.categoryRepo.listAll({ customerId: input.customerId }),
+        () => deps.categoryRepo.listAll({ userId: input.userId }),
         (cause) => new CategoryLookupError({ operation: "listAll", cause }),
       );
 
@@ -115,7 +115,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         const isEnabled = yield* fromPromise(
           () =>
             deps.channelPolicyRepo.isChannelEnabledForUser({
-              userId: input.customerId,
+              userId: input.userId,
               channelId: message.channel,
             }),
           (cause) => new ChannelPolicyError({ operation: "isEnabled", cause }),
@@ -124,7 +124,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         if (!isEnabled) {
           return yield* Effect.fail(
             new ChannelDisabledError({
-              customerId: input.customerId,
+              userId: input.userId,
               channelId: message.channel,
             }),
           );
@@ -134,7 +134,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         const featureEnabled = yield* fromPromise(
           () =>
             deps.featurePolicy.isFeatureEnabled({
-              userId: input.customerId,
+              userId: input.userId,
               featureKey,
             }),
           (cause) => new FeaturePolicyError({ featureKey, cause }),
@@ -143,7 +143,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         if (!featureEnabled) {
           return yield* Effect.fail(
             new SubscriptionFeatureBlockedError({
-              customerId: input.customerId,
+              userId: input.userId,
               featureKey,
             }),
           );
@@ -161,7 +161,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const category = yield* fromPromise(
-        () => deps.categoryRepo.getById({ customerId: input.customerId, id: categoryId }),
+        () => deps.categoryRepo.getById({ userId: input.userId, id: categoryId }),
         (cause) => new CategoryLookupError({ operation: "getById", cause }),
       );
 
@@ -174,14 +174,14 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         () =>
           deps.expenseRepo.markConfirmed({
             id: expense.id,
-            customerId: input.customerId,
+            userId: input.userId,
             categoryId: category.id,
           }),
         (cause) => new ExpensePersistenceError({ operation: "markConfirmed", cause }),
       );
 
       yield* completeExpenseFlow({
-        customerId: input.customerId,
+        userId: input.userId,
         channel: message.channel,
         externalUserId: message.externalUserId,
         categoryName: category.name,

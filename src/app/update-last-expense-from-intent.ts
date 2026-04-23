@@ -41,7 +41,7 @@ function hasSupportedPatch(payload: UpdateLastExpenseIntentPayload): boolean {
 
 export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromIntentDeps) {
   return function updateLastExpenseFromIntent(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
@@ -53,11 +53,11 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
       }
 
       const latestExpense = yield* fromPromise(
-        () => deps.expenseRepo.findLatestByCustomer({ customerId: input.customerId }),
+        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "findLatestByCustomer",
+            operation: "findLatestByUser",
             cause,
           }),
       );
@@ -79,7 +79,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         () =>
           deps.expenseRepo.update({
             id: latestExpense.id,
-            customerId: input.customerId,
+            userId: input.userId,
             amount:
               input.payload.patch.amountMinor !== undefined
                 ? input.payload.patch.amountMinor / 100
@@ -104,7 +104,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -119,7 +119,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -129,7 +129,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -144,7 +144,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
@@ -161,7 +161,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
 
       deps.logger.info("expense.updated_from_intent", {
         requestId: input.requestId,
-        customerId: input.customerId,
+        userId: input.userId,
         channel: input.channel,
         externalUserId: input.externalUserId,
         expenseId: updatedExpense.id,

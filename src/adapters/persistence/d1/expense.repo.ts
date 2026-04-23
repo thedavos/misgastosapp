@@ -40,7 +40,7 @@ function normalizeExpenseStatus(status: string): Expense["status"] {
 function mapExpenseRow(row: ExpenseRow): Expense {
   return {
     id: row.id,
-    customerId: row.customer_id,
+    userId: row.customer_id,
     amount: row.amount,
     currency: row.currency,
     merchant: row.merchant,
@@ -66,7 +66,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       )
         .bind(
           id,
-          input.customerId,
+          input.userId,
           input.amount,
           input.currency,
           input.merchant,
@@ -81,7 +81,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
 
       return {
         id,
-        customerId: input.customerId,
+        userId: input.userId,
         amount: input.amount,
         currency: input.currency,
         merchant: input.merchant,
@@ -95,32 +95,32 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       };
     },
 
-    async getById(input: { id: string; customerId: string }): Promise<Expense | null> {
+    async getById(input: { id: string; userId: string }): Promise<Expense | null> {
       const row = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
       )
-        .bind(input.id, input.customerId)
+        .bind(input.id, input.userId)
         .first<ExpenseRow>();
 
       if (!row) return null;
       return mapExpenseRow(row);
     },
 
-    async listByCustomer(input: { customerId: string }): Promise<Expense[]> {
+    async listByUser(input: { userId: string }): Promise<Expense[]> {
       const rows = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses
          WHERE customer_id = ? AND status NOT IN (?, ?, ?)
          ORDER BY occurred_at DESC, created_at DESC`,
       )
-        .bind(input.customerId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
+        .bind(input.userId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
         .all<ExpenseRow>();
 
       return rows.results.map(mapExpenseRow);
     },
 
-    async findLatestByCustomer(input: { customerId: string }): Promise<Expense | null> {
+    async findLatestByUser(input: { userId: string }): Promise<Expense | null> {
       const row = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses
@@ -128,7 +128,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
          ORDER BY created_at DESC
          LIMIT 1`,
       )
-        .bind(input.customerId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
+        .bind(input.userId, EXPENSE_STATUS.Deleted, "DISCARDED", "DELETED")
         .first<ExpenseRow>();
 
       if (!row) return null;
@@ -137,7 +137,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
 
     async update(input: {
       id: string;
-      customerId: string;
+      userId: string;
       amount: number;
       currency: string;
       merchant: string;
@@ -158,7 +158,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
           input.rawText,
           now,
           input.id,
-          input.customerId,
+          input.userId,
         )
         .run();
 
@@ -168,7 +168,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       )
         .bind(
           crypto.randomUUID(),
-          input.customerId,
+          input.userId,
           input.id,
           "EXPENSE_UPDATED",
           JSON.stringify({
@@ -185,19 +185,19 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
       )
-        .bind(input.id, input.customerId)
+        .bind(input.id, input.userId)
         .first<ExpenseRow>();
 
       if (!row) return null;
       return mapExpenseRow(row);
     },
 
-    async discard(input: { id: string; customerId: string }): Promise<Expense | null> {
+    async discard(input: { id: string; userId: string }): Promise<Expense | null> {
       const existing = await env.DB.prepare(
         `SELECT id, customer_id, amount, currency, merchant, occurred_at, bank, raw_text, status, category_id, created_at, updated_at
          FROM expenses WHERE id = ? AND customer_id = ? LIMIT 1`,
       )
-        .bind(input.id, input.customerId)
+        .bind(input.id, input.userId)
         .first<ExpenseRow>();
 
       if (!existing) return null;
@@ -208,7 +208,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
          SET status = ?, category_id = ?, updated_at = ?
          WHERE id = ? AND customer_id = ?`,
       )
-        .bind(EXPENSE_STATUS.Deleted, existing.category_id, now, input.id, input.customerId)
+        .bind(EXPENSE_STATUS.Deleted, existing.category_id, now, input.id, input.userId)
         .run();
 
       await env.DB.prepare(
@@ -217,7 +217,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       )
         .bind(
           crypto.randomUUID(),
-          input.customerId,
+          input.userId,
           input.id,
           "EXPENSE_DISCARDED",
           JSON.stringify({ previousStatus: existing.status }),
@@ -234,7 +234,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
 
     async markConfirmed(input: {
       id: string;
-      customerId: string;
+      userId: string;
       categoryId: string;
     }): Promise<void> {
       const now = new Date().toISOString();
@@ -243,7 +243,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
          SET status = ?, category_id = ?, updated_at = ?
          WHERE id = ? AND customer_id = ?`,
       )
-        .bind(EXPENSE_STATUS.Confirmed, input.categoryId, now, input.id, input.customerId)
+        .bind(EXPENSE_STATUS.Confirmed, input.categoryId, now, input.id, input.userId)
         .run();
 
       await env.DB.prepare(
@@ -252,7 +252,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       )
         .bind(
           crypto.randomUUID(),
-          input.customerId,
+          input.userId,
           input.id,
           "EXPENSE_CONFIRMED",
           JSON.stringify({ categoryId: input.categoryId }),

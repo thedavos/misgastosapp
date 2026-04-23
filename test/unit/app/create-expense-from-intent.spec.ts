@@ -6,7 +6,7 @@ describe("create expense from intent", () => {
   it("persists and confirms when the payload is sufficient", async () => {
     const createExpenseRecord = vi.fn().mockResolvedValue({
       id: "exp_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 18,
       currency: "PEN",
       merchant: "Tambo",
@@ -35,7 +35,7 @@ describe("create expense from intent", () => {
       expenseRepo: {
         createExpenseRecord,
         getById: vi.fn(),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -50,7 +50,7 @@ describe("create expense from intent", () => {
 
     const result = await Effect.runPromise(
       createExpenseFromIntent({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         payload: {
@@ -97,7 +97,7 @@ describe("create expense from intent", () => {
       expenseRepo: {
         createExpenseRecord: vi.fn(),
         getById: vi.fn(),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -112,7 +112,7 @@ describe("create expense from intent", () => {
 
     const result = await Effect.runPromise(
       createExpenseFromIntent({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         payload: {

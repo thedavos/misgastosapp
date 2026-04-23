@@ -31,7 +31,7 @@ describe("expense ingestion logic", () => {
 
     const created = await Effect.runPromise(
       container.captureExpenseWithClarification({
-        customerId: "cust_default",
+        userId: "cust_default",
         sourceText: "Compra por S/ 50 en Tambo",
         channel: "whatsapp",
         externalUserId: "51999999999",
@@ -108,7 +108,7 @@ describe("expense ingestion logic", () => {
 
     await Effect.runPromise(
       container.processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         providerEventId: "evt_update_seed_1",
@@ -156,7 +156,7 @@ describe("expense ingestion logic", () => {
 
     await Effect.runPromise(
       container.processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
         externalUserId: "51999999999",
         providerEventId: "evt_delete_seed_1",

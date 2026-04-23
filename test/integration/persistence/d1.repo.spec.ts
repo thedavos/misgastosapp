@@ -8,7 +8,7 @@ describe("d1 expense repo integration", () => {
     const repo = createD1ExpenseRepo(env);
 
     const created = await repo.createExpenseRecord({
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 23,
       currency: "PEN",
       merchant: "Metro",
@@ -21,10 +21,10 @@ describe("d1 expense repo integration", () => {
 
     await repo.markConfirmed({
       id: created.id,
-      customerId: "cust_default",
+      userId: "cust_default",
       categoryId: "cat_food",
     });
-    const updated = await repo.getById({ id: created.id, customerId: "cust_default" });
+    const updated = await repo.getById({ id: created.id, userId: "cust_default" });
 
     expect(updated?.status).toBe("confirmed");
     expect(updated?.categoryId).toBe("cat_food");
@@ -35,7 +35,7 @@ describe("d1 expense repo integration", () => {
     const repo = createD1ExpenseRepo(env);
 
     await repo.createExpenseRecord({
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 10,
       currency: "PEN",
       merchant: "Old",
@@ -45,7 +45,7 @@ describe("d1 expense repo integration", () => {
     });
 
     await repo.createExpenseRecord({
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 20,
       currency: "PEN",
       merchant: "New",
@@ -54,7 +54,7 @@ describe("d1 expense repo integration", () => {
       rawText: "new",
     });
 
-    const expenses = await repo.listByCustomer({ customerId: "cust_default" });
+    const expenses = await repo.listByUser({ userId: "cust_default" });
 
     expect(expenses).toHaveLength(2);
     expect(expenses[0]?.merchant).toBe("New");
@@ -66,7 +66,7 @@ describe("d1 expense repo integration", () => {
     const repo = createD1ExpenseRepo(env);
 
     const created = await repo.createExpenseRecord({
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 23,
       currency: "PEN",
       merchant: "Metro",
@@ -75,12 +75,12 @@ describe("d1 expense repo integration", () => {
       rawText: "raw",
     });
 
-    const latest = await repo.findLatestByCustomer({ customerId: "cust_default" });
+    const latest = await repo.findLatestByUser({ userId: "cust_default" });
     expect(latest?.id).toBe(created.id);
 
     const updated = await repo.update({
       id: created.id,
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 30,
       currency: "PEN",
       merchant: "Tambo",
@@ -96,10 +96,10 @@ describe("d1 expense repo integration", () => {
 
     const discarded = await repo.discard({
       id: created.id,
-      customerId: "cust_default",
+      userId: "cust_default",
     });
 
     expect(discarded?.status).toBe("deleted");
-    expect(await repo.findLatestByCustomer({ customerId: "cust_default" })).toBeNull();
+    expect(await repo.findLatestByUser({ userId: "cust_default" })).toBeNull();
   });
 });

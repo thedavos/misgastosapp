@@ -20,7 +20,7 @@ type ChatMediaRow = {
 function mapChatMediaRow(row: ChatMediaRow): ChatMedia {
   return {
     id: row.id,
-    customerId: row.customer_id,
+    userId: row.customer_id,
     channel: row.channel,
     externalUserId: row.external_user_id,
     providerEventId: row.provider_event_id,
@@ -63,7 +63,7 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
       )
         .bind(
           id,
-          input.customerId,
+          input.userId,
           input.channel,
           input.externalUserId,
           input.providerEventId,
@@ -80,7 +80,7 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
 
       return {
         id,
-        customerId: input.customerId,
+        userId: input.userId,
         channel: input.channel,
         externalUserId: input.externalUserId,
         providerEventId: input.providerEventId,
@@ -124,7 +124,7 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
          FROM chat_media
          WHERE customer_id = ? AND expense_id = ?`,
       )
-        .bind(input.customerId, input.expenseId)
+        .bind(input.userId, input.expenseId)
         .all<ChatMediaRow>();
 
       return rows.results.map(mapChatMediaRow);

@@ -21,7 +21,7 @@ export async function runExpenseProcessingJobOnce(
 
   const result = await Effect.runPromiseExit(
     container.processChatMessage({
-      customerId: job.userId,
+      userId: job.userId,
       channel: job.channel,
       externalUserId: job.externalUserId,
       providerEventId: job.eventId,
@@ -49,7 +49,7 @@ export async function runExpenseProcessingJobOnce(
   container.logger.info("expense.agent.job_processed", {
     requestId,
     eventId: job.eventId,
-    customerId: job.userId,
+    userId: job.userId,
     channel: job.channel,
     externalUserId: job.externalUserId,
     attempt: job.attempt,
@@ -115,7 +115,7 @@ export async function processExpenseJobAttempt(input: {
     await input.scheduleRetry(retryDelay, nextJob);
     input.logger.warn("expense.agent.job_retry_scheduled", {
       eventId: input.job.eventId,
-      customerId: input.job.userId,
+      userId: input.job.userId,
       channel: input.job.channel,
       externalUserId: input.job.externalUserId,
       attempt: input.job.attempt,
@@ -130,7 +130,7 @@ export async function processExpenseJobAttempt(input: {
   await input.sendFinalRetryMessage(input.job);
   input.logger.error("expense.agent.job_failed_final", {
     eventId: input.job.eventId,
-    customerId: input.job.userId,
+    userId: input.job.userId,
     channel: input.job.channel,
     externalUserId: input.job.externalUserId,
     attempt: input.job.attempt,

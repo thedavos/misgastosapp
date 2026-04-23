@@ -1,6 +1,6 @@
 export interface ChatMedia {
   id: string;
-  customerId: string;
+  userId: string;
   channel: string;
   externalUserId: string;
   providerEventId: string;
@@ -16,7 +16,7 @@ export interface ChatMedia {
 
 export interface ChatMediaRepoPort {
   create(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     providerEventId: string;
@@ -31,6 +31,6 @@ export interface ChatMediaRepoPort {
     data: Uint8Array;
   }): Promise<ChatMedia>;
   linkExpense(input: { id: string; expenseId: string }): Promise<void>;
-  listByExpenseId(input: { customerId: string; expenseId: string }): Promise<ChatMedia[]>;
+  listByExpenseId(input: { userId: string; expenseId: string }): Promise<ChatMedia[]>;
   deleteExpired(input: { nowIso: string; limit?: number }): Promise<number>;
 }

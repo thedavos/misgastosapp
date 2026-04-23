@@ -29,8 +29,8 @@ describe("handle user reply", () => {
       },
       expenseRepo: {
         createExpenseRecord: vi.fn(),
-        getById: vi.fn().mockResolvedValue({ id: "exp_1", customerId: "cust_default" }),
-        findLatestByCustomer: vi.fn(),
+        getById: vi.fn().mockResolvedValue({ id: "exp_1", userId: "cust_default" }),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed,
@@ -62,7 +62,7 @@ describe("handle user reply", () => {
 
     const result = await Effect.runPromise(
       handleUserReply({
-        customerId: "cust_default",
+        userId: "cust_default",
         message: {
           channel: "whatsapp",
           externalUserId: "u1",
@@ -76,7 +76,7 @@ describe("handle user reply", () => {
     expect(result).toEqual({ categorized: true });
     expect(markConfirmed).toHaveBeenCalledWith({
       id: "exp_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       categoryId: "cat_food",
     });
     expect(deleteState).toHaveBeenCalledWith({

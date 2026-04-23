@@ -32,7 +32,7 @@ function formatAmount(amount: number, currency: string): string {
 
 export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps) {
   return function createExpenseFromIntent(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
@@ -59,7 +59,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const expense = yield* fromPromise(
         () =>
           deps.expenseRepo.createExpenseRecord({
-            customerId: input.customerId,
+            userId: input.userId,
             amount,
             currency,
             merchant,
@@ -78,7 +78,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -93,7 +93,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -103,7 +103,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -118,7 +118,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
@@ -133,7 +133,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
 
       deps.logger.info("expense.created_from_intent", {
         requestId: input.requestId,
-        customerId: input.customerId,
+        userId: input.userId,
         channel: input.channel,
         externalUserId: input.externalUserId,
         expenseId: expense.id,

@@ -106,7 +106,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
     if (canApplyCreateIntentDirectly(parsedIntent)) {
       const created = await deps.expenseRepo.createExpenseRecord({
-        customerId: input.userId,
+        userId: input.userId,
         amount: parsedIntent.payload.draft.amountMinor! / 100,
         currency: parsedIntent.payload.draft.currency!,
         merchant: parsedIntent.payload.draft.merchant!,
@@ -127,8 +127,8 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
     }
 
     if (canApplyUpdateIntentDirectly(parsedIntent)) {
-      const latestExpense = await deps.expenseRepo.findLatestByCustomer({
-        customerId: input.userId,
+      const latestExpense = await deps.expenseRepo.findLatestByUser({
+        userId: input.userId,
       });
 
       if (!latestExpense) {
@@ -145,7 +145,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
       const updated = await deps.expenseRepo.update({
         id: latestExpense.id,
-        customerId: input.userId,
+        userId: input.userId,
         amount: parsedIntent.payload.patch.amountMinor! / 100,
         currency: parsedIntent.payload.patch.currency ?? latestExpense.currency,
         merchant: parsedIntent.payload.patch.merchant ?? latestExpense.merchant,
@@ -165,8 +165,8 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
     }
 
     if (canApplyDeleteIntentDirectly(parsedIntent)) {
-      const latestExpense = await deps.expenseRepo.findLatestByCustomer({
-        customerId: input.userId,
+      const latestExpense = await deps.expenseRepo.findLatestByUser({
+        userId: input.userId,
       });
 
       if (!latestExpense) {
@@ -183,7 +183,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
 
       const discarded = await deps.expenseRepo.discard({
         id: latestExpense.id,
-        customerId: input.userId,
+        userId: input.userId,
       });
 
       return {
@@ -198,7 +198,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
     }
 
     if (canApplyReportIntentDirectly(parsedIntent)) {
-      const expenses = await deps.expenseRepo.listByCustomer({ customerId: input.userId });
+      const expenses = await deps.expenseRepo.listByUser({ userId: input.userId });
       const periodExpenses = buildPeriodExpenses({
         expenses,
         nowIso: input.nowIso,

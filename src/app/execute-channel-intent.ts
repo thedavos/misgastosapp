@@ -10,28 +10,28 @@ import type { AppError } from "@/app/errors";
 
 export type ExecuteChannelIntentDeps = {
   createExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   deleteLastExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   getReportFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: GetReportIntentPayload;
@@ -55,7 +55,7 @@ export function canApplyReportIntentDirectly(payload: GetReportIntentPayload): b
 
 export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
   return function executeChannelIntent(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     parsedIntent: ParsedIntent;
@@ -66,7 +66,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
     return Effect.gen(function* () {
       if (input.parsedIntent.name === "create_expense" && deps.createExpenseFromIntent) {
         const created = yield* deps.createExpenseFromIntent({
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
@@ -84,7 +84,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         canApplyUpdateIntentDirectly(input.parsedIntent.payload)
       ) {
         const updated = yield* deps.updateLastExpenseFromIntent({
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
@@ -102,7 +102,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         canApplyDeleteIntentDirectly(input.parsedIntent.payload)
       ) {
         const deleted = yield* deps.deleteLastExpenseFromIntent({
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
@@ -120,7 +120,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         canApplyReportIntentDirectly(input.parsedIntent.payload)
       ) {
         const reported = yield* deps.getReportFromIntent({
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,

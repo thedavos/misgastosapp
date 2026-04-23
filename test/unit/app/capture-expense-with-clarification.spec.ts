@@ -6,7 +6,7 @@ describe("ingest expense from email", () => {
   it("creates pending expense and stores conversation state", async () => {
     const createExpenseRecord = vi.fn().mockResolvedValue({
       id: "exp_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       amount: 55,
       currency: "PEN",
       merchant: "Tambo",
@@ -44,7 +44,7 @@ describe("ingest expense from email", () => {
       expenseRepo: {
         createExpenseRecord,
         getById: vi.fn(),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -64,7 +64,7 @@ describe("ingest expense from email", () => {
 
     const result = await Effect.runPromise(
       ingest({
-        customerId: "cust_default",
+        userId: "cust_default",
         sourceText: "mail text",
         channel: "whatsapp",
         externalUserId: "51999999999",
@@ -74,7 +74,7 @@ describe("ingest expense from email", () => {
     expect(result).toEqual({ expenseId: "exp_1" });
     expect(createExpenseRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        customerId: "cust_default",
+        userId: "cust_default",
       }),
     );
     expect(put).toHaveBeenCalledWith(

@@ -28,13 +28,13 @@ describe("resolve mobile intent request", () => {
     expect(await result.response.json()).toEqual({ error: "invalid_json" });
   });
 
-  it("returns userId_or_customerId_and_text_required when required fields are missing", async () => {
+  it("returns userId_or_userId_and_text_required when required fields are missing", async () => {
     const request = new Request("https://example.com", {
       method: "POST",
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ customerId: "cust_1" }),
+      body: JSON.stringify({ userId: "cust_1" }),
     });
 
     const result = await resolveMobileIntentRequest({
@@ -50,7 +50,7 @@ describe("resolve mobile intent request", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected missing fields result");
     expect(result.response.status).toBe(400);
-    expect(await result.response.json()).toEqual({ error: "userId_or_customerId_and_text_required" });
+    expect(await result.response.json()).toEqual({ error: "userId_and_text_required" });
   });
 
   it("returns user_not_found when the user does not exist", async () => {
@@ -59,7 +59,7 @@ describe("resolve mobile intent request", () => {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ customerId: "cust_missing", text: "hola" }),
+      body: JSON.stringify({ userId: "cust_missing", text: "hola" }),
     });
 
     const result = await resolveMobileIntentRequest({
@@ -84,7 +84,7 @@ describe("resolve mobile intent request", () => {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ customerId: " cust_1 ", text: " S/ 18 en Tambo " }),
+      body: JSON.stringify({ userId: " cust_1 ", text: " S/ 18 en Tambo " }),
     });
 
     const result = await resolveMobileIntentRequest({

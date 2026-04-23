@@ -2,7 +2,7 @@ import type { ExpenseStatus } from "@/domain/expense/status";
 
 export interface Expense {
   id: string;
-  customerId: string;
+  userId: string;
   amount: number;
   currency: string;
   merchant: string;
@@ -16,7 +16,7 @@ export interface Expense {
 }
 
 export interface NewExpense {
-  customerId: string;
+  userId: string;
   amount: number;
   currency: string;
   merchant: string;

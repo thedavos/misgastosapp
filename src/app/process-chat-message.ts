@@ -39,39 +39,39 @@ export type ProcessChatMessageDeps = {
   chatMediaRepo: ChatMediaRepoPort;
   logger: LoggerPort;
   fallbackExpenseCapture: (input: {
-    customerId: string;
+    userId: string;
     sourceText: string;
     channel: string;
     externalUserId: string;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   handleUserReply: (input: {
-    customerId: string;
+    userId: string;
     message: IncomingUserMessage;
   }) => Effect.Effect<{ categorized: boolean }, AppError>;
   createExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   deleteLastExpenseFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   getReportFromIntent?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: GetReportIntentPayload;
@@ -85,7 +85,7 @@ export type ProcessChatMessageDeps = {
     requestId?: string;
   }) => Promise<ParsedIntent>;
   resolveIntentContext?: (input: {
-    customerId: string;
+    userId: string;
     channel: string;
   }) => Promise<Omit<IntentContext, "sourceType" | "nowIso"> | null>;
   resolveAttachmentData?: (input: {
@@ -105,7 +105,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
   });
 
   return function processChatMessage(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     providerEventId: string;
@@ -123,7 +123,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            userId: input.customerId,
+            userId: input.userId,
             channel: input.channel,
             externalUserId: input.externalUserId,
           }),
@@ -144,7 +144,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         }
 
         const replyResult = yield* deps.handleUserReply({
-          customerId: input.customerId,
+          userId: input.userId,
           message: {
             channel: input.channel,
             externalUserId: input.externalUserId,
@@ -215,7 +215,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
         const extension = inferImageExtension(mediaPayload.mimeType);
         const eventPart = input.providerEventId || crypto.randomUUID();
-        const r2Key = `receipts/${input.customerId}/${input.channel}/${yyyy}/${mm}/${eventPart}.${extension}`;
+        const r2Key = `receipts/${input.userId}/${input.channel}/${yyyy}/${mm}/${eventPart}.${extension}`;
         const sha256 = yield* fromPromise(
           () => sha256Hex(mediaPayload.data),
           (cause) =>
@@ -229,7 +229,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const created = yield* fromPromise(
           () =>
             deps.chatMediaRepo.create({
-              customerId: input.customerId,
+              userId: input.userId,
               channel: input.channel,
               externalUserId: input.externalUserId,
               providerEventId: input.providerEventId,
@@ -254,7 +254,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         createdMediaIds.push(created.id);
         deps.logger.info("chat.media_stored", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           mediaId: created.id,
           r2Key,
@@ -269,7 +269,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         );
         deps.logger.info("chat.ingest_no_transaction_guidance", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
         });
         return { categorized: false, guided: true };
@@ -281,7 +281,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const context = yield* fromPromise(
           async () => {
             const base = await deps.resolveIntentContext?.({
-              customerId: input.customerId,
+              userId: input.userId,
               channel: input.channel,
             });
 
@@ -318,7 +318,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
 
         deps.logger.info("intent.shadow_parsed", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           intentName: parsedIntent.name,
           confidence: parsedIntent.payload.confidence,
@@ -327,7 +327,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
 
       if (input.channel === "whatsapp" && parsedIntent && resolvedContext) {
         const directIntentResult = yield* executeChannelIntent({
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           externalUserId: input.externalUserId,
           parsedIntent,
@@ -364,7 +364,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
 
       const ingestionResult = yield* deps
         .fallbackExpenseCapture({
-          customerId: input.customerId,
+          userId: input.userId,
           sourceText,
           channel: input.channel,
           externalUserId: input.externalUserId,

@@ -90,9 +90,9 @@ export async function handleEmail(
     }
 
     let matchedSenderEmail: string | null = null;
-    let customerId: string | null = null;
+    let userId: string | null = null;
     for (const senderCandidate of senderCandidates) {
-      const resolvedCustomerId = yield* Effect.tryPromise({
+      const resolvedUserId = yield* Effect.tryPromise({
         try: () =>
           container.userEmailSenderRepo.resolveUserIdBySenderEmail(senderCandidate),
         catch: (cause) =>
@@ -102,14 +102,14 @@ export async function handleEmail(
             cause,
           }),
       });
-      if (resolvedCustomerId) {
-        customerId = resolvedCustomerId;
+      if (resolvedUserId) {
+        userId = resolvedUserId;
         matchedSenderEmail = senderCandidate;
         break;
       }
     }
 
-    if (!customerId) {
+    if (!userId) {
       container.logger.warn("email.sender_not_mapped_skip", {
         requestId,
         senderCandidates,
@@ -119,7 +119,7 @@ export async function handleEmail(
     }
 
     const user = yield* Effect.tryPromise({
-      try: () => container.userRepo.getById(customerId),
+      try: () => container.userRepo.getById(userId),
       catch: (cause) =>
         new UserSenderLookupError({
           requestId,
@@ -131,7 +131,7 @@ export async function handleEmail(
     if (!user) {
       container.logger.warn("email.user_not_found_skip", {
         requestId,
-        customerId,
+        userId,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
       });
@@ -141,7 +141,7 @@ export async function handleEmail(
     if (user.status !== "ACTIVE") {
       container.logger.warn("email.user_inactive_skip", {
         requestId,
-        customerId: user.id,
+        userId: user.id,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
         status: user.status,
@@ -149,24 +149,24 @@ export async function handleEmail(
       return;
     }
 
-    const userId = yield* Effect.tryPromise({
+    const primaryExternalUserId = yield* Effect.tryPromise({
       try: () =>
         container.userRepo.getPrimaryExternalUserId({
-          userId: customerId,
+          userId,
           channel: "whatsapp",
         }),
       catch: (cause) =>
         new MissingDefaultUserError({
           requestId,
-          message: `Unable to resolve primary whatsapp user for user ${customerId}: ${String(cause)}`,
+          message: `Unable to resolve primary whatsapp user for user ${userId}: ${String(cause)}`,
         }),
     });
 
-    if (!userId) {
+    if (!primaryExternalUserId) {
       return yield* Effect.fail(
         new MissingDefaultUserError({
           requestId,
-          message: `No primary whatsapp user configured for user ${customerId}`,
+          message: `No primary whatsapp user configured for user ${userId}`,
         }),
       );
     }
@@ -176,7 +176,7 @@ export async function handleEmail(
       to: parsedEmail.to?.map((t) => t.address).join(","),
       subject: parsedEmail.subject,
       date: String(parsedEmail.date || ""),
-      customerId,
+      userId,
       recipientEmail,
       senderEmail: matchedSenderEmail ?? senderCandidates[0],
     });
@@ -200,15 +200,15 @@ export async function handleEmail(
 
     container.logger.info("email.intent_shadow_parsed", {
       requestId,
-      customerId,
+      userId,
       intentName: parsedIntent.name,
       confidence: parsedIntent.payload.confidence,
     });
 
     const directIntentResult = yield* executeChannelIntent({
-      customerId,
+      userId,
       channel: "whatsapp",
-      externalUserId: userId,
+      externalUserId: primaryExternalUserId,
       parsedIntent,
       timezone: user.timezone,
       nowIso: new Date().toISOString(),
@@ -218,21 +218,21 @@ export async function handleEmail(
     if (directIntentResult.handled) {
       container.logger.info("email.done", {
         requestId,
-        customerId,
+        userId,
         mode: `direct_${parsedIntent.name}`,
       });
       return;
     }
 
     yield* container.captureExpenseWithClarification({
-      customerId,
+      userId,
       sourceText,
       channel: "whatsapp",
-      externalUserId: userId,
+      externalUserId: primaryExternalUserId,
       requestId,
     });
 
-    container.logger.info("email.done", { requestId, customerId, mode: "fallback_clarification" });
+    container.logger.info("email.done", { requestId, userId, mode: "fallback_clarification" });
   });
 
   const result = await Effect.runPromiseExit(effect);

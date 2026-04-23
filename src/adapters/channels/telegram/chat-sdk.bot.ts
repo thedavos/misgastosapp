@@ -87,7 +87,7 @@ async function handleTelegramThreadMessage(input: {
   const authorization = await Effect.runPromise(
     container
       .authorizeChannel({
-        customerId: user.id,
+        userId: user.id,
         channelId: "telegram",
         requestId,
       })
@@ -132,7 +132,7 @@ async function handleTelegramThreadMessage(input: {
 
   const processResult = await Effect.runPromiseExit(
     container.processChatMessage({
-      customerId: user.id,
+      userId: user.id,
       channel: "telegram",
       externalUserId: userId,
       providerEventId: eventId,

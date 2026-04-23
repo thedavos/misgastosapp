@@ -70,7 +70,7 @@ describe("whatsapp webhook integration", () => {
 
     const created = await Effect.runPromise(
       container.captureExpenseWithClarification({
-        customerId: "cust_default",
+        userId: "cust_default",
         sourceText: "Compra por S/ 50 en Tambo",
         channel: "whatsapp",
         externalUserId: "51999999999",

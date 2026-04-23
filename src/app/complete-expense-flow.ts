@@ -28,7 +28,7 @@ export type CompleteExpenseFlowDeps = {
 
 export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
   return function completeExpenseFlow(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     categoryName: string;
@@ -38,7 +38,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       yield* fromPromise(
         () =>
           deps.conversationState.delete({
-            userId: input.customerId,
+            userId: input.userId,
             channel: input.channel,
             externalUserId: input.externalUserId,
           }),
@@ -62,7 +62,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -76,13 +76,13 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       if (!isEnabled) {
         deps.logger.warn("channel.disabled_skip_send", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channelId: input.channel,
         });
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -92,7 +92,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -107,7 +107,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );

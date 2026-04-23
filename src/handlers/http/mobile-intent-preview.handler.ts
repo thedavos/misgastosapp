@@ -34,7 +34,6 @@ export async function handleMobileIntentPreview(
 
   return Response.json(
     {
-      customerId: userId,
       userId,
       sourceType: "mobile",
       parsedIntent,

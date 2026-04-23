@@ -117,7 +117,7 @@ export async function handleWhatsAppWebhook(
 
     const authorizationResult = yield* container
       .authorizeChannel({
-        customerId: user.id,
+        userId: user.id,
         channelId: incomingMessage.channel,
         requestId,
       })
@@ -199,7 +199,7 @@ export async function handleWhatsAppWebhook(
     container.logger.info("whatsapp.webhook_job_enqueued", {
       requestId,
       eventId,
-      customerId: user.id,
+      userId: user.id,
       channel: incomingMessage.channel,
       externalUserId: incomingMessage.externalUserId,
     });

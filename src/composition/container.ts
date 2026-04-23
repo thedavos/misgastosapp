@@ -158,8 +158,8 @@ export function createContainer(
     deleteLastExpenseFromIntent,
     getReportFromIntent,
     parseUserIntent,
-    resolveIntentContext: async ({ customerId }) => {
-      const user = await userRepo.getById(customerId);
+    resolveIntentContext: async ({ userId }) => {
+      const user = await userRepo.getById(userId);
       if (!user) return null;
       return {
         timezone: user.timezone,

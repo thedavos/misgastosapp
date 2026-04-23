@@ -6,7 +6,7 @@ describe("execute mobile intent", () => {
   it("creates an expense when mobile create_expense is directly executable", async () => {
     const createExpenseRecord = vi.fn().mockResolvedValue({
       id: "exp_1",
-      customerId: "cust_1",
+      userId: "cust_1",
       amount: 18,
       currency: "PEN",
       merchant: "Tambo",
@@ -36,8 +36,8 @@ describe("execute mobile intent", () => {
       expenseRepo: {
         createExpenseRecord,
         getById: vi.fn(),
-        listByCustomer: vi.fn(),
-        findLatestByCustomer: vi.fn(),
+        listByUser: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -55,7 +55,7 @@ describe("execute mobile intent", () => {
     expect(result.handled).toBe(true);
     expect(result.result.kind).toBe("expense_created");
     expect(createExpenseRecord).toHaveBeenCalledWith({
-      customerId: "cust_1",
+      userId: "cust_1",
       amount: 18,
       currency: "PEN",
       merchant: "Tambo",
@@ -77,10 +77,10 @@ describe("execute mobile intent", () => {
       expenseRepo: {
         createExpenseRecord: vi.fn(),
         getById: vi.fn(),
-        listByCustomer: vi.fn().mockResolvedValue([
+        listByUser: vi.fn().mockResolvedValue([
           {
             id: "exp_1",
-            customerId: "cust_1",
+            userId: "cust_1",
             amount: 18,
             currency: "PEN",
             merchant: "Tambo",
@@ -93,7 +93,7 @@ describe("execute mobile intent", () => {
             updatedAt: "2026-04-22T10:00:00.000Z",
           },
         ]),
-        findLatestByCustomer: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),
@@ -125,8 +125,8 @@ describe("execute mobile intent", () => {
       expenseRepo: {
         createExpenseRecord: vi.fn(),
         getById: vi.fn(),
-        listByCustomer: vi.fn(),
-        findLatestByCustomer: vi.fn(),
+        listByUser: vi.fn(),
+        findLatestByUser: vi.fn(),
         update: vi.fn(),
         discard: vi.fn(),
         markConfirmed: vi.fn(),

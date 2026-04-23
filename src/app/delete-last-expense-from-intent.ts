@@ -32,7 +32,7 @@ function formatAmount(amount: number, currency: string): string {
 
 export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromIntentDeps) {
   return function deleteLastExpenseFromIntent(input: {
-    customerId: string;
+    userId: string;
     channel: string;
     externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
@@ -44,11 +44,11 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       }
 
       const latestExpense = yield* fromPromise(
-        () => deps.expenseRepo.findLatestByCustomer({ customerId: input.customerId }),
+        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "findLatestByCustomer",
+            operation: "findLatestByUser",
             cause,
           }),
       );
@@ -70,7 +70,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         () =>
           deps.expenseRepo.discard({
             id: latestExpense.id,
-            customerId: input.customerId,
+            userId: input.userId,
           }),
         (cause) =>
           new ExpensePersistenceError({
@@ -87,7 +87,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -102,7 +102,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -112,7 +112,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -127,7 +127,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
@@ -144,7 +144,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
 
       deps.logger.info("expense.deleted_from_intent", {
         requestId: input.requestId,
-        customerId: input.customerId,
+        userId: input.userId,
         channel: input.channel,
         externalUserId: input.externalUserId,
         expenseId: discardedExpense.id,

@@ -39,18 +39,13 @@ export async function resolveMobileIntentRequest(input: {
   }
 
   const record = payload as Record<string, unknown>;
-  const userId =
-    typeof record.userId === "string"
-      ? record.userId.trim()
-      : typeof record.customerId === "string"
-        ? record.customerId.trim()
-        : "";
+  const userId = typeof record.userId === "string" ? record.userId.trim() : "";
   const text = typeof record.text === "string" ? record.text.trim() : "";
 
   if (!userId || !text) {
     return {
       ok: false,
-      response: Response.json({ error: "userId_or_customerId_and_text_required" }, { status: 400 }),
+      response: Response.json({ error: "userId_and_text_required" }, { status: 400 }),
     };
   }
 

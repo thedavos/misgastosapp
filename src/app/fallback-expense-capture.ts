@@ -9,14 +9,14 @@ export function createFallbackExpenseCapture(deps: FallbackExpenseCaptureDeps) {
   const captureExpenseWithClarification = createCaptureExpenseWithClarification(deps);
 
   return function fallbackExpenseCapture(input: {
-    customerId: string;
+    userId: string;
     sourceText: string;
     channel: string;
     externalUserId: string;
     requestId?: string;
   }) {
     return captureExpenseWithClarification({
-      customerId: input.customerId,
+      userId: input.userId,
       sourceText: input.sourceText,
       channel: input.channel,
       externalUserId: input.externalUserId,

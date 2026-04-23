@@ -13,7 +13,7 @@ describe("mobile intent preview handler integration", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          customerId: "cust_default",
+          userId: "cust_default",
           text: "S/ 18 en Tambo",
         }),
       }),

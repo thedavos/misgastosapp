@@ -10,9 +10,9 @@ describe("process chat message", () => {
       conversationState: {
         put: vi.fn(),
         get: vi.fn().mockResolvedValue({
-          customerId: "cust_default",
+          userId: "cust_default",
           channel: "whatsapp",
-          userId: "51999999999",
+          externalUserId: "51999999999",
           expenseId: "exp_1",
           createdAt: "now",
         }),
@@ -46,9 +46,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_1",
         text: "comida",
       }),
@@ -95,9 +95,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_2",
         attachments: [],
       }),
@@ -167,9 +167,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_intent_1",
         text: "S/ 18 en Tambo",
       }),
@@ -237,9 +237,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_update_1",
         text: "Corrige el último gasto, fueron S/ 20",
       }),
@@ -303,9 +303,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_delete_1",
         text: "Borra el último gasto",
       }),
@@ -368,9 +368,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_report_1",
         text: "Resumen del mes",
       }),
@@ -441,9 +441,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_update_weak_1",
         text: "Corrígelo por favor",
       }),
@@ -457,7 +457,7 @@ describe("process chat message", () => {
   it("processes OCR attachment and links media to created expense", async () => {
     const createMedia = vi.fn().mockResolvedValue({
       id: "media_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
       externalUserId: "51999999999",
       providerEventId: "evt_3",
@@ -515,9 +515,9 @@ describe("process chat message", () => {
 
     const result = await Effect.runPromise(
       processChatMessage({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_3",
         attachments: [
           { type: "image", url: "https://example.com/photo.jpg", mimeType: "image/jpeg" },

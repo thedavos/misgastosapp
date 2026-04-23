@@ -52,8 +52,8 @@ export class ExpensePersistenceError extends Data.TaggedError("ExpensePersistenc
   operation:
     | "createExpenseRecord"
     | "getById"
-    | "listByCustomer"
-    | "findLatestByCustomer"
+    | "listByUser"
+    | "findLatestByUser"
     | "update"
     | "discard"
     | "markConfirmed";
@@ -85,13 +85,13 @@ export class ChannelPolicyError extends Data.TaggedError("ChannelPolicyError")<{
 
 export class ChannelDisabledError extends Data.TaggedError("ChannelDisabledError")<{
   requestId?: string;
-  customerId: string;
+  userId: string;
   channelId: string;
 }> {}
 
 export class ChannelSettingMissingError extends Data.TaggedError("ChannelSettingMissingError")<{
   requestId?: string;
-  customerId: string;
+  userId: string;
   channelId: string;
 }> {}
 
@@ -105,7 +105,7 @@ export class SubscriptionFeatureBlockedError extends Data.TaggedError(
   "SubscriptionFeatureBlockedError",
 )<{
   requestId?: string;
-  customerId: string;
+  userId: string;
   featureKey: string;
 }> {}
 

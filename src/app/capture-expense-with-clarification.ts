@@ -23,7 +23,7 @@ import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 
 export type CaptureExpenseWithClarificationInput = {
-  customerId: string;
+  userId: string;
   sourceText: string;
   channel: string;
   externalUserId: string;
@@ -63,7 +63,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       const expense = yield* fromPromise(
         () =>
           deps.expenseRepo.createExpenseRecord({
-            customerId: input.customerId,
+            userId: input.userId,
             amount: transaction.amount,
             currency: transaction.currency,
             merchant: transaction.merchant,
@@ -82,7 +82,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       yield* fromPromise(
         () =>
           deps.conversationState.put({
-            userId: input.customerId,
+            userId: input.userId,
             channel: input.channel,
             externalUserId: input.externalUserId,
             expenseId: expense.id,
@@ -110,7 +110,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            userId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -124,13 +124,13 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       if (!isEnabled) {
         deps.logger.warn("channel.disabled_skip_send", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channelId: input.channel,
         });
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -140,7 +140,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            userId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -154,13 +154,13 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       if (!featureEnabled) {
         deps.logger.warn("subscription.feature_blocked", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           featureKey,
         });
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
