@@ -34,7 +34,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
   return function createExpenseFromIntent(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }): Effect.Effect<{ expenseId: string } | null, AppError> {
@@ -78,7 +78,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -127,7 +127,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const message = `Listo. Registré ${formatAmount(expense.amount, expense.currency)} en ${expense.merchant}.`;
 
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
@@ -135,7 +135,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         expenseId: expense.id,
       });
 

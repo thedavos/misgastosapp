@@ -10,18 +10,18 @@ const DEFAULT_TTL_SECONDS = 60 * 60 * 24;
 export function createKvConversationStateRepo(env: WorkerEnv): ConversationStatePort {
   return {
     async put(state: PendingConversationState): Promise<void> {
-      const key = buildConversationStateKey(state.customerId, state.channel, state.userId);
+      const key = buildConversationStateKey(state.userId, state.channel, state.externalUserId);
       await env.CONVERSATION_STATE_KV.put(key, JSON.stringify(state), {
         expirationTtl: DEFAULT_TTL_SECONDS,
       });
     },
 
     async get(input: {
-      customerId: string;
-      channel: string;
       userId: string;
+      channel: string;
+      externalUserId: string;
     }): Promise<PendingConversationState | null> {
-      const key = buildConversationStateKey(input.customerId, input.channel, input.userId);
+      const key = buildConversationStateKey(input.userId, input.channel, input.externalUserId);
       const payload = await env.CONVERSATION_STATE_KV.get(key);
       if (!payload) return null;
 
@@ -32,8 +32,12 @@ export function createKvConversationStateRepo(env: WorkerEnv): ConversationState
       }
     },
 
-    async delete(input: { customerId: string; channel: string; userId: string }): Promise<void> {
-      const key = buildConversationStateKey(input.customerId, input.channel, input.userId);
+    async delete(input: {
+      userId: string;
+      channel: string;
+      externalUserId: string;
+    }): Promise<void> {
+      const key = buildConversationStateKey(input.userId, input.channel, input.externalUserId);
       await env.CONVERSATION_STATE_KV.delete(key);
     },
   };

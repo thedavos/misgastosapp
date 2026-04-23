@@ -30,7 +30,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
   return function completeExpenseFlow(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     categoryName: string;
     requestId?: string;
   }): Effect.Effect<void, AppError> {
@@ -38,9 +38,9 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       yield* fromPromise(
         () =>
           deps.conversationState.delete({
-            customerId: input.customerId,
+            userId: input.customerId,
             channel: input.channel,
-            userId: input.userId,
+            externalUserId: input.externalUserId,
           }),
         (cause) =>
           new ConversationStateError({
@@ -62,7 +62,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -114,14 +114,14 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
       }
 
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
       deps.logger.info("expense.flow_completed", {
         requestId: input.requestId,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         categoryName: input.categoryName,
       });
     });

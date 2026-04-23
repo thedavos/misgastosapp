@@ -31,7 +31,7 @@ type PlanRow = {
 function mapSubscription(row: SubscriptionRow): UserSubscription {
   return {
     id: row.id,
-    customerId: row.user_id ?? row.customer_id ?? "",
+    userId: row.user_id ?? row.customer_id ?? "",
     planId: row.plan_id,
     status: row.status,
     startAt: row.start_at,

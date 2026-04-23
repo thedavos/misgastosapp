@@ -9,9 +9,9 @@ export async function enqueueExpenseProcessingJob(
   job: ExpenseProcessingJob,
 ): Promise<void> {
   const agentName = buildExpenseIngestionAgentName({
-    customerId: job.customerId,
-    channel: job.channel,
     userId: job.userId,
+    channel: job.channel,
+    externalUserId: job.externalUserId,
   });
   const id = env.ExpenseIngestionAgent.idFromName(agentName);
   const stub = env.ExpenseIngestionAgent.get(id);

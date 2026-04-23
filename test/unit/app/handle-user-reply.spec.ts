@@ -43,9 +43,9 @@ describe("handle user reply", () => {
       conversationState: {
         put: vi.fn(),
         get: vi.fn().mockResolvedValue({
-          customerId: "cust_default",
+          userId: "cust_default",
           channel: "whatsapp",
-          userId: "u1",
+          externalUserId: "u1",
           expenseId: "exp_1",
           createdAt: "now",
         }),
@@ -65,7 +65,7 @@ describe("handle user reply", () => {
         customerId: "cust_default",
         message: {
           channel: "whatsapp",
-          userId: "u1",
+          externalUserId: "u1",
           text: "comida",
           timestamp: new Date().toISOString(),
           raw: {},
@@ -80,9 +80,9 @@ describe("handle user reply", () => {
       categoryId: "cat_food",
     });
     expect(deleteState).toHaveBeenCalledWith({
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
-      userId: "u1",
+      externalUserId: "u1",
     });
     expect(sendMessage).toHaveBeenCalled();
   });

@@ -68,7 +68,7 @@ describe("get report from intent", () => {
       getReportFromIntent({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         payload: { periodKind: "month", confidence: 0.96 },
         timezone: "America/Lima",
         nowIso: "2026-04-22T20:00:00.000Z",
@@ -76,11 +76,11 @@ describe("get report from intent", () => {
     );
 
     expect(sendMessage).toHaveBeenCalledWith({
-      userId: "51999999999",
+      externalUserId: "51999999999",
       text: expect.stringContaining("Resumen de este mes:"),
     });
     expect(sendMessage).toHaveBeenCalledWith({
-      userId: "51999999999",
+      externalUserId: "51999999999",
       text: expect.stringContaining("- Total: S/. 43.00"),
     });
   });
@@ -164,7 +164,7 @@ describe("get report from intent", () => {
       getReportFromIntent({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         payload: { periodKind: "top_spend", confidence: 0.96 },
         timezone: "America/Lima",
         nowIso: "2026-04-22T20:00:00.000Z",
@@ -172,7 +172,7 @@ describe("get report from intent", () => {
     );
 
     expect(sendMessage).toHaveBeenCalledWith({
-      userId: "51999999999",
+      externalUserId: "51999999999",
       text: expect.stringContaining("1. Metro — S/. 42.00"),
     });
   });

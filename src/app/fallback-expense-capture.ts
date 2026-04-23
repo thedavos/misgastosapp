@@ -12,14 +12,14 @@ export function createFallbackExpenseCapture(deps: FallbackExpenseCaptureDeps) {
     customerId: string;
     sourceText: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     requestId?: string;
   }) {
     return captureExpenseWithClarification({
       customerId: input.customerId,
       sourceText: input.sourceText,
       channel: input.channel,
-      userId: input.userId,
+      externalUserId: input.externalUserId,
       requestId: input.requestId,
     });
   };

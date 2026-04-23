@@ -60,7 +60,7 @@ async function handleTelegramThreadMessage(input: {
   const payloadHash = await sha256Hex(
     JSON.stringify({
       eventId,
-      userId,
+      externalUserId: userId,
       text: incomingText,
       attachments: incomingAttachments.map((item) => ({
         mimeType: item.mimeType,
@@ -134,7 +134,7 @@ async function handleTelegramThreadMessage(input: {
     container.processChatMessage({
       customerId: user.id,
       channel: "telegram",
-      userId,
+      externalUserId: userId,
       providerEventId: eventId,
       text: incomingText,
       attachments: incomingAttachments,

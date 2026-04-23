@@ -52,7 +52,7 @@ describe("create expense from intent", () => {
       createExpenseFromIntent({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         payload: {
           draft: {
             amountMinor: 1800,
@@ -75,7 +75,7 @@ describe("create expense from intent", () => {
       }),
     );
     expect(sendMessage).toHaveBeenCalledWith({
-      userId: "51999999999",
+      externalUserId: "51999999999",
       text: "Listo. Registré S/. 18.00 en Tambo.",
     });
     expect(result).toEqual({ expenseId: "exp_1" });
@@ -114,7 +114,7 @@ describe("create expense from intent", () => {
       createExpenseFromIntent({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         payload: {
           draft: {
             currency: "PEN",

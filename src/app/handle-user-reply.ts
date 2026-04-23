@@ -54,9 +54,9 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            customerId: input.customerId,
+            userId: input.customerId,
             channel: message.channel,
-            userId: message.userId,
+            externalUserId: message.externalUserId,
           }),
         (cause) => new ConversationStateError({ operation: "get", cause }),
       );
@@ -64,7 +64,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       if (!pendingState) {
         deps.logger.warn("conversation.no_pending_state", {
           channel: message.channel,
-          userId: message.userId,
+          externalUserId: message.externalUserId,
         });
         return { categorized: false };
       }
@@ -79,15 +79,15 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         deps.logger.error("expense.not_found_for_reply", {
           expenseId: pendingState.expenseId,
           channel: message.channel,
-          userId: message.userId,
+          externalUserId: message.externalUserId,
         });
 
         yield* fromPromise(
           () =>
             deps.conversationState.delete({
-              customerId: input.customerId,
+              userId: input.customerId,
               channel: message.channel,
-              userId: message.userId,
+              externalUserId: message.externalUserId,
             }),
           (cause) => new ConversationStateError({ operation: "delete", cause }),
         );
@@ -115,7 +115,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         const isEnabled = yield* fromPromise(
           () =>
             deps.channelPolicyRepo.isChannelEnabledForUser({
-              customerId: input.customerId,
+              userId: input.customerId,
               channelId: message.channel,
             }),
           (cause) => new ChannelPolicyError({ operation: "isEnabled", cause }),
@@ -152,7 +152,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         yield* fromPromise(
           () =>
             deps.channel.sendMessage({
-              userId: message.userId,
+              externalUserId: message.externalUserId,
               text: "No me quedó clara la categoría. ¿Puedes elegir una más específica?",
             }),
           (cause) => new ChannelSendError({ cause }),
@@ -183,7 +183,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       yield* completeExpenseFlow({
         customerId: input.customerId,
         channel: message.channel,
-        userId: message.userId,
+        externalUserId: message.externalUserId,
         categoryName: category.name,
       });
 

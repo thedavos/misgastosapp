@@ -12,28 +12,28 @@ export type ExecuteChannelIntentDeps = {
   createExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   deleteLastExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   getReportFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: GetReportIntentPayload;
     timezone: string;
     nowIso: string;
@@ -57,7 +57,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
   return function executeChannelIntent(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     parsedIntent: ParsedIntent;
     timezone: string;
     nowIso: string;
@@ -68,7 +68,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         const created = yield* deps.createExpenseFromIntent({
           customerId: input.customerId,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
           requestId: input.requestId,
         });
@@ -86,7 +86,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         const updated = yield* deps.updateLastExpenseFromIntent({
           customerId: input.customerId,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
           requestId: input.requestId,
         });
@@ -104,7 +104,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         const deleted = yield* deps.deleteLastExpenseFromIntent({
           customerId: input.customerId,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
           requestId: input.requestId,
         });
@@ -122,7 +122,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         const reported = yield* deps.getReportFromIntent({
           customerId: input.customerId,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
           timezone: input.timezone,
           nowIso: input.nowIso,

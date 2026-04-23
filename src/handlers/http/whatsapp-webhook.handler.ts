@@ -102,7 +102,7 @@ export async function handleWhatsAppWebhook(
       try: () =>
         container.userRepo.findByChannelExternalId({
           channel: incomingMessage.channel,
-          externalUserId: incomingMessage.userId,
+          externalUserId: incomingMessage.externalUserId,
         }),
       catch: (cause) => new WebhookParseError({ requestId, cause }),
     });
@@ -110,7 +110,7 @@ export async function handleWhatsAppWebhook(
     if (!user) {
       container.logger.warn("whatsapp.webhook_user_not_found", {
         requestId,
-        externalUserId: incomingMessage.userId,
+        externalUserId: incomingMessage.externalUserId,
       });
       return new Response("User not found", { status: 404 });
     }
@@ -178,9 +178,9 @@ export async function handleWhatsAppWebhook(
         enqueueExpenseProcessingJob(env, {
           provider: WHATSAPP_PROVIDER,
           eventId,
-          customerId: user.id,
+          userId: user.id,
           channel: "whatsapp",
-          userId: incomingMessage.userId,
+          externalUserId: incomingMessage.externalUserId,
           text: incomingMessage.text,
           attachments: toExpenseProcessingAttachments(incomingMessage.attachments),
           raw: incomingMessage.raw,
@@ -201,7 +201,7 @@ export async function handleWhatsAppWebhook(
       eventId,
       customerId: user.id,
       channel: incomingMessage.channel,
-      userId: incomingMessage.userId,
+      externalUserId: incomingMessage.externalUserId,
     });
 
     return new Response("ok", { status: 200 });

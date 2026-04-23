@@ -29,7 +29,7 @@ function mapChannel(row: ChannelRow): Channel {
 function mapUserChannelSetting(row: UserChannelSettingRow): UserChannelSetting {
   return {
     id: row.id,
-    customerId: row.user_id ?? row.customer_id ?? "",
+    userId: row.user_id ?? row.customer_id ?? "",
     channelId: row.channel_id,
     enabled: row.enabled === 1,
     isPrimary: row.is_primary === 1,
@@ -56,7 +56,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
     },
 
     async getUserChannelSetting(input: {
-      customerId: string;
+      userId: string;
       channelId: string;
     }): Promise<UserChannelSetting | null> {
       const row =
@@ -66,7 +66,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
            WHERE user_id = ? AND channel_id = ?
            LIMIT 1`,
         )
-          .bind(input.customerId, input.channelId)
+          .bind(input.userId, input.channelId)
           .first<UserChannelSettingRow>()) ??
         (await env.DB.prepare(
           `SELECT id, customer_id, channel_id, enabled, is_primary, config_json
@@ -74,7 +74,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
            WHERE customer_id = ? AND channel_id = ?
            LIMIT 1`,
         )
-          .bind(input.customerId, input.channelId)
+          .bind(input.userId, input.channelId)
           .first<UserChannelSettingRow>());
 
       if (!row) return null;
@@ -82,7 +82,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
     },
 
     async isChannelEnabledForUser(input: {
-      customerId: string;
+      userId: string;
       channelId: string;
     }): Promise<boolean> {
       const channel = await this.getChannel(input.channelId);

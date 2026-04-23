@@ -12,7 +12,7 @@ export interface Plan {
 
 export interface UserSubscription {
   id: string;
-  customerId: string;
+  userId: string;
   planId: string;
   status: SubscriptionStatus;
   startAt: string;

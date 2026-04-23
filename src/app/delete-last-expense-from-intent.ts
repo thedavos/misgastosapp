@@ -34,7 +34,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
   return function deleteLastExpenseFromIntent(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }): Effect.Effect<{ handled: boolean; expenseId?: string }, AppError> {
@@ -57,7 +57,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         yield* fromPromise(
           () =>
             deps.channel.sendMessage({
-              userId: input.userId,
+              externalUserId: input.externalUserId,
               text: "No encontré un gasto reciente para eliminar.",
             }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
@@ -87,7 +87,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -136,7 +136,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
       yield* fromPromise(
         () =>
           deps.channel.sendMessage({
-            userId: input.userId,
+            externalUserId: input.externalUserId,
             text: `Listo. Eliminé tu último gasto de ${formatAmount(discardedExpense.amount, discardedExpense.currency)} en ${discardedExpense.merchant}.`,
           }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
@@ -146,7 +146,7 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         expenseId: discardedExpense.id,
       });
 

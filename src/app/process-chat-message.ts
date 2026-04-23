@@ -42,7 +42,7 @@ export type ProcessChatMessageDeps = {
     customerId: string;
     sourceText: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   handleUserReply: (input: {
@@ -52,28 +52,28 @@ export type ProcessChatMessageDeps = {
   createExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   deleteLastExpenseFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: DeleteLastExpenseIntentPayload;
     requestId?: string;
   }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
   getReportFromIntent?: (input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: GetReportIntentPayload;
     timezone: string;
     nowIso: string;
@@ -107,7 +107,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
   return function processChatMessage(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     providerEventId: string;
     text?: string;
     attachments?: IncomingAttachment[];
@@ -123,9 +123,9 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            customerId: input.customerId,
+            userId: input.customerId,
             channel: input.channel,
-            userId: input.userId,
+            externalUserId: input.externalUserId,
           }),
         (cause) =>
           new ConversationStateError({ requestId: input.requestId, operation: "get", cause }),
@@ -135,7 +135,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         if (!normalizedText) {
           if (imageAttachments.length > 0) {
             yield* fromPromise(
-              () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+              () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
               (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
             );
           }
@@ -147,7 +147,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           customerId: input.customerId,
           message: {
             channel: input.channel,
-            userId: input.userId,
+            externalUserId: input.externalUserId,
             text: normalizedText,
             timestamp: input.timestamp ?? new Date().toISOString(),
             providerEventId: input.providerEventId,
@@ -231,7 +231,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             deps.chatMediaRepo.create({
               customerId: input.customerId,
               channel: input.channel,
-              externalUserId: input.userId,
+              externalUserId: input.externalUserId,
               providerEventId: input.providerEventId,
               expenseId: null,
               r2Key,
@@ -264,7 +264,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const sourceText = combinedSegments.join("\n").trim();
       if (!sourceText) {
         yield* fromPromise(
-          () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+          () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
         );
         deps.logger.info("chat.ingest_no_transaction_guidance", {
@@ -329,7 +329,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const directIntentResult = yield* executeChannelIntent({
           customerId: input.customerId,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           parsedIntent,
           timezone: resolvedContext.timezone,
           nowIso: resolvedContext.nowIso,
@@ -367,7 +367,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           customerId: input.customerId,
           sourceText,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           requestId: input.requestId,
         })
         .pipe(Effect.either);
@@ -375,7 +375,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       if (ingestionResult._tag === "Left") {
         if (ingestionResult.left instanceof InvalidTransactionError) {
           yield* fromPromise(
-            () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+            () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
             (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
           return { categorized: false, guided: true };

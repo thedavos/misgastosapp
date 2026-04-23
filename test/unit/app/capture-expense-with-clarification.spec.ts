@@ -67,7 +67,7 @@ describe("ingest expense from email", () => {
         customerId: "cust_default",
         sourceText: "mail text",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
       }),
     );
 
@@ -79,14 +79,14 @@ describe("ingest expense from email", () => {
     );
     expect(put).toHaveBeenCalledWith(
       expect.objectContaining({
-        customerId: "cust_default",
+        userId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         expenseId: "exp_1",
       }),
     );
     expect(sendMessage).toHaveBeenCalledWith({
-      userId: "51999999999",
+      externalUserId: "51999999999",
       text: "¿Qué categoría le pongo?",
     });
   });

@@ -43,7 +43,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
   return function updateLastExpenseFromIntent(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: UpdateLastExpenseIntentPayload;
     requestId?: string;
   }): Effect.Effect<{ handled: boolean; expenseId?: string }, AppError> {
@@ -66,7 +66,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         yield* fromPromise(
           () =>
             deps.channel.sendMessage({
-              userId: input.userId,
+              externalUserId: input.externalUserId,
               text: "No encontré un gasto reciente para corregir.",
             }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
@@ -104,7 +104,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -153,7 +153,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
       yield* fromPromise(
         () =>
           deps.channel.sendMessage({
-            userId: input.userId,
+            externalUserId: input.externalUserId,
             text: `Listo. Actualicé tu último gasto a ${formatAmount(updatedExpense.amount, updatedExpense.currency)} en ${updatedExpense.merchant}.`,
           }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
@@ -163,7 +163,7 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         expenseId: updatedExpense.id,
       });
 

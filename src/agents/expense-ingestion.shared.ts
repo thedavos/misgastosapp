@@ -15,9 +15,9 @@ export type ExpenseProcessingAttachment = {
 export type ExpenseProcessingJob = {
   provider: typeof WHATSAPP_PROVIDER;
   eventId: string;
-  customerId: string;
-  channel: "whatsapp";
   userId: string;
+  channel: "whatsapp";
+  externalUserId: string;
   text?: string;
   attachments?: ExpenseProcessingAttachment[];
   raw?: unknown;
@@ -42,11 +42,11 @@ export function toExpenseProcessingAttachments(
 }
 
 export function buildExpenseIngestionAgentName(input: {
-  customerId: string;
-  channel: string;
   userId: string;
+  channel: string;
+  externalUserId: string;
 }): string {
-  return `cust:${input.customerId}|ch:${input.channel}|user:${input.userId}`;
+  return `user:${input.userId}|ch:${input.channel}|ext:${input.externalUserId}`;
 }
 
 export function parseExpenseProcessingJob(payload: unknown): ExpenseProcessingJob | null {
@@ -57,9 +57,9 @@ export function parseExpenseProcessingJob(payload: unknown): ExpenseProcessingJo
   const record = payload as Record<string, unknown>;
   const provider = record.provider;
   const eventId = record.eventId;
-  const customerId = record.customerId;
-  const channel = record.channel;
   const userId = record.userId;
+  const channel = record.channel;
+  const externalUserId = record.externalUserId;
   const attempt = record.attempt;
   const text = record.text;
   const timestamp = record.timestamp;
@@ -67,9 +67,9 @@ export function parseExpenseProcessingJob(payload: unknown): ExpenseProcessingJo
 
   if (provider !== WHATSAPP_PROVIDER) return null;
   if (typeof eventId !== "string" || eventId.length === 0) return null;
-  if (typeof customerId !== "string" || customerId.length === 0) return null;
-  if (channel !== "whatsapp") return null;
   if (typeof userId !== "string" || userId.length === 0) return null;
+  if (channel !== "whatsapp") return null;
+  if (typeof externalUserId !== "string" || externalUserId.length === 0) return null;
   if (typeof attempt !== "number" || !Number.isInteger(attempt) || attempt < 0) return null;
   if (text !== undefined && typeof text !== "string") return null;
   if (timestamp !== undefined && typeof timestamp !== "string") return null;
@@ -100,9 +100,9 @@ export function parseExpenseProcessingJob(payload: unknown): ExpenseProcessingJo
   return {
     provider,
     eventId,
-    customerId,
-    channel,
     userId,
+    channel,
+    externalUserId,
     text: text as string | undefined,
     attachments,
     raw: record.raw,

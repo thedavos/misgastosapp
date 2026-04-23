@@ -52,12 +52,12 @@ async function getTelegramDmRuntime(env: WorkerEnv): Promise<TelegramDmRuntime |
 
 async function sendTelegramDirectMessage(input: {
   env: WorkerEnv;
-  userId: string;
+  externalUserId: string;
   text: string;
 }): Promise<void> {
   const runtime = await getTelegramDmRuntime(input.env);
   if (runtime?.openDM) {
-    const thread = await runtime.openDM(input.userId);
+    const thread = await runtime.openDM(input.externalUserId);
     await thread.post(input.text);
     return;
   }
@@ -70,7 +70,7 @@ async function sendTelegramDirectMessage(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        chat_id: input.userId,
+        chat_id: input.externalUserId,
         text: input.text,
       }),
     },
@@ -87,10 +87,10 @@ export function createTelegramChatSdkChannelAdapter(env: WorkerEnv): ChannelPort
     async sendMessage(input: SendMessageInput): Promise<{ providerMessageId: string }> {
       await sendTelegramDirectMessage({
         env,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         text: input.text,
       });
-      return { providerMessageId: `telegram:${input.userId}:${Date.now()}` };
+      return { providerMessageId: `telegram:${input.externalUserId}:${Date.now()}` };
     },
     async parseWebhook(_request: Request): Promise<IncomingUserMessage | null> {
       return null;

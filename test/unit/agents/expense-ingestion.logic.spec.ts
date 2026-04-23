@@ -12,9 +12,9 @@ function makeJob(overrides?: Partial<ExpenseProcessingJob>): ExpenseProcessingJo
   return {
     provider: WHATSAPP_PROVIDER,
     eventId: "evt_1",
-    customerId: "cust_default",
+    userId: "cust_default",
     channel: "whatsapp",
-    userId: "51999999999",
+    externalUserId: "51999999999",
     text: "comida",
     raw: { id: "evt_1" },
     timestamp: new Date().toISOString(),
@@ -34,7 +34,7 @@ describe("expense ingestion logic", () => {
         customerId: "cust_default",
         sourceText: "Compra por S/ 50 en Tambo",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
       }),
     );
     expect(created?.expenseId).toBeTruthy();
@@ -110,7 +110,7 @@ describe("expense ingestion logic", () => {
       container.processChatMessage({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_update_seed_1",
         text: "S/ 50 en Tambo",
       }),
@@ -158,7 +158,7 @@ describe("expense ingestion logic", () => {
       container.processChatMessage({
         customerId: "cust_default",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         providerEventId: "evt_delete_seed_1",
         text: "S/ 50 en Tambo",
       }),

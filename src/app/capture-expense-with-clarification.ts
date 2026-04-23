@@ -26,7 +26,7 @@ export type CaptureExpenseWithClarificationInput = {
   customerId: string;
   sourceText: string;
   channel: string;
-  userId: string;
+  externalUserId: string;
   requestId?: string;
 };
 
@@ -82,9 +82,9 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       yield* fromPromise(
         () =>
           deps.conversationState.put({
-            customerId: input.customerId,
+            userId: input.customerId,
             channel: input.channel,
-            userId: input.userId,
+            externalUserId: input.externalUserId,
             expenseId: expense.id,
             createdAt: new Date().toISOString(),
           }),
@@ -110,7 +110,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -167,7 +167,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
       }
 
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
@@ -175,7 +175,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
         requestId: input.requestId,
         expenseId: expense.id,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
       });
 
       return { expenseId: expense.id };

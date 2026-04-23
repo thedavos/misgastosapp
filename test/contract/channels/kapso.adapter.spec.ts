@@ -39,7 +39,7 @@ describe("kapso adapter contract", () => {
     expect(message).toEqual(
       expect.objectContaining({
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
         text: "comida",
         providerEventId: "evt_123",
       }),

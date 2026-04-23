@@ -8,7 +8,7 @@ export interface Channel {
 
 export interface UserChannelSetting {
   id: string;
-  customerId: string;
+  userId: string;
   channelId: string;
   enabled: boolean;
   isPrimary: boolean;

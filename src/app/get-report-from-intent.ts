@@ -29,7 +29,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
   return function getReportFromIntent(input: {
     customerId: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     payload: GetReportIntentPayload;
     timezone: string;
     nowIso: string;
@@ -49,7 +49,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -101,7 +101,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
             : buildPeriodSummary({ expenses: periodExpenses, periodKind: input.payload.periodKind });
 
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
@@ -109,7 +109,7 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
         requestId: input.requestId,
         customerId: input.customerId,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
         periodKind: input.payload.periodKind,
         expenseCount: periodExpenses.length,
       });

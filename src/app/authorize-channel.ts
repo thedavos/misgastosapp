@@ -29,7 +29,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
       const isChannelEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channelId,
           }),
         (cause) =>
@@ -44,7 +44,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
         const setting = yield* fromPromise(
           () =>
             deps.channelPolicyRepo.getUserChannelSetting({
-              customerId: input.customerId,
+              userId: input.customerId,
               channelId: input.channelId,
             }),
           (cause) =>
@@ -58,7 +58,7 @@ export function createAuthorizeChannel(deps: AuthorizeChannelDeps) {
         if (!setting) {
           deps.logger.warn("channel.setting_missing_blocked", {
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.customerId,
             channelId: input.channelId,
           });
           return yield* Effect.fail(
