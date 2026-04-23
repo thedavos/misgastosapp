@@ -13,6 +13,8 @@ export interface Expense {
   categoryId: string | null;
   createdAt: string;
   updatedAt: string;
+  createdVia?: "whatsapp" | "email" | "mobile" | "telegram";
+  sourceMessageId?: string | null;
 }
 
 export interface NewExpense {
@@ -23,4 +25,6 @@ export interface NewExpense {
   occurredAt: string;
   bank: string;
   rawText: string;
+  createdVia?: "whatsapp" | "email" | "mobile" | "telegram";
+  sourceMessageId?: string | null;
 }

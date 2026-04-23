@@ -60,7 +60,8 @@ Definir un modelo más simple para el MVP, compatible con WhatsApp principal, em
 ### Decisiones a cerrar
 
 - migrar de `amount REAL` a `amount_minor`
-- completar el retiro real de tablas/queries legacy de soporte (`customer_channels`, `customer_channel_settings`, `customer_email_routes`, `customer_email_senders`, `customer_subscriptions`)
+- completado: retiro real de tablas/queries legacy de soporte (`customer_channels`, `customer_channel_settings`, `customer_email_routes`, `customer_email_senders`, `customer_subscriptions`)
+- completado: runtime de gastos/categorización movido a `transactions`, `transaction_revisions` y `categories_v2`
 - decidir si `conversation_state` sigue en KV o pasa parcialmente a D1
 
 ## Fase 3. Nuevo core de intents

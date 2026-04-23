@@ -329,6 +329,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const directIntentResult = yield* executeChannelIntent({
           userId: input.userId,
           channel: input.channel,
+          sourceType: input.channel as "whatsapp" | "email" | "mobile" | "telegram",
           externalUserId: input.externalUserId,
           parsedIntent,
           timezone: resolvedContext.timezone,

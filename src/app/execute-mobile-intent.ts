@@ -113,6 +113,7 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
         occurredAt: parsedIntent.payload.draft.occurredAt!,
         bank: "mobile",
         rawText: parsedIntent.payload.draft.description ?? input.text,
+        createdVia: "mobile",
       });
 
       return {

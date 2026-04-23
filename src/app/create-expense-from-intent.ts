@@ -34,6 +34,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
   return function createExpenseFromIntent(input: {
     userId: string;
     channel: string;
+    sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
@@ -66,6 +67,7 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
             occurredAt,
             bank: "unknown",
             rawText,
+            createdVia: input.sourceType ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
           }),
         (cause) =>
           new ExpensePersistenceError({

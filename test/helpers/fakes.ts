@@ -462,22 +462,24 @@ function createMemoryD1Database(options?: {
 
     return {
       async run() {
-        if (query.startsWith("insert into expenses")) {
+        if (query.startsWith("insert into transactions")) {
           const [
             id,
             userId,
-            amount,
+            _sourceMessageId,
+            amountMinor,
             currency,
             merchant,
+            description,
             occurredAt,
-            bank,
-            rawText,
             status,
+            _createdVia,
             createdAt,
             updatedAt,
           ] = values as [
             string,
             string,
+            string | null,
             number,
             string,
             string,
@@ -488,15 +490,21 @@ function createMemoryD1Database(options?: {
             string,
             string,
           ];
+
+          let parsedDescription: { rawText?: string; bank?: string } = {};
+          try {
+            parsedDescription = JSON.parse(description) as { rawText?: string; bank?: string };
+          } catch {}
+
           expenses.set(id, {
             id,
             customer_id: userId,
-            amount,
+            amount: amountMinor / 100,
             currency,
             merchant,
             occurred_at: occurredAt,
-            bank,
-            raw_text: rawText,
+            bank: parsedDescription.bank ?? "unknown",
+            raw_text: parsedDescription.rawText ?? description,
             status,
             category_id: null,
             created_at: createdAt,
@@ -505,7 +513,7 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (query.startsWith("update expenses set status = ?")) {
+        if (query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")) {
           const [status, categoryId, updatedAt, id, userId] = values as [
             string,
             string | null,
@@ -524,28 +532,47 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (
-          query.startsWith(
-            "update expenses set amount = ?, currency = ?, merchant = ?, occurred_at = ?, raw_text = ?, updated_at = ?",
-          )
-        ) {
-          const [amount, currency, merchant, occurredAt, rawText, updatedAt, id, userId] =
-            values as [number, string, string, string, string, string, string, string];
+        if (query.startsWith("update transactions set status = ?, updated_at = ?")) {
+          const [status, updatedAt, id, userId] = values as [string, string, string, string];
           const current = expenses.get(id);
           if (!current || current.customer_id !== userId) return { success: false };
           expenses.set(id, {
             ...current,
-            amount,
-            currency,
-            merchant,
-            occurred_at: occurredAt,
-            raw_text: rawText,
+            status,
             updated_at: updatedAt,
           });
           return { success: true };
         }
 
-        if (query.startsWith("insert into expense_events")) {
+        if (
+          query.startsWith(
+            "update transactions set amount_minor = ?, currency = ?, merchant = ?, occurred_at = ?, description = ?, updated_at = ?",
+          )
+        ) {
+          const [amountMinor, currency, merchant, occurredAt, description, updatedAt, id, userId] =
+            values as [number, string, string, string, string, string, string, string];
+          const current = expenses.get(id);
+          if (!current || current.customer_id !== userId) return { success: false };
+
+          let parsedDescription: { rawText?: string; bank?: string } = {};
+          try {
+            parsedDescription = JSON.parse(description) as { rawText?: string; bank?: string };
+          } catch {}
+
+          expenses.set(id, {
+            ...current,
+            amount: amountMinor / 100,
+            currency,
+            merchant,
+            occurred_at: occurredAt,
+            raw_text: parsedDescription.rawText ?? description,
+            bank: parsedDescription.bank ?? current.bank,
+            updated_at: updatedAt,
+          });
+          return { success: true };
+        }
+
+        if (query.startsWith("insert into transaction_revisions")) {
           const [id, userId, expenseId, type, payloadJson, createdAt] = values as [
             string,
             string,
@@ -780,33 +807,55 @@ function createMemoryD1Database(options?: {
       },
 
       async first<T>() {
-        if (query.includes("from expenses where id = ? and customer_id = ?")) {
+        if (query.includes("from transactions") && query.includes("where id = ? and user_id = ?")) {
           const [id, userId] = values as [string, string];
           const row = expenses.get(id);
           if (!row || row.customer_id !== userId) return null;
-          return row as T;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_message_id: null,
+            amount_minor: Math.round(row.amount * 100),
+            currency: row.currency,
+            merchant: row.merchant,
+            description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+            category_id: row.category_id,
+            occurred_at: row.occurred_at,
+            status: row.status,
+            created_via: "whatsapp",
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          } as T;
         }
 
         if (
-          query.includes("from expenses") &&
-          query.includes("where customer_id = ? and status not in") &&
+          query.includes("from transactions") &&
+          query.includes("where user_id = ? and status != ?") &&
           query.includes("order by created_at desc")
         ) {
-          const [userId, ...excludedStatuses] = values as [string, ...string[]];
-          const excluded = new Set(excludedStatuses);
+          const [userId, excludedStatus] = values as [string, string];
           const row = Array.from(expenses.values())
-            .filter(
-              (expense) => expense.customer_id === userId && !excluded.has(expense.status),
-            )
+            .filter((expense) => expense.customer_id === userId && expense.status !== excludedStatus)
             .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-          return (row as T | undefined) ?? null;
+          if (!row) return null;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_message_id: null,
+            amount_minor: Math.round(row.amount * 100),
+            currency: row.currency,
+            merchant: row.merchant,
+            description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+            category_id: row.category_id,
+            occurred_at: row.occurred_at,
+            status: row.status,
+            created_via: "whatsapp",
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          } as T;
         }
 
-        if (
-          query.includes("from expenses") &&
-          query.includes("where customer_id = ? and status != ?") &&
-          query.includes("order by created_at desc")
-        ) {
+        if (false) {
           const [userId, excludedStatus] = values as [string, string];
           const row = Array.from(expenses.values())
             .filter(
@@ -816,7 +865,7 @@ function createMemoryD1Database(options?: {
           return (row as T | undefined) ?? null;
         }
 
-        if (query.includes("from categories where lower(name) = ?")) {
+        if (query.includes("from categories_v2 where lower(name) = ?")) {
           const [name, userId] = values as [string, string];
           const found = Array.from(categories.values()).find(
             (category) =>
@@ -828,7 +877,7 @@ function createMemoryD1Database(options?: {
 
         if (
           query.includes(
-            "from categories where id = ? and (customer_id = ? or customer_id is null)",
+            "from categories_v2 where id = ? and (user_id = ? or user_id is null)",
           )
         ) {
           const [id, userId] = values as [string, string];
@@ -976,7 +1025,7 @@ function createMemoryD1Database(options?: {
       },
 
       async all<T>() {
-        if (query.includes("from categories")) {
+        if (query.includes("from categories_v2")) {
           if (values.length === 1) {
             const [userId] = values as [string];
             return {
@@ -990,39 +1039,34 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes("from expenses") &&
-          query.includes("where customer_id = ? and status not in") &&
-          query.includes("order by occurred_at desc, created_at desc")
-        ) {
-          const [userId, ...excludedStatuses] = values as [string, ...string[]];
-          const excluded = new Set(excludedStatuses);
-          return {
-            results: Array.from(expenses.values())
-              .filter((row) => row.customer_id === userId && !excluded.has(row.status))
-              .sort((a, b) => {
-                const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
-                if (occurredDiff !== 0) return occurredDiff;
-                return b.created_at.localeCompare(a.created_at);
-              }) as T[],
-          };
-        }
-
-        if (
-          query.includes("from expenses") &&
-          query.includes("where customer_id = ? and status != ?") &&
+          query.includes("from transactions") &&
+          query.includes("where user_id = ? and status != ?") &&
           query.includes("order by occurred_at desc, created_at desc")
         ) {
           const [userId, excludedStatus] = values as [string, string];
           return {
             results: Array.from(expenses.values())
-              .filter(
-                (row) => row.customer_id === userId && row.status !== excludedStatus,
-              )
+              .filter((row) => row.customer_id === userId && row.status !== excludedStatus)
               .sort((a, b) => {
                 const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
                 if (occurredDiff !== 0) return occurredDiff;
                 return b.created_at.localeCompare(a.created_at);
-              }) as T[],
+              })
+              .map((row) => ({
+                id: row.id,
+                user_id: row.customer_id,
+                source_message_id: null,
+                amount_minor: Math.round(row.amount * 100),
+                currency: row.currency,
+                merchant: row.merchant,
+                description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+                category_id: row.category_id,
+                occurred_at: row.occurred_at,
+                status: row.status,
+                created_via: "whatsapp",
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+              })) as T[],
           };
         }
 
@@ -1075,7 +1119,7 @@ function createMemoryD1Database(options?: {
 
       return {
         async all<T>() {
-          if (query.includes("from categories")) {
+          if (query.includes("from categories_v2")) {
             return { results: Array.from(categories.values()) as T[] };
           }
           return { results: [] as T[] };

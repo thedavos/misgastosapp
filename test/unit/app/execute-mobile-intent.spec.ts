@@ -62,6 +62,7 @@ describe("execute mobile intent", () => {
       occurredAt: "2026-04-22T10:00:00.000Z",
       bank: "mobile",
       rawText: "S/ 18 en Tambo",
+      createdVia: "mobile",
     });
   });
 

@@ -39,6 +39,7 @@ Actualizar `wrangler.jsonc` con IDs reales.
 El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente desde `user_sources` (`source_type = 'email'`).
 Si un remitente no está mapeado, el email se ignora (skip con log).
 Después de `016_retire_legacy_support_tables.sql`, ya no existe fallback runtime a tablas `customer_*` de soporte.
+El runtime de gastos/categorización ahora opera sobre `transactions`, `transaction_revisions` y `categories_v2`.
 
 ## 2) Configuración de secretos
 
@@ -138,7 +139,7 @@ wrangler tail misgastosapp
 ### Gasto no se categoriza
 
 - Revisa respuesta del usuario y `confidence` de clasificación.
-- Verifica categorías existentes en tabla `categories`.
+- Verifica categorías existentes en tabla `categories_v2`.
 
 ### No se guarda estado de conversación
 

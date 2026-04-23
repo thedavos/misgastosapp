@@ -208,6 +208,7 @@ export async function handleEmail(
     const directIntentResult = yield* executeChannelIntent({
       userId,
       channel: "whatsapp",
+      sourceType: "email",
       externalUserId: primaryExternalUserId,
       parsedIntent,
       timezone: user.timezone,
@@ -228,6 +229,7 @@ export async function handleEmail(
       userId,
       sourceText,
       channel: "whatsapp",
+      createdVia: "email",
       externalUserId: primaryExternalUserId,
       requestId,
     });

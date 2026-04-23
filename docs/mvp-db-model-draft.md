@@ -211,7 +211,8 @@ Mantener solo si imagen/OCR sigue en el MVP cercano.
   - `customer_email_routes`
   - `customer_email_senders`
   - `customer_subscriptions`
-- El siguiente retiro estructural pendiente, si se quiere cerrar completamente la brecha con el modelo MVP, es mover `expenses`/`expense_events`/`categories` a `transactions`/`transaction_revisions`/`categories_v2` como runtime real y no solo como esquema preparado.
+- El runtime ya fue movido a `transactions`/`transaction_revisions`/`categories_v2`.
+- El siguiente retiro estructural pendiente, si se quiere cerrar completamente la brecha con el modelo MVP, es decidir cuándo retirar también las tablas legacy `expenses`/`expense_events`/`categories` del esquema físico.
 
 ## Decisiones abiertas
 

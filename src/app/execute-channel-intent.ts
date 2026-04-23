@@ -12,6 +12,7 @@ export type ExecuteChannelIntentDeps = {
   createExpenseFromIntent?: (input: {
     userId: string;
     channel: string;
+    sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
     requestId?: string;
@@ -57,6 +58,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
   return function executeChannelIntent(input: {
     userId: string;
     channel: string;
+    sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     parsedIntent: ParsedIntent;
     timezone: string;
@@ -68,6 +70,7 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         const created = yield* deps.createExpenseFromIntent({
           userId: input.userId,
           channel: input.channel,
+          sourceType: input.sourceType,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
           requestId: input.requestId,

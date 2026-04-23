@@ -26,6 +26,7 @@ export type CaptureExpenseWithClarificationInput = {
   userId: string;
   sourceText: string;
   channel: string;
+  createdVia?: "whatsapp" | "email" | "mobile" | "telegram";
   externalUserId: string;
   requestId?: string;
 };
@@ -70,6 +71,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
             occurredAt: transaction.date,
             bank: transaction.bank,
             rawText: transaction.rawText,
+            createdVia: input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
           }),
         (cause) =>
           new ExpensePersistenceError({
