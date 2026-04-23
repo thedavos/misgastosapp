@@ -267,6 +267,76 @@ sequenceDiagram
     WA-->>U: "Listo, registré S/ 18 en Tambo"
 ```
 
+## Diagrama Mermaid de secuencia: email → aclaración por WhatsApp
+
+```mermaid
+sequenceDiagram
+    participant S as Remitente
+    participant E as Email Worker
+    participant H as email.handler
+    participant UR as user.repo / userEmailSenderRepo
+    participant P as parse-user-intent
+    participant AI as Workers AI
+    participant C as capture-expense-with-clarification
+    participant ER as expense.repo
+    participant KV as conversation-state.repo
+    participant WA as WhatsApp / Kapso
+    participant D1 as D1
+
+    S->>E: email de consumo
+    E->>H: email event
+    H->>H: validar inbox
+    H->>UR: resolver user por sender permitido
+    UR->>D1: user_sources
+    H->>P: parsear intención
+    P->>AI: extraer draft / detectar faltantes
+    AI-->>P: intent + draft parcial
+    P-->>H: parsedIntent no ejecutable directo
+    H->>C: captureExpenseWithClarification
+    C->>ER: createExpenseRecord
+    ER->>D1: insert transactions
+    ER->>D1: insert transaction_revisions
+    C->>KV: guardar estado conversacional
+    C-->>WA: enviar mensaje de aclaración
+    WA-->>S: "Te escribí por WhatsApp para confirmar/categorizar"
+```
+
+## Diagrama Mermaid de secuencia: mobile execute → JSON response
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant H as mobile-intent-execute.handler
+    participant P as parse-user-intent
+    participant AI as Workers AI
+    participant E as execute-mobile-intent
+    participant ER as expense.repo
+    participant D1 as D1
+
+    M->>H: POST /api/mobile/intents/execute
+    H->>H: normalizar payload + userId
+    H->>P: parsear intención
+    P->>AI: inferir intent + draft
+    AI-->>P: parsedIntent
+    P-->>H: parsedIntent
+    H->>E: executeMobileIntent
+    alt create_expense ejecutable
+        E->>ER: createExpenseRecord
+        ER->>D1: insert transactions
+        ER->>D1: insert transaction_revisions
+        E-->>H: expense_created
+        H-->>M: JSON success
+    else update/delete/report ejecutable
+        E->>ER: leer/actualizar transacción
+        ER->>D1: query/update transactions
+        E-->>H: JSON result
+        H-->>M: JSON success
+    else intent no ejecutable
+        E-->>H: intent_not_executable
+        H-->>M: JSON intent_not_executable
+    end
+```
+
 ## Regla de diseño clave
 
 El parser de intención no debe depender de un canal concreto.
