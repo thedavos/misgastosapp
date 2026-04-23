@@ -641,7 +641,7 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes: 1 } };
         }
 
-        if (query.startsWith("insert or replace into customer_channels")) {
+        if (query.startsWith("insert or replace into user_sources")) {
           const [id, userId, channel, externalUserId, isPrimary] = values as [
             string,
             string,
@@ -838,35 +838,62 @@ function createMemoryD1Database(options?: {
           return category as T;
         }
 
-        if (query.includes("from customers where id = ?")) {
+        if (query.includes("from users where id = ?")) {
           const [id] = values as [string];
-          return (customers.get(id) as T | undefined) ?? null;
+          const user = customers.get(id);
+          if (!user) return null;
+          return user as T;
         }
 
-        if (query.includes("from customer_channels cc join customers c")) {
+        if (query.includes("from user_sources us join users u")) {
           const [channel, externalUserId] = values as [string, string];
           const channelRow = customerChannels.get(`${channel}:${externalUserId}`);
-          if (!channelRow) return null;
-          const customer = customers.get(channelRow.customer_id);
-          return (customer as T | undefined) ?? null;
+          if (channelRow) {
+            const user = customers.get(channelRow.customer_id);
+            return (user as T | undefined) ?? null;
+          }
+
+          const senderRow = emailSenders.get(externalUserId);
+          if (channel === "email" && senderRow) {
+            const user = customers.get(senderRow.customer_id);
+            return (user as T | undefined) ?? null;
+          }
+
+          return null;
         }
 
-        if (query.includes("from customer_channels where channel = ? and external_user_id = ?")) {
-          const [channel, externalUserId] = values as [string, string];
-          return (customerChannels.get(`${channel}:${externalUserId}`) as T | undefined) ?? null;
-        }
-
-        if (
-          query.includes("from customer_channels") &&
-          query.includes("where customer_id = ? and channel = ? and is_primary = 1")
-        ) {
+        if (query.includes("from user_sources") && query.includes("where user_id = ? and source_type = ? and is_primary = 1")) {
           const [userId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
-            (row) =>
-              row.customer_id === userId && row.channel === channel && row.is_primary === 1,
+            (row) => row.customer_id === userId && row.channel === channel && row.is_primary === 1,
           );
           if (!match) return null;
           return { external_user_id: match.external_user_id } as T;
+        }
+
+        if (query.includes("from user_sources") && query.includes("where source_type = ? and external_id = ?")) {
+          const [channel, externalUserId] = values as [string, string];
+          if (channel === "email") {
+            const sender = emailSenders.get(externalUserId);
+            if (!sender || sender.enabled !== 1) return null;
+            return {
+              id: sender.id,
+              user_id: sender.customer_id,
+              source_type: "email",
+              external_id: sender.sender_email,
+              is_primary: 0,
+            } as T;
+          }
+
+          const row = customerChannels.get(`${channel}:${externalUserId}`);
+          if (!row) return null;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_type: row.channel,
+            external_id: row.external_user_id,
+            is_primary: row.is_primary,
+          } as T;
         }
 
         if (query.includes("from channels") && query.includes("where id = ?")) {
@@ -875,36 +902,37 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes("from customer_channel_settings") &&
-          query.includes("where customer_id = ? and channel_id = ?")
+          query.includes("from user_channel_settings") &&
+          query.includes("where user_id = ? and channel_id = ?")
         ) {
           const [userId, channelId] = values as [string, string];
           return (channelSettings.get(`${userId}:${channelId}`) as T | undefined) ?? null;
         }
 
         if (
-          query.includes("from customer_email_routes") &&
+          query.includes("from user_email_routes") &&
           query.includes("where recipient_email = ? and enabled = 1")
         ) {
           const [recipientEmail] = values as [string];
           const route = emailRoutes.get(recipientEmail);
           if (!route || route.enabled !== 1) return null;
-          return { customer_id: route.customer_id } as T;
+          return { user_id: route.customer_id } as T;
         }
 
         if (
-          query.includes("from customer_email_senders") &&
-          query.includes("where sender_email = ? and enabled = 1")
+          query.includes("from user_sources") &&
+          query.includes("source_type = 'email'") &&
+          query.includes("where source_type = 'email' and external_id = ? and status = 'active'")
         ) {
           const [senderEmail] = values as [string];
           const sender = emailSenders.get(senderEmail);
           if (!sender || sender.enabled !== 1) return null;
-          return { customer_id: sender.customer_id } as T;
+          return { user_id: sender.customer_id } as T;
         }
 
         if (
-          query.includes("from customer_subscriptions") &&
-          query.includes("where customer_id = ?") &&
+          query.includes("from user_subscriptions") &&
+          query.includes("where user_id = ?") &&
           query.includes("status in")
         ) {
           const [userId] = values as [string];

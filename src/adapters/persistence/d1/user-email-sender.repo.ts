@@ -5,10 +5,6 @@ type UserSourceRow = {
   user_id: string;
 };
 
-type LegacyEmailSenderRow = {
-  customer_id: string;
-};
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -27,20 +23,7 @@ export function createD1UserEmailSenderRepo(env: WorkerEnv): UserEmailSenderRepo
         .bind(normalizedEmail)
         .first<UserSourceRow>();
 
-      if (userSourceRow?.user_id) {
-        return userSourceRow.user_id;
-      }
-
-      const legacyRow = await env.DB.prepare(
-        `SELECT customer_id
-         FROM customer_email_senders
-         WHERE sender_email = ? AND enabled = 1
-         LIMIT 1`,
-      )
-        .bind(normalizedEmail)
-        .first<LegacyEmailSenderRow>();
-
-      return legacyRow?.customer_id ?? null;
+      return userSourceRow?.user_id ?? null;
     },
   };
 }

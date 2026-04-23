@@ -21,6 +21,7 @@ wrangler d1 execute misgastos --file db/migrations/012_backfill_mvp_core_from_le
 wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuses.sql
 wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
 ```
 
 ### KV namespaces
@@ -35,8 +36,9 @@ Actualizar `wrangler.jsonc` con IDs reales.
 
 ### Mapeo de remitentes por usuario
 
-El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente priorizando `user_sources` (`source_type = 'email'`) y manteniendo fallback a `customer_email_senders`.
+El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership por remitente desde `user_sources` (`source_type = 'email'`).
 Si un remitente no está mapeado, el email se ignora (skip con log).
+Después de `016_retire_legacy_support_tables.sql`, ya no existe fallback runtime a tablas `customer_*` de soporte.
 
 ## 2) Configuración de secretos
 

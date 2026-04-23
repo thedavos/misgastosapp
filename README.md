@@ -13,7 +13,7 @@ Estado actual:
 ## Flujo actual (implementado)
 
 1. Llega un email de consumo al trigger `email` del Worker.
-2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve el usuario por remitente, priorizando `user_sources` y con fallback a `customer_email_senders`.
+2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve el usuario por remitente desde `user_sources`.
 3. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
 4. Se guarda gasto en D1 con estado `needs_clarification`.
 5. Se guarda estado conversacional en KV (`conv:{userId}:{channel}:{externalUserId}`).
@@ -41,7 +41,8 @@ Validación:
 
 - Se calcula `HMAC-SHA256(secret, "<timestamp>.<rawBody>")`.
 - Se rechaza si la firma no coincide o si el timestamp cae fuera de la ventana configurada.
-- `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp y desactiva fallback legacy.
+- `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp.
+- Después de `016_retire_legacy_support_tables.sql`, el runtime deja de depender de tablas legacy de soporte (`customer_channels`, `customer_channel_settings`, `customer_email_routes`, `customer_email_senders`, `customer_subscriptions`).
 
 ## Arquitectura del proyecto
 
@@ -126,6 +127,7 @@ wrangler d1 execute misgastos --file db/migrations/012_backfill_mvp_core_from_le
 wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuses.sql
 wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.

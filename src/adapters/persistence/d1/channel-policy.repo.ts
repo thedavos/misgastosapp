@@ -10,8 +10,7 @@ type ChannelRow = {
 
 type UserChannelSettingRow = {
   id: string;
-  user_id?: string;
-  customer_id?: string;
+  user_id: string;
   channel_id: string;
   enabled: number;
   is_primary: number;
@@ -29,7 +28,7 @@ function mapChannel(row: ChannelRow): Channel {
 function mapUserChannelSetting(row: UserChannelSettingRow): UserChannelSetting {
   return {
     id: row.id,
-    userId: row.user_id ?? row.customer_id ?? "",
+    userId: row.user_id,
     channelId: row.channel_id,
     enabled: row.enabled === 1,
     isPrimary: row.is_primary === 1,
@@ -59,23 +58,14 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
       userId: string;
       channelId: string;
     }): Promise<UserChannelSetting | null> {
-      const row =
-        (await env.DB.prepare(
-          `SELECT id, user_id, channel_id, enabled, is_primary, config_json
-           FROM user_channel_settings
-           WHERE user_id = ? AND channel_id = ?
-           LIMIT 1`,
-        )
-          .bind(input.userId, input.channelId)
-          .first<UserChannelSettingRow>()) ??
-        (await env.DB.prepare(
-          `SELECT id, customer_id, channel_id, enabled, is_primary, config_json
-           FROM customer_channel_settings
-           WHERE customer_id = ? AND channel_id = ?
-           LIMIT 1`,
-        )
-          .bind(input.userId, input.channelId)
-          .first<UserChannelSettingRow>());
+      const row = await env.DB.prepare(
+        `SELECT id, user_id, channel_id, enabled, is_primary, config_json
+         FROM user_channel_settings
+         WHERE user_id = ? AND channel_id = ?
+         LIMIT 1`,
+      )
+        .bind(input.userId, input.channelId)
+        .first<UserChannelSettingRow>();
 
       if (!row) return null;
       return mapUserChannelSetting(row);

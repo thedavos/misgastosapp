@@ -202,6 +202,17 @@ Mantener solo si imagen/OCR sigue en el MVP cercano.
 4. dejar tablas viejas solo durante transición
 5. remover tablas viejas cuando WhatsApp y email ya operen sobre el nuevo modelo
 
+## Estado actual del retiro
+
+- El runtime ya quedó alineado para resolver identidad/canal/rutas/suscripción desde tablas `user_*` y `user_sources`.
+- La migración `016_retire_legacy_support_tables.sql` formaliza el retiro de las tablas legacy de soporte:
+  - `customer_channels`
+  - `customer_channel_settings`
+  - `customer_email_routes`
+  - `customer_email_senders`
+  - `customer_subscriptions`
+- El siguiente retiro estructural pendiente, si se quiere cerrar completamente la brecha con el modelo MVP, es mover `expenses`/`expense_events`/`categories` a `transactions`/`transaction_revisions`/`categories_v2` como runtime real y no solo como esquema preparado.
+
 ## Decisiones abiertas
 
 - si `telegram` entra en `user_sources` desde ya o solo se reserva el enum
