@@ -228,6 +228,45 @@ flowchart LR
     CMRepo --> R2
 ```
 
+## Diagrama Mermaid de secuencia: create expense por WhatsApp
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant WA as WhatsApp / Kapso
+    participant H as whatsapp-webhook.handler
+    participant W as webhook-event.repo
+    participant UR as user.repo
+    participant P as parse-user-intent
+    participant AI as Workers AI
+    participant E as execute-channel-intent
+    participant C as create-expense-from-intent
+    participant ER as expense.repo
+    participant D1 as D1
+
+    U->>WA: "Gasté 18 en Tambo"
+    WA->>H: webhook message
+    H->>H: validar firma
+    H->>W: registrar / validar idempotencia
+    W->>D1: inbound_webhook_events
+    H->>UR: resolver user + externalUserId
+    UR->>D1: users + user_sources
+    H->>P: parsear intención
+    P->>AI: inferir intent + draft
+    AI-->>P: create_expense + campos estructurados
+    P-->>H: parsedIntent
+    H->>E: executeChannelIntent
+    E->>C: createExpenseFromIntent
+    C->>ER: createExpenseRecord
+    ER->>D1: insert transactions
+    ER->>D1: insert transaction_revisions
+    ER-->>C: expense creado
+    C-->>E: handled
+    E-->>H: expense_created
+    H-->>WA: mensaje de confirmación
+    WA-->>U: "Listo, registré S/ 18 en Tambo"
+```
+
 ## Regla de diseño clave
 
 El parser de intención no debe depender de un canal concreto.
