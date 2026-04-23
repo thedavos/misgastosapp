@@ -44,6 +44,7 @@ Validación:
 - `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp.
 - Después de `016_retire_legacy_support_tables.sql`, el runtime deja de depender de tablas legacy de soporte (`customer_channels`, `customer_channel_settings`, `customer_email_routes`, `customer_email_senders`, `customer_subscriptions`).
 - El runtime actual persiste gastos sobre `transactions`, `transaction_revisions` y `categories_v2`.
+- `017_retire_legacy_expense_tables.sql` reconstruye `chat_media` sobre `users`/`transactions` y retira `categories`, `expenses`, `expense_events`, `subscription_events` y `customers` del esquema final.
 
 ## Arquitectura del proyecto
 
@@ -129,6 +130,7 @@ wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuse
 wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.

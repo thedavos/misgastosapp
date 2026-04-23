@@ -3,11 +3,11 @@ import type { ChatMedia, ChatMediaRepoPort } from "@/ports/chat-media-repo.port"
 
 type ChatMediaRow = {
   id: string;
-  customer_id: string;
+  user_id: string;
   channel: string;
   external_user_id: string;
   provider_event_id: string;
-  expense_id: string | null;
+  transaction_id: string | null;
   r2_key: string;
   mime_type: string | null;
   size_bytes: number;
@@ -20,11 +20,11 @@ type ChatMediaRow = {
 function mapChatMediaRow(row: ChatMediaRow): ChatMedia {
   return {
     id: row.id,
-    userId: row.customer_id,
+    userId: row.user_id,
     channel: row.channel,
     externalUserId: row.external_user_id,
     providerEventId: row.provider_event_id,
-    expenseId: row.expense_id,
+    expenseId: row.transaction_id,
     r2Key: row.r2_key,
     mimeType: row.mime_type,
     sizeBytes: row.size_bytes,
@@ -47,11 +47,11 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
       await env.DB.prepare(
         `INSERT INTO chat_media (
            id,
-           customer_id,
+           user_id,
            channel,
            external_user_id,
            provider_event_id,
-           expense_id,
+           transaction_id,
            r2_key,
            mime_type,
            size_bytes,
@@ -98,7 +98,7 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
     async linkExpense(input): Promise<void> {
       await env.DB.prepare(
         `UPDATE chat_media
-         SET expense_id = ?
+         SET transaction_id = ?
          WHERE id = ?`,
       )
         .bind(input.expenseId, input.id)
@@ -109,11 +109,11 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
       const rows = await env.DB.prepare(
         `SELECT
            id,
-           customer_id,
+           user_id,
            channel,
            external_user_id,
            provider_event_id,
-           expense_id,
+           transaction_id,
            r2_key,
            mime_type,
            size_bytes,
@@ -122,7 +122,7 @@ export function createD1ChatMediaRepo(env: WorkerEnv): ChatMediaRepoPort {
            created_at,
            expires_at
          FROM chat_media
-         WHERE customer_id = ? AND expense_id = ?`,
+         WHERE user_id = ? AND transaction_id = ?`,
       )
         .bind(input.userId, input.expenseId)
         .all<ChatMediaRow>();

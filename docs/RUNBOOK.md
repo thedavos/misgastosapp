@@ -22,6 +22,7 @@ wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuse
 wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
 ```
 
 ### KV namespaces
@@ -40,6 +41,7 @@ El flujo de email usa inbox único (`EMAIL_WORKER_INBOX`) y resuelve ownership p
 Si un remitente no está mapeado, el email se ignora (skip con log).
 Después de `016_retire_legacy_support_tables.sql`, ya no existe fallback runtime a tablas `customer_*` de soporte.
 El runtime de gastos/categorización ahora opera sobre `transactions`, `transaction_revisions` y `categories_v2`.
+`017_retire_legacy_expense_tables.sql` además reconstruye `chat_media` sobre `users`/`transactions` y retira las tablas legacy centrales del esquema final.
 
 ## 2) Configuración de secretos
 

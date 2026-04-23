@@ -1,49 +1,5 @@
--- Current schema snapshot (post-016 MVP runtime-aligned model)
+-- Current schema snapshot (post-017 MVP-aligned model)
 
-CREATE TABLE categories (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-, customer_id TEXT);
-CREATE TABLE expenses (
-  id TEXT PRIMARY KEY,
-  amount REAL NOT NULL,
-  currency TEXT NOT NULL,
-  merchant TEXT NOT NULL,
-  occurred_at TEXT NOT NULL,
-  bank TEXT NOT NULL,
-  raw_text TEXT NOT NULL,
-  status TEXT NOT NULL,
-  category_id TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL, customer_id TEXT,
-  FOREIGN KEY (category_id) REFERENCES categories(id)
-);
-CREATE INDEX idx_expenses_status ON expenses(status);
-CREATE INDEX idx_expenses_occurred_at ON expenses(occurred_at);
-CREATE TABLE expense_events (
-  id TEXT PRIMARY KEY,
-  expense_id TEXT NOT NULL,
-  type TEXT NOT NULL,
-  payload_json TEXT,
-  created_at TEXT NOT NULL, customer_id TEXT,
-  FOREIGN KEY (expense_id) REFERENCES expenses(id)
-);
-CREATE TABLE customers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'ACTIVE',
-  default_currency TEXT NOT NULL DEFAULT 'PEN',
-  timezone TEXT NOT NULL DEFAULT 'America/Lima',
-  locale TEXT NOT NULL DEFAULT 'es-PE',
-  confidence_threshold REAL NOT NULL DEFAULT 0.75,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-CREATE INDEX idx_expenses_customer_id ON expenses(customer_id);
-CREATE INDEX idx_categories_customer_id ON categories(customer_id);
-CREATE INDEX idx_expense_events_customer_id ON expense_events(customer_id);
 CREATE TABLE channels (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -75,21 +31,6 @@ CREATE TABLE plan_features (
 );
 CREATE UNIQUE INDEX uq_plan_features_plan_key
   ON plan_features(plan_id, feature_key);
-CREATE TABLE subscription_events (
-  id TEXT PRIMARY KEY,
-  customer_id TEXT NOT NULL,
-  subscription_id TEXT,
-  event_type TEXT NOT NULL,
-  provider TEXT NOT NULL,
-  provider_event_id TEXT,
-  payload_json TEXT,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (subscription_id) REFERENCES customer_subscriptions(id)
-);
-CREATE UNIQUE INDEX uq_subscription_events_provider_event
-  ON subscription_events(provider, provider_event_id)
-  WHERE provider_event_id IS NOT NULL;
 CREATE TABLE inbound_webhook_events (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
@@ -109,31 +50,6 @@ CREATE INDEX idx_inbound_webhook_events_status
   ON inbound_webhook_events(status);
 CREATE INDEX idx_inbound_webhook_events_last_seen_at
   ON inbound_webhook_events(last_seen_at);
-CREATE TABLE chat_media (
-  id TEXT PRIMARY KEY,
-  customer_id TEXT NOT NULL,
-  channel TEXT NOT NULL,
-  external_user_id TEXT NOT NULL,
-  provider_event_id TEXT NOT NULL,
-  expense_id TEXT,
-  r2_key TEXT NOT NULL,
-  mime_type TEXT,
-  size_bytes INTEGER NOT NULL,
-  sha256 TEXT NOT NULL,
-  ocr_text TEXT,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (expense_id) REFERENCES expenses(id)
-);
-CREATE INDEX idx_chat_media_customer_id
-  ON chat_media(customer_id);
-CREATE INDEX idx_chat_media_expense_id
-  ON chat_media(expense_id);
-CREATE INDEX idx_chat_media_expires_at
-  ON chat_media(expires_at);
-CREATE INDEX idx_chat_media_provider_event
-  ON chat_media(provider_event_id);
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
@@ -306,3 +222,28 @@ CREATE UNIQUE INDEX uq_user_email_routes_recipient
   ON user_email_routes(recipient_email);
 CREATE INDEX idx_user_email_routes_user
   ON user_email_routes(user_id);
+CREATE TABLE IF NOT EXISTS "chat_media" (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  external_user_id TEXT NOT NULL,
+  provider_event_id TEXT NOT NULL,
+  transaction_id TEXT,
+  r2_key TEXT NOT NULL,
+  mime_type TEXT,
+  size_bytes INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  ocr_text TEXT,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+);
+CREATE INDEX idx_chat_media_user_id
+  ON chat_media(user_id);
+CREATE INDEX idx_chat_media_transaction_id
+  ON chat_media(transaction_id);
+CREATE INDEX idx_chat_media_expires_at
+  ON chat_media(expires_at);
+CREATE INDEX idx_chat_media_provider_event
+  ON chat_media(provider_event_id);

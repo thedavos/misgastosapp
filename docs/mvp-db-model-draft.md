@@ -212,7 +212,8 @@ Mantener solo si imagen/OCR sigue en el MVP cercano.
   - `customer_email_senders`
   - `customer_subscriptions`
 - El runtime ya fue movido a `transactions`/`transaction_revisions`/`categories_v2`.
-- El siguiente retiro estructural pendiente, si se quiere cerrar completamente la brecha con el modelo MVP, es decidir cuándo retirar también las tablas legacy `expenses`/`expense_events`/`categories` del esquema físico.
+- `017_retire_legacy_expense_tables.sql` completa el retiro físico de `expenses`, `expense_events` y `categories`, y además reconstruye `chat_media` para referenciar `users` y `transactions`.
+- La brecha estructural restante ya no está en el core de storage del MVP, sino en decidir qué otras piezas históricas fuera del núcleo (si quedara alguna) siguen valiendo la pena conservar.
 
 ## Decisiones abiertas
 

@@ -781,7 +781,7 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes } };
         }
 
-        if (query.startsWith("update chat_media set expense_id = ?")) {
+        if (query.startsWith("update chat_media set transaction_id = ?")) {
           const [expenseId, mediaId] = values as [string, string];
           const current = chatMedia.get(mediaId);
           if (!current) return { success: true, meta: { changes: 0 } };
@@ -1072,7 +1072,7 @@ function createMemoryD1Database(options?: {
 
         if (
           query.includes("from chat_media") &&
-          query.includes("where customer_id = ? and expense_id = ?")
+          query.includes("where user_id = ? and transaction_id = ?")
         ) {
           const [userId, expenseId] = values as [string, string];
           return {
