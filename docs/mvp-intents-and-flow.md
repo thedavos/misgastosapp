@@ -86,6 +86,50 @@ Fallback cuando el input no es suficientemente claro.
 4. se ejecuta caso de uso
 5. se devuelve respuesta estructurada
 
+## Diagrama Mermaid del estado actual
+
+```mermaid
+flowchart TD
+    subgraph WA[WhatsApp]
+        WA1[Webhook WhatsApp] --> WA2[Validar firma e idempotencia]
+        WA2 --> WA3[Resolver user + externalUserId]
+        WA3 --> WA4[Parsear intención]
+        WA4 --> WA5{Intento ejecutable directo?}
+        WA5 -- Sí --> WA6[Ejecutar core MVP\ntransactions + transaction_revisions]
+        WA6 --> WA7[Responder por WhatsApp]
+        WA5 -- No --> WA8[Crear transacción needs_clarification]
+        WA8 --> WA9[Guardar estado conversacional en KV]
+        WA9 --> WA10[Pedir aclaración / categoría]
+        WA10 --> WA11[Respuesta del usuario]
+        WA11 --> WA12[Clasificar respuesta + completar flujo]
+        WA12 --> WA13[Confirmar transacción y limpiar KV]
+    end
+
+    subgraph EM[Email]
+        EM1[Email trigger] --> EM2[Validar inbox]
+        EM2 --> EM3[Resolver user desde user_sources]
+        EM3 --> EM4[Parsear intención con el mismo core]
+        EM4 --> EM5{Intento ejecutable directo?}
+        EM5 -- Sí --> EM6[Ejecutar core MVP]
+        EM6 --> EM7[Notificar / responder vía WhatsApp si aplica]
+        EM5 -- No --> EM8[Crear transacción needs_clarification]
+        EM8 --> EM9[Abrir aclaración por WhatsApp]
+    end
+
+    subgraph MO[Mobile]
+        MO1[POST /api/mobile/intents/preview] --> MO2[Normalizar payload]
+        MO2 --> MO3[Parsear intención]
+        MO3 --> MO4[Devolver preview estructurado]
+
+        MO5[POST /api/mobile/intents/execute] --> MO6[Normalizar payload]
+        MO6 --> MO7[Parsear intención]
+        MO7 --> MO8{Intento ejecutable directo?}
+        MO8 -- Sí --> MO9[Ejecutar core MVP]
+        MO9 --> MO10[Devolver JSON estructurado]
+        MO8 -- No --> MO11[Devolver intent_not_executable]
+    end
+```
+
 ## Regla de diseño clave
 
 El parser de intención no debe depender de un canal concreto.
