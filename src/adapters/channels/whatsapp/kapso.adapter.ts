@@ -119,7 +119,7 @@ function extractIncomingMessage(
   if (from && (text || attachments.length > 0)) {
     return {
       channel: "whatsapp",
-      userId: from,
+      externalUserId: from,
       text: text ?? "",
       timestamp: toIsoTimestamp(payload.timestamp),
       providerEventId,
@@ -139,7 +139,7 @@ function extractIncomingMessage(
     if (nestedFrom && (nestedText || nestedAttachments.length > 0)) {
       return {
         channel: "whatsapp",
-        userId: nestedFrom,
+        externalUserId: nestedFrom,
         text: nestedText ?? "",
         timestamp: toIsoTimestamp(nestedRecord.timestamp),
         providerEventId,
@@ -171,7 +171,7 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
           Authorization: `Bearer ${env.KAPSO_API_KEY}`,
         },
         body: JSON.stringify({
-          to: input.userId,
+          to: input.externalUserId,
           text: input.text,
         }),
       });

@@ -1,7 +1,7 @@
 export const EXPENSE_STATUS = {
-  PendingCategory: "PENDING_CATEGORY",
-  Categorized: "CATEGORIZED",
-  Discarded: "DISCARDED",
+  NeedsClarification: "needs_clarification",
+  Confirmed: "confirmed",
+  Deleted: "deleted",
 } as const;
 
 export type ExpenseStatus = (typeof EXPENSE_STATUS)[keyof typeof EXPENSE_STATUS];

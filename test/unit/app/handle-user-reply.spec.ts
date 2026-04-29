@@ -4,7 +4,7 @@ import { createHandleUserReply } from "@/app/handle-user-reply";
 
 describe("handle user reply", () => {
   it("categorizes expense when confidence is above threshold", async () => {
-    const markCategorized = vi.fn().mockResolvedValue(undefined);
+    const markConfirmed = vi.fn().mockResolvedValue(undefined);
     const deleteState = vi.fn().mockResolvedValue(undefined);
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
 
@@ -21,16 +21,19 @@ describe("handle user reply", () => {
       },
       channelPolicyRepo: {
         getChannel: vi.fn(),
-        getCustomerChannelSetting: vi.fn(),
-        isChannelEnabledForCustomer: vi.fn().mockResolvedValue(true),
+        getUserChannelSetting: vi.fn(),
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(true),
       },
       featurePolicy: {
         isFeatureEnabled: vi.fn().mockResolvedValue(true),
       },
       expenseRepo: {
-        createPending: vi.fn(),
-        getById: vi.fn().mockResolvedValue({ id: "exp_1", customerId: "cust_default" }),
-        markCategorized,
+        createExpenseRecord: vi.fn(),
+        getById: vi.fn().mockResolvedValue({ id: "exp_1", userId: "cust_default" }),
+        findLatestByUser: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
+        markConfirmed,
       },
       categoryRepo: {
         listAll: vi.fn().mockResolvedValue([{ id: "cat_food", name: "Comida", slug: "comida" }]),
@@ -40,9 +43,9 @@ describe("handle user reply", () => {
       conversationState: {
         put: vi.fn(),
         get: vi.fn().mockResolvedValue({
-          customerId: "cust_default",
+          userId: "cust_default",
           channel: "whatsapp",
-          userId: "u1",
+          externalUserId: "u1",
           expenseId: "exp_1",
           createdAt: "now",
         }),
@@ -59,10 +62,10 @@ describe("handle user reply", () => {
 
     const result = await Effect.runPromise(
       handleUserReply({
-        customerId: "cust_default",
+        userId: "cust_default",
         message: {
           channel: "whatsapp",
-          userId: "u1",
+          externalUserId: "u1",
           text: "comida",
           timestamp: new Date().toISOString(),
           raw: {},
@@ -71,15 +74,15 @@ describe("handle user reply", () => {
     );
 
     expect(result).toEqual({ categorized: true });
-    expect(markCategorized).toHaveBeenCalledWith({
+    expect(markConfirmed).toHaveBeenCalledWith({
       id: "exp_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       categoryId: "cat_food",
     });
     expect(deleteState).toHaveBeenCalledWith({
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
-      userId: "u1",
+      externalUserId: "u1",
     });
     expect(sendMessage).toHaveBeenCalled();
   });

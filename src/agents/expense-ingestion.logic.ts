@@ -21,9 +21,9 @@ export async function runExpenseProcessingJobOnce(
 
   const result = await Effect.runPromiseExit(
     container.processChatMessage({
-      customerId: job.customerId,
-      channel: job.channel,
       userId: job.userId,
+      channel: job.channel,
+      externalUserId: job.externalUserId,
       providerEventId: job.eventId,
       text: job.text,
       attachments: job.attachments,
@@ -49,9 +49,9 @@ export async function runExpenseProcessingJobOnce(
   container.logger.info("expense.agent.job_processed", {
     requestId,
     eventId: job.eventId,
-    customerId: job.customerId,
-    channel: job.channel,
     userId: job.userId,
+    channel: job.channel,
+    externalUserId: job.externalUserId,
     attempt: job.attempt,
   });
 
@@ -85,7 +85,7 @@ export async function sendExpenseJobRetryGuidance(
   const container = createContainer(env, requestId);
 
   await container.whatsappChannel.sendMessage({
-    userId: job.userId,
+    externalUserId: job.externalUserId,
     text: EXPENSE_INGESTION_FINAL_RETRY_MESSAGE,
   });
 }
@@ -115,9 +115,9 @@ export async function processExpenseJobAttempt(input: {
     await input.scheduleRetry(retryDelay, nextJob);
     input.logger.warn("expense.agent.job_retry_scheduled", {
       eventId: input.job.eventId,
-      customerId: input.job.customerId,
-      channel: input.job.channel,
       userId: input.job.userId,
+      channel: input.job.channel,
+      externalUserId: input.job.externalUserId,
       attempt: input.job.attempt,
       nextAttempt: nextJob.attempt,
       delaySeconds: retryDelay,
@@ -130,9 +130,9 @@ export async function processExpenseJobAttempt(input: {
   await input.sendFinalRetryMessage(input.job);
   input.logger.error("expense.agent.job_failed_final", {
     eventId: input.job.eventId,
-    customerId: input.job.customerId,
-    channel: input.job.channel,
     userId: input.job.userId,
+    channel: input.job.channel,
+    externalUserId: input.job.externalUserId,
     attempt: input.job.attempt,
     errorMessage: runResult.errorMessage,
   });

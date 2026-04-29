@@ -2,8 +2,9 @@ import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import {
-  CustomerSenderLookupError,
+  UserSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
@@ -55,6 +56,13 @@ export async function handleEmail(
   const requestId = message.headers.get("cf-ray") ?? undefined;
   const container = createContainer(env, requestId);
 
+  const executeChannelIntent = createExecuteChannelIntent({
+    createExpenseFromIntent: container.createExpenseFromIntent,
+    updateLastExpenseFromIntent: container.updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent: container.deleteLastExpenseFromIntent,
+    getReportFromIntent: container.getReportFromIntent,
+  });
+
   const effect = Effect.gen(function* () {
     const parsedEmail = yield* Effect.tryPromise({
       try: () => parseForwardedEmail(message.raw),
@@ -82,26 +90,26 @@ export async function handleEmail(
     }
 
     let matchedSenderEmail: string | null = null;
-    let customerId: string | null = null;
+    let userId: string | null = null;
     for (const senderCandidate of senderCandidates) {
-      const resolvedCustomerId = yield* Effect.tryPromise({
+      const resolvedUserId = yield* Effect.tryPromise({
         try: () =>
-          container.customerEmailSenderRepo.resolveCustomerIdBySenderEmail(senderCandidate),
+          container.userEmailSenderRepo.resolveUserIdBySenderEmail(senderCandidate),
         catch: (cause) =>
-          new CustomerSenderLookupError({
+          new UserSenderLookupError({
             requestId,
             senderEmail: senderCandidate,
             cause,
           }),
       });
-      if (resolvedCustomerId) {
-        customerId = resolvedCustomerId;
+      if (resolvedUserId) {
+        userId = resolvedUserId;
         matchedSenderEmail = senderCandidate;
         break;
       }
     }
 
-    if (!customerId) {
+    if (!userId) {
       container.logger.warn("email.sender_not_mapped_skip", {
         requestId,
         senderCandidates,
@@ -110,55 +118,55 @@ export async function handleEmail(
       return;
     }
 
-    const customer = yield* Effect.tryPromise({
-      try: () => container.customerRepo.getById(customerId),
+    const user = yield* Effect.tryPromise({
+      try: () => container.userRepo.getById(userId),
       catch: (cause) =>
-        new CustomerSenderLookupError({
+        new UserSenderLookupError({
           requestId,
           senderEmail: matchedSenderEmail ?? senderCandidates[0],
           cause,
         }),
     });
 
-    if (!customer) {
-      container.logger.warn("email.customer_not_found_skip", {
+    if (!user) {
+      container.logger.warn("email.user_not_found_skip", {
         requestId,
-        customerId,
+        userId,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
       });
       return;
     }
 
-    if (customer.status !== "ACTIVE") {
-      container.logger.warn("email.customer_inactive_skip", {
+    if (user.status !== "ACTIVE") {
+      container.logger.warn("email.user_inactive_skip", {
         requestId,
-        customerId: customer.id,
+        userId: user.id,
         senderEmail: matchedSenderEmail ?? senderCandidates[0],
         recipientEmail,
-        status: customer.status,
+        status: user.status,
       });
       return;
     }
 
-    const userId = yield* Effect.tryPromise({
+    const primaryExternalUserId = yield* Effect.tryPromise({
       try: () =>
-        container.customerRepo.getPrimaryExternalUserId({
-          customerId,
+        container.userRepo.getPrimaryExternalUserId({
+          userId,
           channel: "whatsapp",
         }),
       catch: (cause) =>
         new MissingDefaultUserError({
           requestId,
-          message: `Unable to resolve primary whatsapp user for customer ${customerId}: ${String(cause)}`,
+          message: `Unable to resolve primary whatsapp user for user ${userId}: ${String(cause)}`,
         }),
     });
 
-    if (!userId) {
+    if (!primaryExternalUserId) {
       return yield* Effect.fail(
         new MissingDefaultUserError({
           requestId,
-          message: `No primary whatsapp user configured for customer ${customerId}`,
+          message: `No primary whatsapp user configured for user ${userId}`,
         }),
       );
     }
@@ -168,22 +176,65 @@ export async function handleEmail(
       to: parsedEmail.to?.map((t) => t.address).join(","),
       subject: parsedEmail.subject,
       date: String(parsedEmail.date || ""),
-      customerId,
+      userId,
       recipientEmail,
       senderEmail: matchedSenderEmail ?? senderCandidates[0],
     });
 
-    const emailText = emailToAiInput(parsedEmail);
+    const sourceText = emailToAiInput(parsedEmail);
 
-    yield* container.ingestExpenseFromEmail({
-      customerId,
-      emailText,
-      channel: "whatsapp",
+    const parsedIntent = yield* Effect.tryPromise({
+      try: () =>
+        container.parseUserIntent({
+          text: sourceText,
+          context: {
+            sourceType: "email",
+            timezone: user.timezone,
+            defaultCurrency: user.defaultCurrency,
+            nowIso: new Date().toISOString(),
+          },
+          requestId,
+        }),
+      catch: (cause) => new EmailParseFailedError({ requestId, cause }),
+    });
+
+    container.logger.info("email.intent_shadow_parsed", {
+      requestId,
       userId,
+      intentName: parsedIntent.name,
+      confidence: parsedIntent.payload.confidence,
+    });
+
+    const directIntentResult = yield* executeChannelIntent({
+      userId,
+      channel: "whatsapp",
+      sourceType: "email",
+      externalUserId: primaryExternalUserId,
+      parsedIntent,
+      timezone: user.timezone,
+      nowIso: new Date().toISOString(),
       requestId,
     });
 
-    container.logger.info("email.done", { requestId, customerId });
+    if (directIntentResult.handled) {
+      container.logger.info("email.done", {
+        requestId,
+        userId,
+        mode: `direct_${parsedIntent.name}`,
+      });
+      return;
+    }
+
+    yield* container.captureExpenseWithClarification({
+      userId,
+      sourceText,
+      channel: "whatsapp",
+      createdVia: "email",
+      externalUserId: primaryExternalUserId,
+      requestId,
+    });
+
+    container.logger.info("email.done", { requestId, userId, mode: "fallback_clarification" });
   });
 
   const result = await Effect.runPromiseExit(effect);

@@ -1,0 +1,120 @@
+import { Effect } from "effect";
+import { fromPromise } from "@/app/effects";
+import {
+  ChannelDisabledError,
+  ChannelPolicyError,
+  ChannelSendError,
+  ExpensePersistenceError,
+  FeaturePolicyError,
+  SubscriptionFeatureBlockedError,
+  type AppError,
+} from "@/app/errors";
+import { buildPeriodExpenses, buildPeriodSummary, buildTopSpendSummary } from "@/app/report-summary";
+import type { GetReportIntentPayload } from "@/domain/intent/entity";
+import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
+import type { ChannelPort } from "@/ports/channel.port";
+import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
+import type { LoggerPort } from "@/ports/logger.port";
+
+export type GetReportFromIntentDeps = {
+  channel: ChannelPort;
+  channelPolicyRepo: ChannelPolicyRepoPort;
+  featurePolicy: FeaturePolicyPort;
+  expenseRepo: ExpenseRepoPort;
+  logger: LoggerPort;
+};
+
+export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
+  return function getReportFromIntent(input: {
+    userId: string;
+    channel: string;
+    externalUserId: string;
+    payload: GetReportIntentPayload;
+    timezone: string;
+    nowIso: string;
+    requestId?: string;
+  }): Effect.Effect<{ handled: boolean }, AppError> {
+    return Effect.gen(function* () {
+      const expenses = yield* fromPromise(
+        () => deps.expenseRepo.listByUser({ userId: input.userId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "listByUser",
+            cause,
+          }),
+      );
+
+      const isEnabled = yield* fromPromise(
+        () =>
+          deps.channelPolicyRepo.isChannelEnabledForUser({
+            userId: input.userId,
+            channelId: input.channel,
+          }),
+        (cause) =>
+          new ChannelPolicyError({
+            requestId: input.requestId,
+            operation: "isEnabled",
+            cause,
+          }),
+      );
+
+      if (!isEnabled) {
+        return yield* Effect.fail(
+          new ChannelDisabledError({
+            requestId: input.requestId,
+            userId: input.userId,
+            channelId: input.channel,
+          }),
+        );
+      }
+
+      const featureKey = `channels.${input.channel}`;
+      const featureEnabled = yield* fromPromise(
+        () => deps.featurePolicy.isFeatureEnabled({ userId: input.userId, featureKey }),
+        (cause) => new FeaturePolicyError({ requestId: input.requestId, featureKey, cause }),
+      );
+
+      if (!featureEnabled) {
+        return yield* Effect.fail(
+          new SubscriptionFeatureBlockedError({
+            requestId: input.requestId,
+            userId: input.userId,
+            featureKey,
+          }),
+        );
+      }
+
+      const periodExpenses = buildPeriodExpenses({
+        expenses,
+        nowIso: input.nowIso,
+        timezone: input.timezone,
+        periodKind: input.payload.periodKind,
+      });
+
+      const message =
+        input.payload.periodKind === "top_spend"
+          ? buildTopSpendSummary(periodExpenses)
+          : periodExpenses.length === 0
+            ? `No encontré gastos para ${input.payload.periodKind === "day" ? "hoy" : input.payload.periodKind === "week" ? "esta semana" : "este mes"}.`
+            : buildPeriodSummary({ expenses: periodExpenses, periodKind: input.payload.periodKind });
+
+      yield* fromPromise(
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
+        (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+      );
+
+      deps.logger.info("report.generated_from_intent", {
+        requestId: input.requestId,
+        userId: input.userId,
+        channel: input.channel,
+        externalUserId: input.externalUserId,
+        periodKind: input.payload.periodKind,
+        expenseCount: periodExpenses.length,
+      });
+
+      return { handled: true };
+    });
+  };
+}

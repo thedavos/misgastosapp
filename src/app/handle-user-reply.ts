@@ -46,7 +46,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
   });
 
   return function handleUserReply(input: {
-    customerId: string;
+    userId: string;
     message: IncomingUserMessage;
   }): Effect.Effect<{ categorized: boolean }, AppError> {
     return Effect.gen(function* () {
@@ -54,9 +54,9 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            customerId: input.customerId,
+            userId: input.userId,
             channel: message.channel,
-            userId: message.userId,
+            externalUserId: message.externalUserId,
           }),
         (cause) => new ConversationStateError({ operation: "get", cause }),
       );
@@ -64,14 +64,14 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       if (!pendingState) {
         deps.logger.warn("conversation.no_pending_state", {
           channel: message.channel,
-          userId: message.userId,
+          externalUserId: message.externalUserId,
         });
         return { categorized: false };
       }
 
       const expense = yield* fromPromise(
         () =>
-          deps.expenseRepo.getById({ id: pendingState.expenseId, customerId: input.customerId }),
+          deps.expenseRepo.getById({ id: pendingState.expenseId, userId: input.userId }),
         (cause) => new ExpensePersistenceError({ operation: "getById", cause }),
       );
 
@@ -79,15 +79,15 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         deps.logger.error("expense.not_found_for_reply", {
           expenseId: pendingState.expenseId,
           channel: message.channel,
-          userId: message.userId,
+          externalUserId: message.externalUserId,
         });
 
         yield* fromPromise(
           () =>
             deps.conversationState.delete({
-              customerId: input.customerId,
+              userId: input.userId,
               channel: message.channel,
-              userId: message.userId,
+              externalUserId: message.externalUserId,
             }),
           (cause) => new ConversationStateError({ operation: "delete", cause }),
         );
@@ -96,7 +96,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const categories = yield* fromPromise(
-        () => deps.categoryRepo.listAll({ customerId: input.customerId }),
+        () => deps.categoryRepo.listAll({ userId: input.userId }),
         (cause) => new CategoryLookupError({ operation: "listAll", cause }),
       );
 
@@ -114,8 +114,8 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       if (!categoryId || classification.confidence < threshold) {
         const isEnabled = yield* fromPromise(
           () =>
-            deps.channelPolicyRepo.isChannelEnabledForCustomer({
-              customerId: input.customerId,
+            deps.channelPolicyRepo.isChannelEnabledForUser({
+              userId: input.userId,
               channelId: message.channel,
             }),
           (cause) => new ChannelPolicyError({ operation: "isEnabled", cause }),
@@ -124,7 +124,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         if (!isEnabled) {
           return yield* Effect.fail(
             new ChannelDisabledError({
-              customerId: input.customerId,
+              userId: input.userId,
               channelId: message.channel,
             }),
           );
@@ -134,7 +134,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         const featureEnabled = yield* fromPromise(
           () =>
             deps.featurePolicy.isFeatureEnabled({
-              customerId: input.customerId,
+              userId: input.userId,
               featureKey,
             }),
           (cause) => new FeaturePolicyError({ featureKey, cause }),
@@ -143,7 +143,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         if (!featureEnabled) {
           return yield* Effect.fail(
             new SubscriptionFeatureBlockedError({
-              customerId: input.customerId,
+              userId: input.userId,
               featureKey,
             }),
           );
@@ -152,7 +152,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
         yield* fromPromise(
           () =>
             deps.channel.sendMessage({
-              userId: message.userId,
+              externalUserId: message.externalUserId,
               text: "No me quedó clara la categoría. ¿Puedes elegir una más específica?",
             }),
           (cause) => new ChannelSendError({ cause }),
@@ -161,7 +161,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const category = yield* fromPromise(
-        () => deps.categoryRepo.getById({ customerId: input.customerId, id: categoryId }),
+        () => deps.categoryRepo.getById({ userId: input.userId, id: categoryId }),
         (cause) => new CategoryLookupError({ operation: "getById", cause }),
       );
 
@@ -172,18 +172,18 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
 
       yield* fromPromise(
         () =>
-          deps.expenseRepo.markCategorized({
+          deps.expenseRepo.markConfirmed({
             id: expense.id,
-            customerId: input.customerId,
+            userId: input.userId,
             categoryId: category.id,
           }),
-        (cause) => new ExpensePersistenceError({ operation: "markCategorized", cause }),
+        (cause) => new ExpensePersistenceError({ operation: "markConfirmed", cause }),
       );
 
       yield* completeExpenseFlow({
-        customerId: input.customerId,
+        userId: input.userId,
         channel: message.channel,
-        userId: message.userId,
+        externalUserId: message.externalUserId,
         categoryName: category.name,
       });
 

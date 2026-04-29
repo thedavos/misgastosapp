@@ -8,7 +8,7 @@ export interface IncomingAttachment {
 
 export interface IncomingUserMessage {
   channel: string;
-  userId: string;
+  externalUserId: string;
   text: string;
   timestamp: string;
   providerEventId?: string;
@@ -18,7 +18,7 @@ export interface IncomingUserMessage {
 }
 
 export interface SendMessageInput {
-  userId: string;
+  externalUserId: string;
   text: string;
 }
 

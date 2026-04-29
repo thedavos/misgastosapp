@@ -80,10 +80,8 @@ INSERT OR IGNORE INTO plan_features (id, plan_id, feature_key, feature_type, boo
 VALUES
   ('pf_free_whatsapp', 'free', 'channels.whatsapp', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   ('pf_free_telegram', 'free', 'channels.telegram', 'boolean', 0, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_free_instagram', 'free', 'channels.instagram', 'boolean', 0, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   ('pf_pro_whatsapp', 'pro', 'channels.whatsapp', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_pro_telegram', 'pro', 'channels.telegram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  ('pf_pro_instagram', 'pro', 'channels.instagram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  ('pf_pro_telegram', 'pro', 'channels.telegram', 'boolean', 1, NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 
 INSERT OR IGNORE INTO customer_subscriptions (
   id,

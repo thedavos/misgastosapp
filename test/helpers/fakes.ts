@@ -45,7 +45,7 @@ type ChannelRow = {
   status: "ACTIVE" | "INACTIVE";
 };
 
-type CustomerChannelSettingRow = {
+type UserChannelSettingRow = {
   id: string;
   customer_id: string;
   channel_id: string;
@@ -87,7 +87,7 @@ type PlanFeatureRow = {
   limit_value: number | null;
 };
 
-type CustomerSubscriptionRow = {
+type UserSubscriptionRow = {
   id: string;
   customer_id: string;
   plan_id: string;
@@ -255,10 +255,10 @@ function createMemoryD1Database(options?: {
   customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
-  channelSettings?: CustomerChannelSettingRow[];
+  channelSettings?: UserChannelSettingRow[];
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
-  subscriptions?: CustomerSubscriptionRow[];
+  subscriptions?: UserSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
   emailSenders?: CustomerEmailSenderRow[];
 }) {
@@ -267,10 +267,10 @@ function createMemoryD1Database(options?: {
   const customers = new Map<string, CustomerRow>();
   const customerChannels = new Map<string, CustomerChannelRow>();
   const channels = new Map<string, ChannelRow>();
-  const channelSettings = new Map<string, CustomerChannelSettingRow>();
+  const channelSettings = new Map<string, UserChannelSettingRow>();
   const plans = new Map<string, PlanRow>();
   const planFeatures = new Map<string, PlanFeatureRow>();
-  const subscriptions = new Map<string, CustomerSubscriptionRow>();
+  const subscriptions = new Map<string, UserSubscriptionRow>();
   const emailRoutes = new Map<string, CustomerEmailRouteRow>();
   const emailSenders = new Map<string, CustomerEmailSenderRow>();
   const inboundWebhookEvents = new Map<string, InboundWebhookEventRow>();
@@ -342,14 +342,13 @@ function createMemoryD1Database(options?: {
   const defaultChannels: ChannelRow[] = [
     { id: "whatsapp", name: "WhatsApp", status: "ACTIVE" },
     { id: "telegram", name: "Telegram", status: "ACTIVE" },
-    { id: "instagram", name: "Instagram", status: "INACTIVE" },
   ];
 
   for (const channel of options?.channels ?? defaultChannels) {
     channels.set(channel.id, channel);
   }
 
-  const defaultSettings: CustomerChannelSettingRow[] = [
+  const defaultSettings: UserChannelSettingRow[] = [
     {
       id: "ccs_cust_default_whatsapp",
       customer_id: "cust_default",
@@ -416,14 +415,6 @@ function createMemoryD1Database(options?: {
       limit_value: null,
     },
     {
-      id: "pf_free_instagram",
-      plan_id: "free",
-      feature_key: "channels.instagram",
-      feature_type: "boolean",
-      bool_value: 0,
-      limit_value: null,
-    },
-    {
       id: "pf_pro_whatsapp",
       plan_id: "pro",
       feature_key: "channels.whatsapp",
@@ -439,21 +430,13 @@ function createMemoryD1Database(options?: {
       bool_value: 1,
       limit_value: null,
     },
-    {
-      id: "pf_pro_instagram",
-      plan_id: "pro",
-      feature_key: "channels.instagram",
-      feature_type: "boolean",
-      bool_value: 1,
-      limit_value: null,
-    },
   ];
 
   for (const feature of options?.planFeatures ?? defaultPlanFeatures) {
     planFeatures.set(`${feature.plan_id}:${feature.feature_key}`, feature);
   }
 
-  const defaultSubscriptions: CustomerSubscriptionRow[] = [
+  const defaultSubscriptions: UserSubscriptionRow[] = [
     {
       id: "sub_cust_default_free",
       customer_id: "cust_default",
@@ -479,22 +462,24 @@ function createMemoryD1Database(options?: {
 
     return {
       async run() {
-        if (query.startsWith("insert into expenses")) {
+        if (query.startsWith("insert into transactions")) {
           const [
             id,
-            customerId,
-            amount,
+            userId,
+            _sourceMessageId,
+            amountMinor,
             currency,
             merchant,
+            description,
             occurredAt,
-            bank,
-            rawText,
             status,
+            _createdVia,
             createdAt,
             updatedAt,
           ] = values as [
             string,
             string,
+            string | null,
             number,
             string,
             string,
@@ -505,15 +490,21 @@ function createMemoryD1Database(options?: {
             string,
             string,
           ];
+
+          let parsedDescription: { rawText?: string; bank?: string } = {};
+          try {
+            parsedDescription = JSON.parse(description) as { rawText?: string; bank?: string };
+          } catch {}
+
           expenses.set(id, {
             id,
-            customer_id: customerId,
-            amount,
+            customer_id: userId,
+            amount: amountMinor / 100,
             currency,
             merchant,
             occurred_at: occurredAt,
-            bank,
-            raw_text: rawText,
+            bank: parsedDescription.bank ?? "unknown",
+            raw_text: parsedDescription.rawText ?? description,
             status,
             category_id: null,
             created_at: createdAt,
@@ -522,16 +513,16 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (query.startsWith("update expenses set status = ?")) {
-          const [status, categoryId, updatedAt, id, customerId] = values as [
+        if (query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")) {
+          const [status, categoryId, updatedAt, id, userId] = values as [
             string,
-            string,
+            string | null,
             string,
             string,
             string,
           ];
           const current = expenses.get(id);
-          if (!current || current.customer_id !== customerId) return { success: false };
+          if (!current || current.customer_id !== userId) return { success: false };
           expenses.set(id, {
             ...current,
             status,
@@ -541,8 +532,48 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (query.startsWith("insert into expense_events")) {
-          const [id, customerId, expenseId, type, payloadJson, createdAt] = values as [
+        if (query.startsWith("update transactions set status = ?, updated_at = ?")) {
+          const [status, updatedAt, id, userId] = values as [string, string, string, string];
+          const current = expenses.get(id);
+          if (!current || current.customer_id !== userId) return { success: false };
+          expenses.set(id, {
+            ...current,
+            status,
+            updated_at: updatedAt,
+          });
+          return { success: true };
+        }
+
+        if (
+          query.startsWith(
+            "update transactions set amount_minor = ?, currency = ?, merchant = ?, occurred_at = ?, description = ?, updated_at = ?",
+          )
+        ) {
+          const [amountMinor, currency, merchant, occurredAt, description, updatedAt, id, userId] =
+            values as [number, string, string, string, string, string, string, string];
+          const current = expenses.get(id);
+          if (!current || current.customer_id !== userId) return { success: false };
+
+          let parsedDescription: { rawText?: string; bank?: string } = {};
+          try {
+            parsedDescription = JSON.parse(description) as { rawText?: string; bank?: string };
+          } catch {}
+
+          expenses.set(id, {
+            ...current,
+            amount: amountMinor / 100,
+            currency,
+            merchant,
+            occurred_at: occurredAt,
+            raw_text: parsedDescription.rawText ?? description,
+            bank: parsedDescription.bank ?? current.bank,
+            updated_at: updatedAt,
+          });
+          return { success: true };
+        }
+
+        if (query.startsWith("insert into transaction_revisions")) {
+          const [id, userId, expenseId, type, payloadJson, createdAt] = values as [
             string,
             string,
             string,
@@ -552,7 +583,7 @@ function createMemoryD1Database(options?: {
           ];
           expenseEvents.push({
             id,
-            customer_id: customerId,
+            customer_id: userId,
             expense_id: expenseId,
             type,
             payload_json: payloadJson,
@@ -591,7 +622,7 @@ function createMemoryD1Database(options?: {
         if (query.startsWith("insert into chat_media")) {
           const [
             id,
-            customerId,
+            userId,
             channel,
             externalUserId,
             providerEventId,
@@ -621,7 +652,7 @@ function createMemoryD1Database(options?: {
 
           chatMedia.set(id, {
             id,
-            customer_id: customerId,
+            customer_id: userId,
             channel,
             external_user_id: externalUserId,
             provider_event_id: providerEventId,
@@ -637,8 +668,8 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes: 1 } };
         }
 
-        if (query.startsWith("insert or replace into customer_channels")) {
-          const [id, customerId, channel, externalUserId, isPrimary] = values as [
+        if (query.startsWith("insert or replace into user_sources")) {
+          const [id, userId, channel, externalUserId, isPrimary] = values as [
             string,
             string,
             string,
@@ -649,7 +680,7 @@ function createMemoryD1Database(options?: {
           ];
           customerChannels.set(`${channel}:${externalUserId}`, {
             id,
-            customer_id: customerId,
+            customer_id: userId,
             channel,
             external_user_id: externalUserId,
             is_primary: isPrimary,
@@ -750,7 +781,7 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes } };
         }
 
-        if (query.startsWith("update chat_media set expense_id = ?")) {
+        if (query.startsWith("update chat_media set transaction_id = ?")) {
           const [expenseId, mediaId] = values as [string, string];
           const current = chatMedia.get(mediaId);
           if (!current) return { success: true, meta: { changes: 0 } };
@@ -776,64 +807,142 @@ function createMemoryD1Database(options?: {
       },
 
       async first<T>() {
-        if (query.includes("from expenses where id = ? and customer_id = ?")) {
-          const [id, customerId] = values as [string, string];
+        if (query.includes("from transactions") && query.includes("where id = ? and user_id = ?")) {
+          const [id, userId] = values as [string, string];
           const row = expenses.get(id);
-          if (!row || row.customer_id !== customerId) return null;
-          return row as T;
+          if (!row || row.customer_id !== userId) return null;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_message_id: null,
+            amount_minor: Math.round(row.amount * 100),
+            currency: row.currency,
+            merchant: row.merchant,
+            description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+            category_id: row.category_id,
+            occurred_at: row.occurred_at,
+            status: row.status,
+            created_via: "whatsapp",
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          } as T;
         }
 
-        if (query.includes("from categories where lower(name) = ?")) {
-          const [name, customerId] = values as [string, string];
+        if (
+          query.includes("from transactions") &&
+          query.includes("where user_id = ? and status != ?") &&
+          query.includes("order by created_at desc")
+        ) {
+          const [userId, excludedStatus] = values as [string, string];
+          const row = Array.from(expenses.values())
+            .filter((expense) => expense.customer_id === userId && expense.status !== excludedStatus)
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+          if (!row) return null;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_message_id: null,
+            amount_minor: Math.round(row.amount * 100),
+            currency: row.currency,
+            merchant: row.merchant,
+            description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+            category_id: row.category_id,
+            occurred_at: row.occurred_at,
+            status: row.status,
+            created_via: "whatsapp",
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          } as T;
+        }
+
+        if (false) {
+          const [userId, excludedStatus] = values as [string, string];
+          const row = Array.from(expenses.values())
+            .filter(
+              (expense) => expense.customer_id === userId && expense.status !== excludedStatus,
+            )
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+          return (row as T | undefined) ?? null;
+        }
+
+        if (query.includes("from categories_v2 where lower(name) = ?")) {
+          const [name, userId] = values as [string, string];
           const found = Array.from(categories.values()).find(
             (category) =>
               category.name.toLowerCase() === name &&
-              (category.customer_id === customerId || category.customer_id === null),
+              (category.customer_id === userId || category.customer_id === null),
           );
           return (found as T | undefined) ?? null;
         }
 
         if (
           query.includes(
-            "from categories where id = ? and (customer_id = ? or customer_id is null)",
+            "from categories_v2 where id = ? and (user_id = ? or user_id is null)",
           )
         ) {
-          const [id, customerId] = values as [string, string];
+          const [id, userId] = values as [string, string];
           const category = categories.get(id);
           if (!category) return null;
-          if (category.customer_id !== customerId && category.customer_id !== null) return null;
+          if (category.customer_id !== userId && category.customer_id !== null) return null;
           return category as T;
         }
 
-        if (query.includes("from customers where id = ?")) {
+        if (query.includes("from users where id = ?")) {
           const [id] = values as [string];
-          return (customers.get(id) as T | undefined) ?? null;
+          const user = customers.get(id);
+          if (!user) return null;
+          return user as T;
         }
 
-        if (query.includes("from customer_channels cc join customers c")) {
+        if (query.includes("from user_sources us join users u")) {
           const [channel, externalUserId] = values as [string, string];
           const channelRow = customerChannels.get(`${channel}:${externalUserId}`);
-          if (!channelRow) return null;
-          const customer = customers.get(channelRow.customer_id);
-          return (customer as T | undefined) ?? null;
+          if (channelRow) {
+            const user = customers.get(channelRow.customer_id);
+            return (user as T | undefined) ?? null;
+          }
+
+          const senderRow = emailSenders.get(externalUserId);
+          if (channel === "email" && senderRow) {
+            const user = customers.get(senderRow.customer_id);
+            return (user as T | undefined) ?? null;
+          }
+
+          return null;
         }
 
-        if (query.includes("from customer_channels where channel = ? and external_user_id = ?")) {
-          const [channel, externalUserId] = values as [string, string];
-          return (customerChannels.get(`${channel}:${externalUserId}`) as T | undefined) ?? null;
-        }
-
-        if (
-          query.includes("from customer_channels") &&
-          query.includes("where customer_id = ? and channel = ? and is_primary = 1")
-        ) {
-          const [customerId, channel] = values as [string, string];
+        if (query.includes("from user_sources") && query.includes("where user_id = ? and source_type = ? and is_primary = 1")) {
+          const [userId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
-            (row) =>
-              row.customer_id === customerId && row.channel === channel && row.is_primary === 1,
+            (row) => row.customer_id === userId && row.channel === channel && row.is_primary === 1,
           );
           if (!match) return null;
           return { external_user_id: match.external_user_id } as T;
+        }
+
+        if (query.includes("from user_sources") && query.includes("where source_type = ? and external_id = ?")) {
+          const [channel, externalUserId] = values as [string, string];
+          if (channel === "email") {
+            const sender = emailSenders.get(externalUserId);
+            if (!sender || sender.enabled !== 1) return null;
+            return {
+              id: sender.id,
+              user_id: sender.customer_id,
+              source_type: "email",
+              external_id: sender.sender_email,
+              is_primary: 0,
+            } as T;
+          }
+
+          const row = customerChannels.get(`${channel}:${externalUserId}`);
+          if (!row) return null;
+          return {
+            id: row.id,
+            user_id: row.customer_id,
+            source_type: row.channel,
+            external_id: row.external_user_id,
+            is_primary: row.is_primary,
+          } as T;
         }
 
         if (query.includes("from channels") && query.includes("where id = ?")) {
@@ -842,44 +951,45 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes("from customer_channel_settings") &&
-          query.includes("where customer_id = ? and channel_id = ?")
+          query.includes("from user_channel_settings") &&
+          query.includes("where user_id = ? and channel_id = ?")
         ) {
-          const [customerId, channelId] = values as [string, string];
-          return (channelSettings.get(`${customerId}:${channelId}`) as T | undefined) ?? null;
+          const [userId, channelId] = values as [string, string];
+          return (channelSettings.get(`${userId}:${channelId}`) as T | undefined) ?? null;
         }
 
         if (
-          query.includes("from customer_email_routes") &&
+          query.includes("from user_email_routes") &&
           query.includes("where recipient_email = ? and enabled = 1")
         ) {
           const [recipientEmail] = values as [string];
           const route = emailRoutes.get(recipientEmail);
           if (!route || route.enabled !== 1) return null;
-          return { customer_id: route.customer_id } as T;
+          return { user_id: route.customer_id } as T;
         }
 
         if (
-          query.includes("from customer_email_senders") &&
-          query.includes("where sender_email = ? and enabled = 1")
+          query.includes("from user_sources") &&
+          query.includes("source_type = 'email'") &&
+          query.includes("where source_type = 'email' and external_id = ? and status = 'active'")
         ) {
           const [senderEmail] = values as [string];
           const sender = emailSenders.get(senderEmail);
           if (!sender || sender.enabled !== 1) return null;
-          return { customer_id: sender.customer_id } as T;
+          return { user_id: sender.customer_id } as T;
         }
 
         if (
-          query.includes("from customer_subscriptions") &&
-          query.includes("where customer_id = ?") &&
+          query.includes("from user_subscriptions") &&
+          query.includes("where user_id = ?") &&
           query.includes("status in")
         ) {
-          const [customerId] = values as [string];
+          const [userId] = values as [string];
           const validStatuses = new Set(["TRIALING", "ACTIVE", "PAST_DUE"]);
           const candidate = Array.from(subscriptions.values())
             .filter(
               (subscription) =>
-                subscription.customer_id === customerId && validStatuses.has(subscription.status),
+                subscription.customer_id === userId && validStatuses.has(subscription.status),
             )
             .sort((a, b) => {
               const rank = (s: string) => (s === "ACTIVE" ? 0 : s === "TRIALING" ? 1 : 2);
@@ -915,12 +1025,12 @@ function createMemoryD1Database(options?: {
       },
 
       async all<T>() {
-        if (query.includes("from categories")) {
+        if (query.includes("from categories_v2")) {
           if (values.length === 1) {
-            const [customerId] = values as [string];
+            const [userId] = values as [string];
             return {
               results: Array.from(categories.values()).filter(
-                (category) => category.customer_id === customerId || category.customer_id === null,
+                (category) => category.customer_id === userId || category.customer_id === null,
               ) as T[],
             };
           }
@@ -929,13 +1039,45 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes("from chat_media") &&
-          query.includes("where customer_id = ? and expense_id = ?")
+          query.includes("from transactions") &&
+          query.includes("where user_id = ? and status != ?") &&
+          query.includes("order by occurred_at desc, created_at desc")
         ) {
-          const [customerId, expenseId] = values as [string, string];
+          const [userId, excludedStatus] = values as [string, string];
+          return {
+            results: Array.from(expenses.values())
+              .filter((row) => row.customer_id === userId && row.status !== excludedStatus)
+              .sort((a, b) => {
+                const occurredDiff = b.occurred_at.localeCompare(a.occurred_at);
+                if (occurredDiff !== 0) return occurredDiff;
+                return b.created_at.localeCompare(a.created_at);
+              })
+              .map((row) => ({
+                id: row.id,
+                user_id: row.customer_id,
+                source_message_id: null,
+                amount_minor: Math.round(row.amount * 100),
+                currency: row.currency,
+                merchant: row.merchant,
+                description: JSON.stringify({ rawText: row.raw_text, bank: row.bank }),
+                category_id: row.category_id,
+                occurred_at: row.occurred_at,
+                status: row.status,
+                created_via: "whatsapp",
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+              })) as T[],
+          };
+        }
+
+        if (
+          query.includes("from chat_media") &&
+          query.includes("where user_id = ? and transaction_id = ?")
+        ) {
+          const [userId, expenseId] = values as [string, string];
           return {
             results: Array.from(chatMedia.values()).filter(
-              (row) => row.customer_id === customerId && row.expense_id === expenseId,
+              (row) => row.customer_id === userId && row.expense_id === expenseId,
             ) as T[],
           };
         }
@@ -977,7 +1119,7 @@ function createMemoryD1Database(options?: {
 
       return {
         async all<T>() {
-          if (query.includes("from categories")) {
+          if (query.includes("from categories_v2")) {
             return { results: Array.from(categories.values()) as T[] };
           }
           return { results: [] as T[] };
@@ -997,10 +1139,10 @@ function createMemoryD1Database(options?: {
       customers: Map<string, CustomerRow>;
       customerChannels: Map<string, CustomerChannelRow>;
       channels: Map<string, ChannelRow>;
-      channelSettings: Map<string, CustomerChannelSettingRow>;
+      channelSettings: Map<string, UserChannelSettingRow>;
       plans: Map<string, PlanRow>;
       planFeatures: Map<string, PlanFeatureRow>;
-      subscriptions: Map<string, CustomerSubscriptionRow>;
+      subscriptions: Map<string, UserSubscriptionRow>;
       emailRoutes: Map<string, CustomerEmailRouteRow>;
       emailSenders: Map<string, CustomerEmailSenderRow>;
       expenseEvents: Array<{
@@ -1022,10 +1164,10 @@ export function createTestEnv(options?: {
   customers?: CustomerRow[];
   categories?: CategoryRow[];
   channels?: ChannelRow[];
-  channelSettings?: CustomerChannelSettingRow[];
+  channelSettings?: UserChannelSettingRow[];
   plans?: PlanRow[];
   planFeatures?: PlanFeatureRow[];
-  subscriptions?: CustomerSubscriptionRow[];
+  subscriptions?: UserSubscriptionRow[];
   emailRoutes?: CustomerEmailRouteRow[];
   emailSenders?: CustomerEmailSenderRow[];
   strictPolicyMode?: "true" | "false";

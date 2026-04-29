@@ -7,8 +7,8 @@ describe("d1 channel policy repo integration", () => {
     const env = createTestEnv();
     const repo = createD1ChannelPolicyRepo(env);
 
-    const enabled = await repo.isChannelEnabledForCustomer({
-      customerId: "cust_default",
+    const enabled = await repo.isChannelEnabledForUser({
+      userId: "cust_default",
       channelId: "whatsapp",
     });
 
@@ -20,13 +20,12 @@ describe("d1 channel policy repo integration", () => {
       channels: [
         { id: "whatsapp", name: "WhatsApp", status: "INACTIVE" },
         { id: "telegram", name: "Telegram", status: "INACTIVE" },
-        { id: "instagram", name: "Instagram", status: "INACTIVE" },
       ],
     });
     const repo = createD1ChannelPolicyRepo(env);
 
-    const enabled = await repo.isChannelEnabledForCustomer({
-      customerId: "cust_default",
+    const enabled = await repo.isChannelEnabledForUser({
+      userId: "cust_default",
       channelId: "whatsapp",
     });
 
@@ -40,8 +39,8 @@ describe("d1 channel policy repo integration", () => {
     });
     const repo = createD1ChannelPolicyRepo(env);
 
-    const enabled = await repo.isChannelEnabledForCustomer({
-      customerId: "cust_default",
+    const enabled = await repo.isChannelEnabledForUser({
+      userId: "cust_default",
       channelId: "whatsapp",
     });
 
@@ -55,8 +54,8 @@ describe("d1 channel policy repo integration", () => {
     });
     const repo = createD1ChannelPolicyRepo(env);
 
-    const enabled = await repo.isChannelEnabledForCustomer({
-      customerId: "cust_default",
+    const enabled = await repo.isChannelEnabledForUser({
+      userId: "cust_default",
       channelId: "whatsapp",
     });
 

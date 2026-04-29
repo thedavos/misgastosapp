@@ -15,13 +15,13 @@ export function createD1FeaturePolicyRepo(
   subscriptionRepo: SubscriptionRepoPort,
 ): FeaturePolicyPort {
   return {
-    async isFeatureEnabled(input: { customerId: string; featureKey: string }): Promise<boolean> {
-      const cacheKey = `entitlement:${input.customerId}:${input.featureKey}`;
+    async isFeatureEnabled(input: { userId: string; featureKey: string }): Promise<boolean> {
+      const cacheKey = `entitlement:${input.userId}:${input.featureKey}`;
       const cached = env.ENTITLEMENTS_KV ? await env.ENTITLEMENTS_KV.get(cacheKey) : null;
       if (cached === "1") return true;
       if (cached === "0") return false;
 
-      const subscription = await subscriptionRepo.getEffectiveSubscription(input.customerId);
+      const subscription = await subscriptionRepo.getEffectiveSubscription(input.userId);
 
       let effectivePlanId = subscription?.planId ?? "free";
       let plan = await subscriptionRepo.getPlanById(effectivePlanId);

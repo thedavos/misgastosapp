@@ -98,26 +98,26 @@ export async function handleWhatsAppWebhook(
       return new Response("Invalid payload", { status: 400 });
     }
 
-    const customer = yield* Effect.tryPromise({
+    const user = yield* Effect.tryPromise({
       try: () =>
-        container.customerRepo.findByChannelExternalId({
+        container.userRepo.findByChannelExternalId({
           channel: incomingMessage.channel,
-          externalUserId: incomingMessage.userId,
+          externalUserId: incomingMessage.externalUserId,
         }),
       catch: (cause) => new WebhookParseError({ requestId, cause }),
     });
 
-    if (!customer) {
-      container.logger.warn("whatsapp.webhook_customer_not_found", {
+    if (!user) {
+      container.logger.warn("whatsapp.webhook_user_not_found", {
         requestId,
-        externalUserId: incomingMessage.userId,
+        externalUserId: incomingMessage.externalUserId,
       });
-      return new Response("Customer not found", { status: 404 });
+      return new Response("User not found", { status: 404 });
     }
 
     const authorizationResult = yield* container
       .authorizeChannel({
-        customerId: customer.id,
+        userId: user.id,
         channelId: incomingMessage.channel,
         requestId,
       })
@@ -178,9 +178,9 @@ export async function handleWhatsAppWebhook(
         enqueueExpenseProcessingJob(env, {
           provider: WHATSAPP_PROVIDER,
           eventId,
-          customerId: customer.id,
+          userId: user.id,
           channel: "whatsapp",
-          userId: incomingMessage.userId,
+          externalUserId: incomingMessage.externalUserId,
           text: incomingMessage.text,
           attachments: toExpenseProcessingAttachments(incomingMessage.attachments),
           raw: incomingMessage.raw,
@@ -199,9 +199,9 @@ export async function handleWhatsAppWebhook(
     container.logger.info("whatsapp.webhook_job_enqueued", {
       requestId,
       eventId,
-      customerId: customer.id,
+      userId: user.id,
       channel: incomingMessage.channel,
-      userId: incomingMessage.userId,
+      externalUserId: incomingMessage.externalUserId,
     });
 
     return new Response("ok", { status: 200 });

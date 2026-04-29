@@ -7,18 +7,23 @@ import { createLogger } from "@/adapters/observability";
 import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
-import { createD1CustomerEmailSenderRepo } from "@/adapters/persistence/d1/customer-email-sender.repo";
-import { createD1CustomerRepo } from "@/adapters/persistence/d1/customer.repo";
+import { createD1UserEmailSenderRepo } from "@/adapters/persistence/d1/user-email-sender.repo";
+import { createD1UserRepo } from "@/adapters/persistence/d1/user.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
 import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
+import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent";
+import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
+import { createGetReportFromIntent } from "@/app/get-report-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
-import { createIngestExpenseFromEmail } from "@/app/ingest-expense-from-email";
-import { createIngestPendingExpense } from "@/app/ingest-pending-expense";
+import { createCaptureExpenseWithClarification } from "@/app/capture-expense-with-clarification";
+import { createFallbackExpenseCapture } from "@/app/fallback-expense-capture";
+import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
+import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";
 
 export function createContainer(
   env: WorkerEnv,
@@ -39,8 +44,8 @@ export function createContainer(
   const categoryRepo = createD1CategoryRepo(env);
   const chatMediaRepo = createD1ChatMediaRepo(env);
   const channelPolicyRepo = createD1ChannelPolicyRepo(env);
-  const customerRepo = createD1CustomerRepo(env);
-  const customerEmailSenderRepo = createD1CustomerEmailSenderRepo(env);
+  const userRepo = createD1UserRepo(env);
+  const userEmailSenderRepo = createD1UserEmailSenderRepo(env);
   const subscriptionRepo = createD1SubscriptionRepo(env);
   const webhookEventRepo = createD1WebhookEventRepo(env);
   const featurePolicy = createD1FeaturePolicyRepo(env, subscriptionRepo);
@@ -50,6 +55,38 @@ export function createContainer(
     featurePolicy,
     logger,
     strictPolicyMode: env.STRICT_POLICY_MODE !== "false",
+  });
+  const parseUserIntent = createParseUserIntent({
+    ai,
+    logger,
+  });
+  const createExpenseFromIntent = createCreateExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const updateLastExpenseFromIntent = createUpdateLastExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const deleteLastExpenseFromIntent = createDeleteLastExpenseFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
+  });
+  const getReportFromIntent = createGetReportFromIntent({
+    channel: selectedChannel,
+    channelPolicyRepo,
+    featurePolicy,
+    expenseRepo,
+    logger,
   });
   const telegramAttachmentResolver = async (input: {
     channel: string;
@@ -97,7 +134,7 @@ export function createContainer(
     confidenceThreshold: 0.75,
   });
 
-  const ingestPendingExpense = createIngestPendingExpense({
+  const fallbackExpenseCapture = createFallbackExpenseCapture({
     ai,
     channel: selectedChannel,
     channelPolicyRepo,
@@ -114,8 +151,21 @@ export function createContainer(
     chatMediaRepo,
     logger,
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
-    ingestPendingExpense,
+    fallbackExpenseCapture,
     handleUserReply,
+    createExpenseFromIntent,
+    updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent,
+    getReportFromIntent,
+    parseUserIntent,
+    resolveIntentContext: async ({ userId }) => {
+      const user = await userRepo.getById(userId);
+      if (!user) return null;
+      return {
+        timezone: user.timezone,
+        defaultCurrency: user.defaultCurrency,
+      };
+    },
     resolveAttachmentData: telegramAttachmentResolver,
   });
 
@@ -128,12 +178,12 @@ export function createContainer(
     channelPolicyRepo,
     featurePolicy,
     subscriptionRepo,
-    customerRepo,
-    customerEmailSenderRepo,
+    userRepo,
+    userEmailSenderRepo,
     webhookEventRepo,
     conversationState,
     authorizeChannel,
-    ingestExpenseFromEmail: createIngestExpenseFromEmail({
+    captureExpenseWithClarification: createCaptureExpenseWithClarification({
       ai,
       channel: whatsappChannel,
       channelPolicyRepo,
@@ -142,8 +192,13 @@ export function createContainer(
       conversationState,
       logger,
     }),
+    createExpenseFromIntent,
+    updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent,
+    getReportFromIntent,
+    parseUserIntent,
     handleUserReply,
-    ingestPendingExpense,
+    fallbackExpenseCapture,
     chatMediaRepo,
     ocr,
     processChatMessage,

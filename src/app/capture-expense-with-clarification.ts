@@ -22,15 +22,16 @@ import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 
-export type IngestExpenseFromEmailInput = {
-  customerId: string;
-  emailText: string;
-  channel: string;
+export type CaptureExpenseWithClarificationInput = {
   userId: string;
+  sourceText: string;
+  channel: string;
+  createdVia?: "whatsapp" | "email" | "mobile" | "telegram";
+  externalUserId: string;
   requestId?: string;
 };
 
-export type IngestExpenseFromEmailDeps = {
+export type CaptureExpenseWithClarificationDeps = {
   ai: AiPort;
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
@@ -40,13 +41,13 @@ export type IngestExpenseFromEmailDeps = {
   logger: LoggerPort;
 };
 
-export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
-  return function ingestExpenseFromEmail(
-    input: IngestExpenseFromEmailInput,
+export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithClarificationDeps) {
+  return function captureExpenseWithClarification(
+    input: CaptureExpenseWithClarificationInput,
   ): Effect.Effect<{ expenseId: string } | null, AppError> {
     return Effect.gen(function* () {
       const transaction = yield* fromPromise(
-        () => deps.ai.extractTransaction(input.emailText),
+        () => deps.ai.extractTransaction(input.sourceText),
         (cause) => new AiExtractFailedError({ requestId: input.requestId, cause }),
       );
 
@@ -62,19 +63,20 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
 
       const expense = yield* fromPromise(
         () =>
-          deps.expenseRepo.createPending({
-            customerId: input.customerId,
+          deps.expenseRepo.createExpenseRecord({
+            userId: input.userId,
             amount: transaction.amount,
             currency: transaction.currency,
             merchant: transaction.merchant,
             occurredAt: transaction.date,
             bank: transaction.bank,
             rawText: transaction.rawText,
+            createdVia: input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
           }),
         (cause) =>
           new ExpensePersistenceError({
             requestId: input.requestId,
-            operation: "createPending",
+            operation: "createExpenseRecord",
             cause,
           }),
       );
@@ -82,9 +84,9 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       yield* fromPromise(
         () =>
           deps.conversationState.put({
-            customerId: input.customerId,
-            channel: input.channel,
             userId: input.userId,
+            channel: input.channel,
+            externalUserId: input.externalUserId,
             expenseId: expense.id,
             createdAt: new Date().toISOString(),
           }),
@@ -109,8 +111,8 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
 
       const isEnabled = yield* fromPromise(
         () =>
-          deps.channelPolicyRepo.isChannelEnabledForCustomer({
-            customerId: input.customerId,
+          deps.channelPolicyRepo.isChannelEnabledForUser({
+            userId: input.userId,
             channelId: input.channel,
           }),
         (cause) =>
@@ -124,13 +126,13 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       if (!isEnabled) {
         deps.logger.warn("channel.disabled_skip_send", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channelId: input.channel,
         });
         return yield* Effect.fail(
           new ChannelDisabledError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             channelId: input.channel,
           }),
         );
@@ -140,7 +142,7 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       const featureEnabled = yield* fromPromise(
         () =>
           deps.featurePolicy.isFeatureEnabled({
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         (cause) =>
@@ -154,28 +156,28 @@ export function createIngestExpenseFromEmail(deps: IngestExpenseFromEmailDeps) {
       if (!featureEnabled) {
         deps.logger.warn("subscription.feature_blocked", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           featureKey,
         });
         return yield* Effect.fail(
           new SubscriptionFeatureBlockedError({
             requestId: input.requestId,
-            customerId: input.customerId,
+            userId: input.userId,
             featureKey,
           }),
         );
       }
 
       yield* fromPromise(
-        () => deps.channel.sendMessage({ userId: input.userId, text: message }),
+        () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
-      deps.logger.info("expense.pending_category_created", {
+      deps.logger.info("expense.needs_clarification_created", {
         requestId: input.requestId,
         expenseId: expense.id,
         channel: input.channel,
-        userId: input.userId,
+        externalUserId: input.externalUserId,
       });
 
       return { expenseId: expense.id };

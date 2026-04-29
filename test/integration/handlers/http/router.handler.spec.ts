@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const healthSpy = vi.hoisted(() => vi.fn(async () => new Response("health", { status: 200 })));
 const whatsappSpy = vi.hoisted(() => vi.fn(async () => new Response("wa", { status: 200 })));
 const telegramSpy = vi.hoisted(() => vi.fn(async () => new Response("tg", { status: 501 })));
-const instagramSpy = vi.hoisted(() => vi.fn(async () => new Response("ig", { status: 501 })));
 
 vi.mock("@/handlers/http/health.handler", () => ({
   handleHealth: healthSpy,
@@ -16,10 +15,6 @@ vi.mock("@/handlers/http/whatsapp-webhook.handler", () => ({
 
 vi.mock("@/handlers/http/telegram-webhook.handler", () => ({
   handleTelegramWebhook: telegramSpy,
-}));
-
-vi.mock("@/handlers/http/instagram-webhook.handler", () => ({
-  handleInstagramWebhook: instagramSpy,
 }));
 
 describe("router handler delegation", () => {
@@ -41,7 +36,6 @@ describe("router handler delegation", () => {
     expect(healthSpy).toHaveBeenCalledTimes(1);
     expect(whatsappSpy).not.toHaveBeenCalled();
     expect(telegramSpy).not.toHaveBeenCalled();
-    expect(instagramSpy).not.toHaveBeenCalled();
   });
 
   it("delegates POST /webhooks/whatsapp to whatsapp handler", async () => {
@@ -58,6 +52,5 @@ describe("router handler delegation", () => {
     expect(whatsappSpy).toHaveBeenCalledTimes(1);
     expect(healthSpy).not.toHaveBeenCalled();
     expect(telegramSpy).not.toHaveBeenCalled();
-    expect(instagramSpy).not.toHaveBeenCalled();
   });
 });

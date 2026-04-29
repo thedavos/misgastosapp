@@ -1,5 +1,5 @@
 import type { WorkerEnv } from "types/env";
-import type { Channel, CustomerChannelSetting } from "@/domain/channel/entity";
+import type { Channel, UserChannelSetting } from "@/domain/channel/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 
 type ChannelRow = {
@@ -8,9 +8,9 @@ type ChannelRow = {
   status: "ACTIVE" | "INACTIVE";
 };
 
-type CustomerChannelSettingRow = {
+type UserChannelSettingRow = {
   id: string;
-  customer_id: string;
+  user_id: string;
   channel_id: string;
   enabled: number;
   is_primary: number;
@@ -25,10 +25,10 @@ function mapChannel(row: ChannelRow): Channel {
   };
 }
 
-function mapCustomerChannelSetting(row: CustomerChannelSettingRow): CustomerChannelSetting {
+function mapUserChannelSetting(row: UserChannelSettingRow): UserChannelSetting {
   return {
     id: row.id,
-    customerId: row.customer_id,
+    userId: row.user_id,
     channelId: row.channel_id,
     enabled: row.enabled === 1,
     isPrimary: row.is_primary === 1,
@@ -54,31 +54,31 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
       return mapChannel(row);
     },
 
-    async getCustomerChannelSetting(input: {
-      customerId: string;
+    async getUserChannelSetting(input: {
+      userId: string;
       channelId: string;
-    }): Promise<CustomerChannelSetting | null> {
+    }): Promise<UserChannelSetting | null> {
       const row = await env.DB.prepare(
-        `SELECT id, customer_id, channel_id, enabled, is_primary, config_json
-         FROM customer_channel_settings
-         WHERE customer_id = ? AND channel_id = ?
+        `SELECT id, user_id, channel_id, enabled, is_primary, config_json
+         FROM user_channel_settings
+         WHERE user_id = ? AND channel_id = ?
          LIMIT 1`,
       )
-        .bind(input.customerId, input.channelId)
-        .first<CustomerChannelSettingRow>();
+        .bind(input.userId, input.channelId)
+        .first<UserChannelSettingRow>();
 
       if (!row) return null;
-      return mapCustomerChannelSetting(row);
+      return mapUserChannelSetting(row);
     },
 
-    async isChannelEnabledForCustomer(input: {
-      customerId: string;
+    async isChannelEnabledForUser(input: {
+      userId: string;
       channelId: string;
     }): Promise<boolean> {
       const channel = await this.getChannel(input.channelId);
       if (!channel || channel.status !== "ACTIVE") return false;
 
-      const setting = await this.getCustomerChannelSetting(input);
+      const setting = await this.getUserChannelSetting(input);
       if (!setting) {
         return !strictPolicyMode;
       }

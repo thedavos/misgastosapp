@@ -10,12 +10,12 @@ describe("d1 feature policy repo integration", () => {
     const featureRepo = createD1FeaturePolicyRepo(env, subscriptionRepo);
 
     const whatsappEnabled = await featureRepo.isFeatureEnabled({
-      customerId: "cust_default",
+      userId: "cust_default",
       featureKey: "channels.whatsapp",
     });
 
     const telegramEnabled = await featureRepo.isFeatureEnabled({
-      customerId: "cust_default",
+      userId: "cust_default",
       featureKey: "channels.telegram",
     });
 
@@ -67,7 +67,7 @@ describe("d1 feature policy repo integration", () => {
     const featureRepo = createD1FeaturePolicyRepo(env, subscriptionRepo);
 
     const telegramEnabled = await featureRepo.isFeatureEnabled({
-      customerId: "cust_default",
+      userId: "cust_default",
       featureKey: "channels.telegram",
     });
 

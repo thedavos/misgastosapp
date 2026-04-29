@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { fromPromise } from "@/app/effects";
 import {
   ChatMediaPersistenceError,
@@ -8,6 +9,15 @@ import {
   OcrExtractionError,
   type AppError,
 } from "@/app/errors";
+import type {
+  CreateExpenseIntentPayload,
+  DeleteLastExpenseIntentPayload,
+  GetReportIntentPayload,
+  IntentContext,
+  ParsedIntent,
+  SupportedSourceType,
+  UpdateLastExpenseIntentPayload,
+} from "@/domain/intent/entity";
 import type { IncomingAttachment, IncomingUserMessage } from "@/ports/channel.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
@@ -28,17 +38,56 @@ export type ProcessChatMessageDeps = {
   ocr: OcrPort;
   chatMediaRepo: ChatMediaRepoPort;
   logger: LoggerPort;
-  ingestPendingExpense: (input: {
-    customerId: string;
+  fallbackExpenseCapture: (input: {
+    userId: string;
     sourceText: string;
     channel: string;
-    userId: string;
+    externalUserId: string;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   handleUserReply: (input: {
-    customerId: string;
+    userId: string;
     message: IncomingUserMessage;
   }) => Effect.Effect<{ categorized: boolean }, AppError>;
+  createExpenseFromIntent?: (input: {
+    userId: string;
+    channel: string;
+    externalUserId: string;
+    payload: CreateExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ expenseId: string } | null, AppError>;
+  updateLastExpenseFromIntent?: (input: {
+    userId: string;
+    channel: string;
+    externalUserId: string;
+    payload: UpdateLastExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
+  deleteLastExpenseFromIntent?: (input: {
+    userId: string;
+    channel: string;
+    externalUserId: string;
+    payload: DeleteLastExpenseIntentPayload;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean; expenseId?: string }, AppError>;
+  getReportFromIntent?: (input: {
+    userId: string;
+    channel: string;
+    externalUserId: string;
+    payload: GetReportIntentPayload;
+    timezone: string;
+    nowIso: string;
+    requestId?: string;
+  }) => Effect.Effect<{ handled: boolean }, AppError>;
+  parseUserIntent?: (input: {
+    text: string;
+    context: IntentContext;
+    requestId?: string;
+  }) => Promise<ParsedIntent>;
+  resolveIntentContext?: (input: {
+    userId: string;
+    channel: string;
+  }) => Promise<Omit<IntentContext, "sourceType" | "nowIso"> | null>;
   resolveAttachmentData?: (input: {
     channel: string;
     attachment: IncomingAttachment;
@@ -48,11 +97,17 @@ export type ProcessChatMessageDeps = {
 
 export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
   const retentionDays = parsePositiveInt(deps.mediaRetentionDays, 90);
+  const executeChannelIntent = createExecuteChannelIntent({
+    createExpenseFromIntent: deps.createExpenseFromIntent,
+    updateLastExpenseFromIntent: deps.updateLastExpenseFromIntent,
+    deleteLastExpenseFromIntent: deps.deleteLastExpenseFromIntent,
+    getReportFromIntent: deps.getReportFromIntent,
+  });
 
   return function processChatMessage(input: {
-    customerId: string;
-    channel: string;
     userId: string;
+    channel: string;
+    externalUserId: string;
     providerEventId: string;
     text?: string;
     attachments?: IncomingAttachment[];
@@ -68,9 +123,9 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
-            customerId: input.customerId,
-            channel: input.channel,
             userId: input.userId,
+            channel: input.channel,
+            externalUserId: input.externalUserId,
           }),
         (cause) =>
           new ConversationStateError({ requestId: input.requestId, operation: "get", cause }),
@@ -80,7 +135,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         if (!normalizedText) {
           if (imageAttachments.length > 0) {
             yield* fromPromise(
-              () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+              () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
               (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
             );
           }
@@ -89,10 +144,10 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         }
 
         const replyResult = yield* deps.handleUserReply({
-          customerId: input.customerId,
+          userId: input.userId,
           message: {
             channel: input.channel,
-            userId: input.userId,
+            externalUserId: input.externalUserId,
             text: normalizedText,
             timestamp: input.timestamp ?? new Date().toISOString(),
             providerEventId: input.providerEventId,
@@ -160,7 +215,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
         const extension = inferImageExtension(mediaPayload.mimeType);
         const eventPart = input.providerEventId || crypto.randomUUID();
-        const r2Key = `receipts/${input.customerId}/${input.channel}/${yyyy}/${mm}/${eventPart}.${extension}`;
+        const r2Key = `receipts/${input.userId}/${input.channel}/${yyyy}/${mm}/${eventPart}.${extension}`;
         const sha256 = yield* fromPromise(
           () => sha256Hex(mediaPayload.data),
           (cause) =>
@@ -174,9 +229,9 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         const created = yield* fromPromise(
           () =>
             deps.chatMediaRepo.create({
-              customerId: input.customerId,
+              userId: input.userId,
               channel: input.channel,
-              externalUserId: input.userId,
+              externalUserId: input.externalUserId,
               providerEventId: input.providerEventId,
               expenseId: null,
               r2Key,
@@ -199,7 +254,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         createdMediaIds.push(created.id);
         deps.logger.info("chat.media_stored", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
           mediaId: created.id,
           r2Key,
@@ -209,23 +264,111 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const sourceText = combinedSegments.join("\n").trim();
       if (!sourceText) {
         yield* fromPromise(
-          () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+          () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
         );
         deps.logger.info("chat.ingest_no_transaction_guidance", {
           requestId: input.requestId,
-          customerId: input.customerId,
+          userId: input.userId,
           channel: input.channel,
         });
         return { categorized: false, guided: true };
       }
 
+      let parsedIntent: ParsedIntent | null = null;
+      let resolvedContext: IntentContext | null = null;
+      if (deps.parseUserIntent) {
+        const context = yield* fromPromise(
+          async () => {
+            const base = await deps.resolveIntentContext?.({
+              userId: input.userId,
+              channel: input.channel,
+            });
+
+            return {
+              sourceType: input.channel as SupportedSourceType,
+              timezone: base?.timezone ?? "America/Lima",
+              defaultCurrency: base?.defaultCurrency ?? "PEN",
+              nowIso: input.timestamp ?? new Date().toISOString(),
+            } satisfies IntentContext;
+          },
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "get",
+              cause,
+            }),
+        );
+        resolvedContext = context;
+
+        parsedIntent = yield* fromPromise(
+          () =>
+            deps.parseUserIntent?.({
+              text: sourceText,
+              context,
+              requestId: input.requestId,
+            }) as Promise<ParsedIntent>,
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "get",
+              cause,
+            }),
+        );
+
+        deps.logger.info("intent.shadow_parsed", {
+          requestId: input.requestId,
+          userId: input.userId,
+          channel: input.channel,
+          intentName: parsedIntent.name,
+          confidence: parsedIntent.payload.confidence,
+        });
+      }
+
+      if (input.channel === "whatsapp" && parsedIntent && resolvedContext) {
+        const directIntentResult = yield* executeChannelIntent({
+          userId: input.userId,
+          channel: input.channel,
+          sourceType: input.channel as "whatsapp" | "email" | "mobile" | "telegram",
+          externalUserId: input.externalUserId,
+          parsedIntent,
+          timezone: resolvedContext.timezone,
+          nowIso: resolvedContext.nowIso,
+          requestId: input.requestId,
+        });
+
+        if (directIntentResult.handled) {
+          if (directIntentResult.expenseId) {
+            for (const mediaId of createdMediaIds) {
+              yield* fromPromise(
+                () =>
+                  deps.chatMediaRepo.linkExpense({
+                    id: mediaId,
+                    expenseId: directIntentResult.expenseId as string,
+                  }),
+                (cause) =>
+                  new ChatMediaPersistenceError({
+                    requestId: input.requestId,
+                    operation: "linkExpense",
+                    cause,
+                  }),
+              );
+            }
+          }
+
+          return {
+            categorized: false,
+            expenseId: directIntentResult.expenseId,
+          };
+        }
+      }
+
       const ingestionResult = yield* deps
-        .ingestPendingExpense({
-          customerId: input.customerId,
+        .fallbackExpenseCapture({
+          userId: input.userId,
           sourceText,
           channel: input.channel,
-          userId: input.userId,
+          externalUserId: input.externalUserId,
           requestId: input.requestId,
         })
         .pipe(Effect.either);
@@ -233,7 +376,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       if (ingestionResult._tag === "Left") {
         if (ingestionResult.left instanceof InvalidTransactionError) {
           yield* fromPromise(
-            () => deps.channel.sendMessage({ userId: input.userId, text: GUIDANCE_MESSAGE }),
+            () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
             (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
           return { categorized: false, guided: true };

@@ -60,7 +60,7 @@ async function handleTelegramThreadMessage(input: {
   const payloadHash = await sha256Hex(
     JSON.stringify({
       eventId,
-      userId,
+      externalUserId: userId,
       text: incomingText,
       attachments: incomingAttachments.map((item) => ({
         mimeType: item.mimeType,
@@ -70,13 +70,13 @@ async function handleTelegramThreadMessage(input: {
     }),
   );
 
-  const customer = await container.customerRepo.findByChannelExternalId({
+  const user = await container.userRepo.findByChannelExternalId({
     channel: "telegram",
     externalUserId: userId,
   });
 
-  if (!customer) {
-    container.logger.warn("telegram.unknown_customer_blocked", {
+  if (!user) {
+    container.logger.warn("telegram.unknown_user_blocked", {
       requestId,
       userId,
     });
@@ -87,7 +87,7 @@ async function handleTelegramThreadMessage(input: {
   const authorization = await Effect.runPromise(
     container
       .authorizeChannel({
-        customerId: customer.id,
+        userId: user.id,
         channelId: "telegram",
         requestId,
       })
@@ -132,9 +132,9 @@ async function handleTelegramThreadMessage(input: {
 
   const processResult = await Effect.runPromiseExit(
     container.processChatMessage({
-      customerId: customer.id,
+      userId: user.id,
       channel: "telegram",
-      userId,
+      externalUserId: userId,
       providerEventId: eventId,
       text: incomingText,
       attachments: incomingAttachments,

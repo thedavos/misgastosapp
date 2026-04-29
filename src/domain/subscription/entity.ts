@@ -10,9 +10,9 @@ export interface Plan {
   version: number;
 }
 
-export interface CustomerSubscription {
+export interface UserSubscription {
   id: string;
-  customerId: string;
+  userId: string;
   planId: string;
   status: SubscriptionStatus;
   startAt: string;

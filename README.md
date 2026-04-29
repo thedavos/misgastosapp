@@ -1,33 +1,34 @@
 # MisGastosApp
 
-Worker en Cloudflare para procesar gastos desde email y categorizarlos vía conversación en canales de mensajería.
+Worker en Cloudflare para procesar gastos con WhatsApp como canal principal, email como canal soportado y Telegram conservado para una segunda iteración del producto.
 
 Estado actual:
 
 - Canal principal implementado: WhatsApp (Kapso).
-- Canal adicional implementado: Telegram (Chat SDK, DM-only).
-- Canal en scaffold: Instagram.
+- Canal secundario conservado: Telegram (Chat SDK, DM-only, segunda iteración).
+- Canal soportado para creación de gastos: email.
 - IA principal: Cloudflare Workers AI.
 - IA alterna en scaffold: Inflection API.
 
 ## Flujo actual (implementado)
 
 1. Llega un email de consumo al trigger `email` del Worker.
-2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve `customer` por remitente en `customer_email_senders`.
+2. Se valida inbox destino (`EMAIL_WORKER_INBOX`) y se resuelve el usuario por remitente desde `user_sources`.
 3. Se parsea el correo (`postal-mime`) y se extrae transacción con AI.
-4. Se guarda gasto en D1 con estado `PENDING_CATEGORY`.
-5. Se guarda estado conversacional en KV (`conv:{customerId}:{channel}:{userId}`).
+4. Se guarda transacción en D1 (`transactions`) con estado `needs_clarification`.
+5. Se guarda estado conversacional en KV (`conv:{userId}:{channel}:{externalUserId}`).
 6. Se envía mensaje por WhatsApp pidiendo categoría.
 7. Webhook de WhatsApp recibe respuesta del usuario.
-8. Se clasifica categoría con AI + reglas heurísticas.
-9. Se actualiza gasto a `CATEGORIZED`, se limpia KV y se confirma por WhatsApp.
+8. Se clasifica categoría con AI + reglas heurísticas sobre `categories_v2`.
+9. Se actualiza la transacción a `confirmed`, se limpia KV y se confirma por WhatsApp.
 
 ## Endpoints HTTP
 
 - `GET /health`
 - `POST /webhooks/whatsapp`
 - `POST /webhooks/telegram`
-- `POST /webhooks/instagram` (placeholder, `501`)
+- `POST /api/mobile/intents/preview` (preview del parser para mobile)
+- `POST /api/mobile/intents/execute` (base de ejecución real para mobile)
 
 ## Seguridad webhook WhatsApp
 
@@ -40,7 +41,10 @@ Validación:
 
 - Se calcula `HMAC-SHA256(secret, "<timestamp>.<rawBody>")`.
 - Se rechaza si la firma no coincide o si el timestamp cae fuera de la ventana configurada.
-- `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp y desactiva fallback legacy.
+- `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` exige HMAC+timestamp.
+- Después de `016_retire_legacy_support_tables.sql`, el runtime deja de depender de tablas legacy de soporte (`customer_channels`, `customer_channel_settings`, `customer_email_routes`, `customer_email_senders`, `customer_subscriptions`).
+- El runtime actual persiste gastos sobre `transactions`, `transaction_revisions` y `categories_v2`.
+- `017_retire_legacy_expense_tables.sql` reconstruye `chat_media` sobre `users`/`transactions` y retira `categories`, `expenses`, `expense_events`, `subscription_events` y `customers` del esquema final.
 
 ## Arquitectura del proyecto
 
@@ -120,6 +124,13 @@ wrangler d1 execute misgastos --file db/migrations/007_chat_media.sql
 wrangler d1 execute misgastos --file db/migrations/008_activate_telegram_channel.sql
 wrangler d1 execute misgastos --file db/migrations/009_default_email_route_recibos.sql
 wrangler d1 execute misgastos --file db/migrations/010_customer_email_senders.sql
+wrangler d1 execute misgastos --file db/migrations/011_mvp_core_schema.sql
+wrangler d1 execute misgastos --file db/migrations/012_backfill_mvp_core_from_legacy.sql
+wrangler d1 execute misgastos --file db/migrations/013_normalize_expense_statuses.sql
+wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
+wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.

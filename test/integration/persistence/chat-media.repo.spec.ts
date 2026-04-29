@@ -9,7 +9,7 @@ describe("d1 chat media repo integration", () => {
     const data = new TextEncoder().encode("fake-image-bytes");
 
     const created = await repo.create({
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
       externalUserId: "51999999999",
       providerEventId: "evt_media_1",
@@ -32,7 +32,7 @@ describe("d1 chat media repo integration", () => {
     });
 
     const list = await repo.listByExpenseId({
-      customerId: "cust_default",
+      userId: "cust_default",
       expenseId: "exp_1",
     });
 
@@ -46,7 +46,7 @@ describe("d1 chat media repo integration", () => {
     const data = new TextEncoder().encode("old-image");
 
     await repo.create({
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
       externalUserId: "51999999999",
       providerEventId: "evt_media_old",

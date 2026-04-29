@@ -1,15 +1,15 @@
 export interface PendingConversationState {
-  customerId: string;
-  channel: string;
   userId: string;
+  channel: string;
+  externalUserId: string;
   expenseId: string;
   createdAt: string;
 }
 
 export function buildConversationStateKey(
-  customerId: string,
-  channel: string,
   userId: string,
+  channel: string,
+  externalUserId: string,
 ): string {
-  return `conv:${customerId}:${channel}:${userId}`;
+  return `conv:${userId}:${channel}:${externalUserId}`;
 }

@@ -49,9 +49,9 @@ function getEnqueuedJobs(env: ReturnType<typeof createTestEnv>) {
           agentName: string;
           job: {
             eventId: string;
-            customerId: string;
-            channel: string;
             userId: string;
+            channel: string;
+            externalUserId: string;
             attempt: number;
           };
         }>;
@@ -69,11 +69,11 @@ describe("whatsapp webhook integration", () => {
     const container = createContainer(env);
 
     const created = await Effect.runPromise(
-      container.ingestExpenseFromEmail({
-        customerId: "cust_default",
-        emailText: "Compra por S/ 50 en Tambo",
+      container.captureExpenseWithClarification({
+        userId: "cust_default",
+        sourceText: "Compra por S/ 50 en Tambo",
         channel: "whatsapp",
-        userId: "51999999999",
+        externalUserId: "51999999999",
       }),
     );
     expect(created?.expenseId).toBeTruthy();
@@ -96,9 +96,9 @@ describe("whatsapp webhook integration", () => {
     expect(getEnqueuedJobs(env)).toHaveLength(1);
     expect(getEnqueuedJobs(env)[0]?.job).toMatchObject({
       eventId: "evt_async_1",
-      customerId: "cust_default",
+      userId: "cust_default",
       channel: "whatsapp",
-      userId: "51999999999",
+      externalUserId: "51999999999",
       attempt: 0,
     });
 
@@ -109,7 +109,7 @@ describe("whatsapp webhook integration", () => {
       }
     ).__state;
 
-    expect(dbState.expenses.get(expenseId)?.status).toBe("PENDING_CATEGORY");
+    expect(dbState.expenses.get(expenseId)?.status).toBe("needs_clarification");
     const pending = await env.CONVERSATION_STATE_KV.get("conv:cust_default:whatsapp:51999999999");
     expect(pending).not.toBeNull();
   });

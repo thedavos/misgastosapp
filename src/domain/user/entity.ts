@@ -1,4 +1,4 @@
-export interface Customer {
+export interface User {
   id: string;
   name: string;
   status: "ACTIVE" | "INACTIVE";
@@ -8,9 +8,9 @@ export interface Customer {
   confidenceThreshold: number;
 }
 
-export interface CustomerChannel {
+export interface UserSource {
   id: string;
-  customerId: string;
+  userId: string;
   channel: string;
   externalUserId: string;
   isPrimary: boolean;

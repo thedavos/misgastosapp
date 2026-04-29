@@ -21,28 +21,28 @@ function normalizeName(name: string): string {
 
 export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
   return {
-    async listAll(input: { customerId: string }): Promise<Category[]> {
+    async listAll(input: { userId: string }): Promise<Category[]> {
       const rows = await env.DB.prepare(
-        `SELECT id, name, slug FROM categories
-         WHERE customer_id = ? OR customer_id IS NULL
+        `SELECT id, name, slug FROM categories_v2
+         WHERE user_id = ? OR user_id IS NULL
          ORDER BY name ASC`,
       )
-        .bind(input.customerId)
+        .bind(input.userId)
         .all<CategoryRow>();
 
       if (!rows.results.length) return DEFAULT_CATEGORIES;
       return rows.results;
     },
 
-    async getByName(input: { customerId: string; name: string }): Promise<Category | null> {
+    async getByName(input: { userId: string; name: string }): Promise<Category | null> {
       const normalized = normalizeName(input.name);
       const row = await env.DB.prepare(
-        `SELECT id, name, slug FROM categories
-         WHERE lower(name) = ? AND (customer_id = ? OR customer_id IS NULL)
-         ORDER BY customer_id IS NULL ASC
+        `SELECT id, name, slug FROM categories_v2
+         WHERE lower(name) = ? AND (user_id = ? OR user_id IS NULL)
+         ORDER BY user_id IS NULL ASC
          LIMIT 1`,
       )
-        .bind(normalized, input.customerId)
+        .bind(normalized, input.userId)
         .first<CategoryRow>();
 
       if (row) return row;
@@ -51,14 +51,14 @@ export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
       );
     },
 
-    async getById(input: { customerId: string; id: string }): Promise<Category | null> {
+    async getById(input: { userId: string; id: string }): Promise<Category | null> {
       const row = await env.DB.prepare(
-        `SELECT id, name, slug FROM categories
-         WHERE id = ? AND (customer_id = ? OR customer_id IS NULL)
-         ORDER BY customer_id IS NULL ASC
+        `SELECT id, name, slug FROM categories_v2
+         WHERE id = ? AND (user_id = ? OR user_id IS NULL)
+         ORDER BY user_id IS NULL ASC
          LIMIT 1`,
       )
-        .bind(input.id, input.customerId)
+        .bind(input.id, input.userId)
         .first<CategoryRow>();
 
       if (row) return row;

@@ -1,6 +1,6 @@
-import type { CustomerSubscription, Plan } from "@/domain/subscription/entity";
+import type { UserSubscription, Plan } from "@/domain/subscription/entity";
 
 export interface SubscriptionRepoPort {
-  getEffectiveSubscription(customerId: string): Promise<CustomerSubscription | null>;
+  getEffectiveSubscription(userId: string): Promise<UserSubscription | null>;
   getPlanById(planId: string): Promise<Plan | null>;
 }
