@@ -195,6 +195,34 @@ describe("d1 user repo", () => {
     });
     expect(again.created).toBe(false);
     expect(again.user.id).toBe(result.user.id);
+
+    const mobileSetting = await env.DB.prepare(
+      `SELECT channel_id, enabled, is_primary FROM user_channel_settings
+       WHERE user_id = ? AND channel_id = ? LIMIT 1`,
+    )
+      .bind(result.user.id, "mobile")
+      .first<{ channel_id: string; enabled: number; is_primary: number }>();
+    expect(mobileSetting).toEqual(
+      expect.objectContaining({
+        channel_id: "mobile",
+        enabled: 1,
+        is_primary: 0,
+      }),
+    );
+
+    const whatsappSetting = await env.DB.prepare(
+      `SELECT channel_id, enabled, is_primary FROM user_channel_settings
+       WHERE user_id = ? AND channel_id = ? LIMIT 1`,
+    )
+      .bind(result.user.id, "whatsapp")
+      .first<{ channel_id: string; enabled: number; is_primary: number }>();
+    expect(whatsappSetting).toEqual(
+      expect.objectContaining({
+        channel_id: "whatsapp",
+        enabled: 1,
+        is_primary: 1,
+      }),
+    );
   });
 
   it("converges concurrent creates without orphaning the mapped user", async () => {

@@ -763,13 +763,20 @@ function createMemoryD1Database(options?: {
         }
 
         if (query.startsWith("insert into user_channel_settings")) {
-          const [id, userId, createdAt, updatedAt] = values as [string, string, string, string];
-          channelSettings.set(`${userId}:whatsapp`, {
+          const [id, userId, channelId, isPrimary, createdAt, updatedAt] = values as [
+            string,
+            string,
+            string,
+            number,
+            string,
+            string,
+          ];
+          channelSettings.set(`${userId}:${channelId}`, {
             id,
             customer_id: userId,
-            channel_id: "whatsapp",
+            channel_id: channelId,
             enabled: 1,
-            is_primary: 1,
+            is_primary: Number(isPrimary),
             config_json: null,
           });
           void createdAt;

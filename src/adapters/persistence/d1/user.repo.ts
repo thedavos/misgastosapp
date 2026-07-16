@@ -59,21 +59,35 @@ const USER_SELECT = `SELECT id,
          FROM users`;
 
 export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
-  async function ensureWhatsAppChannelSetting(userId: string): Promise<void> {
+  async function ensureChannelSetting(input: {
+    userId: string;
+    channelId: string;
+    isPrimary: number;
+  }): Promise<void> {
     const existing = await env.DB.prepare(
-      `SELECT id FROM user_channel_settings WHERE user_id = ? AND channel_id = 'whatsapp' LIMIT 1`,
+      `SELECT id FROM user_channel_settings WHERE user_id = ? AND channel_id = ? LIMIT 1`,
     )
-      .bind(userId)
+      .bind(input.userId, input.channelId)
       .first<{ id: string }>();
     if (existing) return;
 
     const now = new Date().toISOString();
     await env.DB.prepare(
       `INSERT INTO user_channel_settings (id, user_id, channel_id, enabled, is_primary, config_json, created_at, updated_at)
-       VALUES (?, ?, 'whatsapp', 1, 1, NULL, ?, ?)`,
+       VALUES (?, ?, ?, 1, ?, NULL, ?, ?)`,
     )
-      .bind(crypto.randomUUID(), userId, now, now)
+      .bind(crypto.randomUUID(), input.userId, input.channelId, input.isPrimary, now, now)
       .run();
+  }
+
+  async function ensureDefaultChannelSettings(userId: string, channel: string): Promise<void> {
+    // Mobile is a first-class API channel; provision for every user so strict policy mode
+    // does not 403 new WhatsApp/Telegram users who later call mobile endpoints.
+    await ensureChannelSetting({ userId, channelId: "mobile", isPrimary: 0 });
+
+    if (channel === "whatsapp") {
+      await ensureChannelSetting({ userId, channelId: "whatsapp", isPrimary: 1 });
+    }
   }
 
   return {
@@ -121,9 +135,7 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
         externalUserId: input.externalUserId,
       });
       if (existing) {
-        if (input.channel === "whatsapp") {
-          await ensureWhatsAppChannelSetting(existing.id);
-        }
+        await ensureDefaultChannelSettings(existing.id, input.channel);
         return { user: existing, created: false };
       }
 
@@ -166,15 +178,11 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
           );
         }
 
-        if (input.channel === "whatsapp") {
-          await ensureWhatsAppChannelSetting(winner.id);
-        }
+        await ensureDefaultChannelSettings(winner.id, input.channel);
         return { user: winner, created: false };
       }
 
-      if (input.channel === "whatsapp") {
-        await ensureWhatsAppChannelSetting(userId);
-      }
+      await ensureDefaultChannelSettings(userId, input.channel);
 
       const created = await this.getById(userId);
       if (!created) {

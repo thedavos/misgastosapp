@@ -1,10 +1,10 @@
 import { Effect } from "effect";
+import type { AppError } from "@/app/errors";
 import {
   buildPeriodExpenses,
   buildPeriodSummary,
   buildTopSpendSummary,
 } from "@/app/report-summary";
-import type { AppError } from "@/app/errors";
 import type { Expense } from "@/domain/expense/entity";
 import type { ParsedIntent } from "@/domain/intent/entity";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";

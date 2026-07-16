@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { fromPromise } from "@/app/effects";
 import {
+  ChannelDisabledError,
   ChatMediaPersistenceError,
   ChannelSendError,
   ConversationStateError,
@@ -8,6 +9,7 @@ import {
   IntentParseError,
   InvalidTransactionError,
   OcrExtractionError,
+  SubscriptionFeatureBlockedError,
   UserPersistenceError,
   type AppError,
 } from "@/app/errors";
@@ -442,6 +444,19 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
           return { categorized: false, guided: true };
+        }
+
+        if (
+          ingestionResult.left instanceof ChannelDisabledError ||
+          ingestionResult.left instanceof SubscriptionFeatureBlockedError
+        ) {
+          deps.logger.warn("chat.capture_authorization_skipped", {
+            requestId: input.requestId,
+            userId: input.userId,
+            channel: input.channel,
+            error: ingestionResult.left._tag,
+          });
+          return { categorized: false };
         }
 
         return yield* Effect.fail(ingestionResult.left);
