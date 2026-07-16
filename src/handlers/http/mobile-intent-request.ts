@@ -29,6 +29,13 @@ export async function resolveMobileIntentRequest(input: {
   });
 
   if (!auth.ok) {
+    if (auth.reason === "misconfigured") {
+      return {
+        ok: false,
+        response: Response.json({ error: "misconfigured" }, { status: 500 }),
+      };
+    }
+
     return {
       ok: false,
       response: Response.json({ error: "unauthorized" }, { status: 401 }),

@@ -90,6 +90,27 @@ describe("kapso adapter contract", () => {
     );
   });
 
+  it("rejects when webhook secret is missing (fail closed)", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: undefined,
+      kapsoWebhookSignatureMode: "strict",
+    });
+    const channel = createKapsoChannelAdapter(env);
+
+    const body = JSON.stringify({ id: "evt_1", from: "51999999999", text: "hola" });
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    const isValid = await channel.verifyWebhook({
+      headers: new Headers({
+        "x-kapso-signature": "v1=deadbeef",
+        "x-kapso-timestamp": String(timestamp),
+      }),
+      rawBody: body,
+    });
+
+    expect(isValid).toBe(false);
+  });
+
   it("accepts valid HMAC signature with current timestamp", async () => {
     const env = createTestEnv({
       kapsoWebhookSecret: "topsecret",

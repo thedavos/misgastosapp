@@ -141,6 +141,8 @@ describe("whatsapp webhook integration", () => {
 
   it("returns 403 when channel is disabled for customer", async () => {
     const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
       channelSettings: [
         {
           id: "ccs_cust_default_whatsapp",
@@ -153,22 +155,25 @@ describe("whatsapp webhook integration", () => {
       ],
     });
 
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "51999999999",
-        text: "comida",
-        timestamp: Date.now(),
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
       }),
-    });
-
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
+      env,
+      {} as ExecutionContext,
+    );
     expect(response.status).toBe(403);
   });
 
   it("returns 402 when subscription blocks channel feature", async () => {
     const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
       planFeatures: [
         {
           id: "pf_free_whatsapp",
@@ -181,6 +186,27 @@ describe("whatsapp webhook integration", () => {
       ],
     });
 
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+    expect(response.status).toBe(402);
+  });
+
+  it("returns 401 when webhook secret is missing", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: undefined,
+      kapsoWebhookSignatureMode: "strict",
+    });
+
     const request = new Request("https://example.com/webhooks/whatsapp", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -192,7 +218,7 @@ describe("whatsapp webhook integration", () => {
     });
 
     const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(402);
+    expect(response.status).toBe(401);
   });
 
   it("returns 401 on invalid signature in strict mode", async () => {

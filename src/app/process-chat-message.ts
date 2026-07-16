@@ -8,6 +8,7 @@ import {
   IntentParseError,
   InvalidTransactionError,
   OcrExtractionError,
+  UserPersistenceError,
   type AppError,
 } from "@/app/errors";
 import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
@@ -126,27 +127,20 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const attachments = input.attachments ?? [];
       const imageAttachments = attachments.filter((attachment) => attachment.type === "image");
 
-      if (deps.userRepo) {
+      if (deps.userRepo && input.channel === "whatsapp") {
         const user = yield* fromPromise(
           () => deps.userRepo!.getById(input.userId),
           (cause) =>
-            new ConversationStateError({
+            new UserPersistenceError({
               requestId: input.requestId,
-              operation: "get",
+              operation: "getById",
               cause,
             }),
         );
 
         if (user && !user.onboardingCompletedAt) {
-          yield* fromPromise(
-            () =>
-              deps.channel.sendMessage({
-                externalUserId: input.externalUserId,
-                text: WHATSAPP_ONBOARDING_MESSAGE,
-              }),
-            (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
-          );
-
+          // Mark complete before send so retries cannot duplicate the onboarding message
+          // if markOnboardingCompleted fails after a successful send.
           yield* fromPromise(
             () =>
               deps.userRepo!.markOnboardingCompleted({
@@ -154,11 +148,20 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
                 completedAt: new Date().toISOString(),
               }),
             (cause) =>
-              new ConversationStateError({
+              new UserPersistenceError({
                 requestId: input.requestId,
-                operation: "put",
+                operation: "markOnboardingCompleted",
                 cause,
               }),
+          );
+
+          yield* fromPromise(
+            () =>
+              deps.channel.sendMessage({
+                externalUserId: input.externalUserId,
+                text: WHATSAPP_ONBOARDING_MESSAGE,
+              }),
+            (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
 
           deps.logger.info("chat.onboarding_sent", {
@@ -239,15 +242,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               });
             }
 
-            if (!attachment.url) return null;
-
-            const response = await fetch(attachment.url);
-            if (!response.ok) return null;
-            const buffer = await response.arrayBuffer();
-            return {
-              data: new Uint8Array(buffer),
-              mimeType: attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
-            };
+            // Do not fetch arbitrary remote URLs without an allowlisted resolver (SSRF).
+            return null;
           },
           (cause) => new OcrExtractionError({ requestId: input.requestId, cause }),
         );

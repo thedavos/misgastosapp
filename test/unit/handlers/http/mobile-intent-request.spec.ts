@@ -52,6 +52,19 @@ describe("resolve mobile intent request", () => {
     expect(await result.response.json()).toEqual({ error: "unauthorized" });
   });
 
+  it("returns misconfigured when MOBILE_API_TOKENS is missing", async () => {
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest({ text: "hola" }, { authorization: "Bearer test-mobile-token" }),
+      userRepo: userRepo(),
+      mobileApiTokens: undefined,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected misconfigured");
+    expect(result.response.status).toBe(500);
+    expect(await result.response.json()).toEqual({ error: "misconfigured" });
+  });
+
   it("returns unauthorized when Authorization token is invalid", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest({ text: "hola" }, { authorization: "Bearer wrong-token" }),

@@ -173,4 +173,81 @@ describe("d1 user repo", () => {
     expect(user?.defaultCurrency).toBe("PEN");
     expect(user?.timezone).toBe("America/Lima");
   });
+
+  it("creates a new WhatsApp user with PEN and America/Lima defaults", async () => {
+    const { createTestEnv } = await import("test/helpers/fakes");
+    const env = createTestEnv();
+    const repo = createD1UserRepo(env);
+
+    const result = await repo.findOrCreateByChannelExternalId({
+      channel: "whatsapp",
+      externalUserId: "51888888888",
+    });
+
+    expect(result.created).toBe(true);
+    expect(result.user.defaultCurrency).toBe("PEN");
+    expect(result.user.timezone).toBe("America/Lima");
+    expect(result.user.onboardingCompletedAt).toBeNull();
+
+    const again = await repo.findOrCreateByChannelExternalId({
+      channel: "whatsapp",
+      externalUserId: "51888888888",
+    });
+    expect(again.created).toBe(false);
+    expect(again.user.id).toBe(result.user.id);
+  });
+
+  it("converges concurrent creates without orphaning the mapped user", async () => {
+    const { createTestEnv } = await import("test/helpers/fakes");
+    const env = createTestEnv();
+    const repo = createD1UserRepo(env);
+
+    const first = await repo.findOrCreateByChannelExternalId({
+      channel: "whatsapp",
+      externalUserId: "51777777777",
+    });
+
+    // Simulate a late second creator that inserted a user after the first mapping won.
+    const loserId = "orphan_user";
+    await env.DB.prepare(
+      `INSERT INTO users (
+         id, display_name, default_currency, timezone, locale, created_at, updated_at,
+         status, confidence_threshold, onboarding_completed_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0.75, NULL)`,
+    )
+      .bind(
+        loserId,
+        "Loser",
+        "PEN",
+        "America/Lima",
+        "es-PE",
+        new Date().toISOString(),
+        new Date().toISOString(),
+      )
+      .run();
+
+    const ignored = await env.DB.prepare(
+      `INSERT OR IGNORE INTO user_sources (
+         id, user_id, source_type, external_id, status, is_primary, metadata_json, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, 'active', ?, NULL, ?, ?)`,
+    )
+      .bind(
+        crypto.randomUUID(),
+        loserId,
+        "whatsapp",
+        "51777777777",
+        1,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      )
+      .run();
+
+    expect(ignored.meta?.changes ?? 0).toBe(0);
+
+    const mapped = await repo.findByChannelExternalId({
+      channel: "whatsapp",
+      externalUserId: "51777777777",
+    });
+    expect(mapped?.id).toBe(first.user.id);
+  });
 });

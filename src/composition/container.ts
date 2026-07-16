@@ -24,6 +24,7 @@ import { createHandleUserReply } from "@/app/handle-user-reply";
 import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
 import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";
+import { isAllowedKapsoMediaUrl } from "@/utils/url/isAllowedKapsoMediaUrl";
 
 export function createContainer(
   env: WorkerEnv,
@@ -101,19 +102,32 @@ export function createContainer(
 
     if (!input.attachment.url) return null;
 
-    const headers = new Headers();
-    if (input.channel === "whatsapp" && env.KAPSO_API_KEY) {
-      headers.set("Authorization", `Bearer ${env.KAPSO_API_KEY}`);
+    if (input.channel === "whatsapp") {
+      if (!isAllowedKapsoMediaUrl(input.attachment.url, env)) {
+        logger.warn("chat.media_url_blocked", {
+          requestId,
+          channel: input.channel,
+        });
+        return null;
+      }
+
+      const headers = new Headers();
+      if (env.KAPSO_API_KEY) {
+        headers.set("Authorization", `Bearer ${env.KAPSO_API_KEY}`);
+      }
+
+      const firstResponse = await fetch(input.attachment.url, { headers });
+      const response = !firstResponse.ok ? await fetch(input.attachment.url) : firstResponse;
+
+      if (!response.ok) return null;
+      const buffer = await response.arrayBuffer();
+      return {
+        data: new Uint8Array(buffer),
+        mimeType: input.attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
+      };
     }
 
-    const firstResponse = await fetch(input.attachment.url, {
-      headers,
-    });
-    const response =
-      !firstResponse.ok && input.channel === "whatsapp"
-        ? await fetch(input.attachment.url)
-        : firstResponse;
-
+    const response = await fetch(input.attachment.url);
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
     return {

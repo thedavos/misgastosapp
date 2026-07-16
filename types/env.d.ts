@@ -24,6 +24,8 @@ export interface WorkerEnv extends Cloudflare.Env {
   SENTRY_DSN?: string;
   SENTRY_RELEASE?: string;
   KAPSO_API_BASE_URL?: string;
+  /** Comma-separated extra hostnames allowed for WhatsApp media fetches */
+  KAPSO_MEDIA_HOST_ALLOWLIST?: string;
   KAPSO_WEBHOOK_SIGNATURE_MODE?: "dual" | "strict";
   KAPSO_WEBHOOK_MAX_SKEW_SECONDS?: string;
   CHAT_MEDIA_RETENTION_DAYS?: string;

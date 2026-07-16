@@ -128,6 +128,7 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
       }
 
       const userId = crypto.randomUUID();
+      const sourceId = crypto.randomUUID();
       const now = new Date().toISOString();
       const displayName =
         input.displayName?.trim() ||
@@ -142,12 +143,34 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
         .bind(userId, displayName, DEFAULT_CURRENCY, DEFAULT_TIMEZONE, DEFAULT_LOCALE, now, now)
         .run();
 
-      await this.createChannelMapping({
-        userId,
-        channel: input.channel,
-        externalUserId: input.externalUserId,
-        isPrimary: true,
-      });
+      // INSERT OR IGNORE + unique (source_type, external_id) makes concurrent create races
+      // converge on one mapped user instead of orphaning via INSERT OR REPLACE.
+      const mappingResult = await env.DB.prepare(
+        `INSERT OR IGNORE INTO user_sources (
+           id, user_id, source_type, external_id, status, is_primary, metadata_json, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, 'active', ?, NULL, ?, ?)`,
+      )
+        .bind(sourceId, userId, input.channel, input.externalUserId, 1, now, now)
+        .run();
+
+      if ((mappingResult.meta?.changes ?? 0) === 0) {
+        await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+
+        const winner = await this.findByChannelExternalId({
+          channel: input.channel,
+          externalUserId: input.externalUserId,
+        });
+        if (!winner) {
+          throw new Error(
+            `Failed to resolve concurrent user mapping for ${input.channel}:${input.externalUserId}`,
+          );
+        }
+
+        if (input.channel === "whatsapp") {
+          await ensureWhatsAppChannelSetting(winner.id);
+        }
+        return { user: winner, created: false };
+      }
 
       if (input.channel === "whatsapp") {
         await ensureWhatsAppChannelSetting(userId);

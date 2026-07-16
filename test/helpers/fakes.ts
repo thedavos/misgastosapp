@@ -672,7 +672,11 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes: 1 } };
         }
 
-        if (query.startsWith("insert or replace into user_sources")) {
+        if (
+          query.startsWith("insert or replace into user_sources") ||
+          query.startsWith("insert or ignore into user_sources") ||
+          query.startsWith("insert into user_sources")
+        ) {
           const [id, userId, channel, externalUserId, isPrimary] = values as [
             string,
             string,
@@ -682,14 +686,30 @@ function createMemoryD1Database(options?: {
             string,
             string,
           ];
-          customerChannels.set(`${channel}:${externalUserId}`, {
+          const key = `${channel}:${externalUserId}`;
+          const alreadyMapped = customerChannels.has(key);
+          if (alreadyMapped && query.startsWith("insert or ignore into user_sources")) {
+            return { success: true, meta: { changes: 0 } };
+          }
+          if (alreadyMapped && query.startsWith("insert into user_sources")) {
+            throw new Error(
+              "UNIQUE constraint failed: user_sources.source_type, user_sources.external_id",
+            );
+          }
+          customerChannels.set(key, {
             id,
             customer_id: userId,
             channel,
             external_user_id: externalUserId,
             is_primary: isPrimary,
           });
-          return { success: true };
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("delete from users where id = ?")) {
+          const [id] = values as [string];
+          customers.delete(id);
+          return { success: true, meta: { changes: 1 } };
         }
 
         if (query.startsWith("insert into users")) {

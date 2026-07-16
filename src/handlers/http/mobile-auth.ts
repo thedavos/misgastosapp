@@ -15,7 +15,15 @@ function encodeUtf8(value: string): Uint8Array {
 function tokensEqual(left: string, right: string): boolean {
   const leftBytes = encodeUtf8(left);
   const rightBytes = encodeUtf8(right);
-  return constantTimeEquals(leftBytes, rightBytes);
+  const maxLen = Math.max(leftBytes.length, rightBytes.length, 1);
+  const paddedLeft = new Uint8Array(maxLen);
+  const paddedRight = new Uint8Array(maxLen);
+  paddedLeft.set(leftBytes);
+  paddedRight.set(rightBytes);
+
+  const contentEqual = constantTimeEquals(paddedLeft, paddedRight);
+  const lengthEqual = leftBytes.length === rightBytes.length;
+  return contentEqual && lengthEqual;
 }
 
 export function parseMobileApiTokens(raw: string | undefined): Map<string, string> | null {
@@ -66,10 +74,15 @@ export function authenticateMobilePrincipal(input: {
     return { ok: false, reason: "invalid" };
   }
 
+  let matchedUserId: string | null = null;
   for (const [token, userId] of tokenMap.entries()) {
     if (tokensEqual(token, providedToken)) {
-      return { ok: true, principal: { userId } };
+      matchedUserId = userId;
     }
+  }
+
+  if (matchedUserId) {
+    return { ok: true, principal: { userId: matchedUserId } };
   }
 
   return { ok: false, reason: "invalid" };
