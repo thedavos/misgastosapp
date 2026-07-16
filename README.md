@@ -74,6 +74,7 @@ src/
 - `TELEGRAM_WEBHOOK_SECRET` (recomendado)
 - `KAPSO_API_KEY`
 - `KAPSO_WEBHOOK_SECRET`
+- `MOBILE_API_TOKENS` (JSON map: bearer token → user id)
 - `SENTRY_DSN`
 - `SENTRY_RELEASE`
 
@@ -131,6 +132,8 @@ wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
+wrangler d1 execute misgastos --file db/migrations/018_onboarding_and_otros_category.sql
+wrangler d1 execute misgastos --file db/migrations/019_mobile_channel.sql
 ```
 
 3. Crear KV para estado conversacional y actualizar `wrangler.jsonc`.
@@ -145,9 +148,12 @@ wrangler secret put TELEGRAM_CHAT_ID
 wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
+wrangler secret put MOBILE_API_TOKENS
 wrangler secret put SENTRY_DSN
 wrangler secret put SENTRY_RELEASE
 ```
+
+`MOBILE_API_TOKENS` is a JSON map of opaque Bearer tokens to user ids, for example `{"tok_abc":"user_uuid"}`.
 
 6. Deploy:
 

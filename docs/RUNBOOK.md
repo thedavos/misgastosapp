@@ -24,6 +24,7 @@ wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tab
 wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
 wrangler d1 execute misgastos --file db/migrations/018_onboarding_and_otros_category.sql
+wrangler d1 execute misgastos --file db/migrations/019_mobile_channel.sql
 ```
 
 ### KV namespaces

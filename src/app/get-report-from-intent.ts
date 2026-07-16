@@ -40,16 +40,6 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
     requestId?: string;
   }): Effect.Effect<{ handled: boolean }, AppError> {
     return Effect.gen(function* () {
-      const expenses = yield* fromPromise(
-        () => deps.expenseRepo.listByUser({ userId: input.userId }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "listByUser",
-            cause,
-          }),
-      );
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -89,6 +79,16 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
           }),
         );
       }
+
+      const expenses = yield* fromPromise(
+        () => deps.expenseRepo.listByUser({ userId: input.userId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "listByUser",
+            cause,
+          }),
+      );
 
       const periodExpenses = buildPeriodExpenses({
         expenses,
