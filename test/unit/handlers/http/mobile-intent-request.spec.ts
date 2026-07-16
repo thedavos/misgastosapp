@@ -10,6 +10,7 @@ const ACTIVE_USER = {
   timezone: "America/Lima",
   locale: "es-PE",
   confidenceThreshold: 0.8,
+  onboardingCompletedAt: null,
 };
 
 const TOKENS = JSON.stringify({ "test-mobile-token": "cust_1" });
@@ -25,16 +26,23 @@ function makeRequest(body: unknown, headers?: Record<string, string>) {
   });
 }
 
+function userRepo(overrides?: Partial<UserRepoPort>): UserRepoPort {
+  return {
+    getById: vi.fn(),
+    findByChannelExternalId: vi.fn(),
+    findOrCreateByChannelExternalId: vi.fn(),
+    getPrimaryExternalUserId: vi.fn(),
+    createChannelMapping: vi.fn(),
+    markOnboardingCompleted: vi.fn(),
+    ...overrides,
+  } as unknown as UserRepoPort;
+}
+
 describe("resolve mobile intent request", () => {
   it("returns unauthorized when Authorization is missing", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest({ text: "hola" }),
-      userRepo: {
-        getById: vi.fn(),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo(),
       mobileApiTokens: TOKENS,
     });
 
@@ -47,12 +55,7 @@ describe("resolve mobile intent request", () => {
   it("returns unauthorized when Authorization token is invalid", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest({ text: "hola" }, { authorization: "Bearer wrong-token" }),
-      userRepo: {
-        getById: vi.fn(),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo(),
       mobileApiTokens: TOKENS,
     });
 
@@ -64,15 +67,8 @@ describe("resolve mobile intent request", () => {
 
   it("returns invalid_json when the body is not valid json", async () => {
     const result = await resolveMobileIntentRequest({
-      request: makeRequest("{", {
-        authorization: "Bearer test-mobile-token",
-      }),
-      userRepo: {
-        getById: vi.fn(),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      request: makeRequest("{", { authorization: "Bearer test-mobile-token" }),
+      userRepo: userRepo(),
       mobileApiTokens: TOKENS,
     });
 
@@ -85,12 +81,7 @@ describe("resolve mobile intent request", () => {
   it("returns text_required when text is missing", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest({ userId: "cust_1" }, { authorization: "Bearer test-mobile-token" }),
-      userRepo: {
-        getById: vi.fn(),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo(),
       mobileApiTokens: TOKENS,
     });
 
@@ -107,12 +98,7 @@ describe("resolve mobile intent request", () => {
         { userId: "cust_other", text: "hola" },
         { authorization: "Bearer test-mobile-token" },
       ),
-      userRepo: {
-        getById,
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo({ getById }),
       mobileApiTokens: TOKENS,
     });
 
@@ -126,12 +112,7 @@ describe("resolve mobile intent request", () => {
   it("returns unauthorized when authenticated principal is unknown", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest({ text: "hola" }, { authorization: "Bearer test-mobile-token" }),
-      userRepo: {
-        getById: vi.fn().mockResolvedValue(null),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo({ getById: vi.fn().mockResolvedValue(null) }),
       mobileApiTokens: TOKENS,
     });
 
@@ -147,12 +128,7 @@ describe("resolve mobile intent request", () => {
         { text: " S/ 18 en Tambo " },
         { authorization: "Bearer test-mobile-token" },
       ),
-      userRepo: {
-        getById: vi.fn().mockResolvedValue(ACTIVE_USER),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo({ getById: vi.fn().mockResolvedValue(ACTIVE_USER) }),
       mobileApiTokens: TOKENS,
     });
 
@@ -171,12 +147,7 @@ describe("resolve mobile intent request", () => {
         { userId: "cust_1", text: "hola" },
         { authorization: "Bearer test-mobile-token" },
       ),
-      userRepo: {
-        getById: vi.fn().mockResolvedValue(ACTIVE_USER),
-        findByChannelExternalId: vi.fn(),
-        getPrimaryExternalUserId: vi.fn(),
-        createChannelMapping: vi.fn(),
-      } as unknown as UserRepoPort,
+      userRepo: userRepo({ getById: vi.fn().mockResolvedValue(ACTIVE_USER) }),
       mobileApiTokens: TOKENS,
     });
 

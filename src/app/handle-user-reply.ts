@@ -160,13 +160,16 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const category = yield* fromPromise(
-        () => deps.categoryRepo.getById({ userId: input.userId, id: categoryId }),
+        () =>
+          deps.categoryRepo.resolveOrFallback({
+            userId: input.userId,
+            categoryId,
+          }),
         (cause) => new CategoryLookupError({ operation: "getById", cause }),
       );
 
-      if (!category) {
-        deps.logger.warn("category.not_found", { categoryId });
-        return { categorized: false };
+      if (category.id === "cat_otros" && categoryId && categoryId !== "cat_otros") {
+        deps.logger.warn("category.fallback_otros", { categoryId });
       }
 
       yield* fromPromise(

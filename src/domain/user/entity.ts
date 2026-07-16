@@ -6,6 +6,7 @@ export interface User {
   timezone: string;
   locale: string;
   confidenceThreshold: number;
+  onboardingCompletedAt: string | null;
 }
 
 export interface UserSource {

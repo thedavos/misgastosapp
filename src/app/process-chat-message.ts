@@ -11,6 +11,7 @@ import {
   type AppError,
 } from "@/app/errors";
 import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
+import { WHATSAPP_ONBOARDING_MESSAGE } from "@/app/onboarding";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -26,6 +27,7 @@ import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { OcrPort } from "@/ports/ocr.port";
+import type { UserRepoPort } from "@/ports/user-repo.port";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -40,6 +42,7 @@ export type ProcessChatMessageDeps = {
   ocr: OcrPort;
   chatMediaRepo: ChatMediaRepoPort;
   logger: LoggerPort;
+  userRepo?: UserRepoPort;
   fallbackExpenseCapture: (input: {
     userId: string;
     sourceText: string;
@@ -121,6 +124,49 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const normalizedText = input.text?.trim() ?? "";
       const attachments = input.attachments ?? [];
       const imageAttachments = attachments.filter((attachment) => attachment.type === "image");
+
+      if (deps.userRepo) {
+        const user = yield* fromPromise(
+          () => deps.userRepo!.getById(input.userId),
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "get",
+              cause,
+            }),
+        );
+
+        if (user && !user.onboardingCompletedAt) {
+          yield* fromPromise(
+            () =>
+              deps.channel.sendMessage({
+                externalUserId: input.externalUserId,
+                text: WHATSAPP_ONBOARDING_MESSAGE,
+              }),
+            (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+          );
+
+          yield* fromPromise(
+            () =>
+              deps.userRepo!.markOnboardingCompleted({
+                userId: input.userId,
+                completedAt: new Date().toISOString(),
+              }),
+            (cause) =>
+              new ConversationStateError({
+                requestId: input.requestId,
+                operation: "put",
+                cause,
+              }),
+          );
+
+          deps.logger.info("chat.onboarding_sent", {
+            requestId: input.requestId,
+            userId: input.userId,
+            channel: input.channel,
+          });
+        }
+      }
 
       const pendingState = yield* fromPromise(
         () =>

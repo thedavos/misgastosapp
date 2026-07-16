@@ -39,6 +39,9 @@ describe("handle user reply", () => {
         listAll: vi.fn().mockResolvedValue([{ id: "cat_food", name: "Comida", slug: "comida" }]),
         getByName: vi.fn(),
         getById: vi.fn().mockResolvedValue({ id: "cat_food", name: "Comida", slug: "comida" }),
+        resolveOrFallback: vi
+          .fn()
+          .mockResolvedValue({ id: "cat_food", name: "Comida", slug: "comida" }),
       },
       conversationState: {
         put: vi.fn(),

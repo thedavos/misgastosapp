@@ -29,6 +29,7 @@ type CustomerRow = {
   timezone: string;
   locale: string;
   confidence_threshold: number;
+  onboarding_completed_at: string | null;
 };
 
 type CustomerChannelRow = {
@@ -293,6 +294,7 @@ function createMemoryD1Database(options?: {
       timezone: "America/Lima",
       locale: "es-PE",
       confidence_threshold: 0.75,
+      onboarding_completed_at: "2026-01-01T00:00:00.000Z",
     },
   ];
   for (const customer of options?.customers ?? defaultCustomers) {
@@ -690,6 +692,58 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
+        if (query.startsWith("insert into users")) {
+          const [id, name, defaultCurrency, timezone, locale, createdAt, updatedAt] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
+          customers.set(id, {
+            id,
+            name,
+            status: "ACTIVE",
+            default_currency: defaultCurrency,
+            timezone,
+            locale,
+            confidence_threshold: 0.75,
+            onboarding_completed_at: null,
+          });
+          void createdAt;
+          void updatedAt;
+          return { success: true };
+        }
+
+        if (query.startsWith("insert into user_channel_settings")) {
+          const [id, userId, createdAt, updatedAt] = values as [string, string, string, string];
+          channelSettings.set(`${userId}:whatsapp`, {
+            id,
+            customer_id: userId,
+            channel_id: "whatsapp",
+            enabled: 1,
+            is_primary: 1,
+            config_json: null,
+          });
+          void createdAt;
+          void updatedAt;
+          return { success: true };
+        }
+
+        if (query.startsWith("update users set onboarding_completed_at = ?")) {
+          const [completedAt, updatedAt, userId] = values as [string, string, string];
+          const current = customers.get(userId);
+          if (!current || current.onboarding_completed_at) return { success: true };
+          customers.set(userId, {
+            ...current,
+            onboarding_completed_at: completedAt,
+          });
+          void updatedAt;
+          return { success: true };
+        }
+
         if (query.startsWith("update inbound_webhook_events set last_seen_at = ?")) {
           const [lastSeenAt, requestId, provider, eventId] = values as [
             string,
@@ -964,6 +1018,15 @@ function createMemoryD1Database(options?: {
         ) {
           const [userId, channelId] = values as [string, string];
           return (channelSettings.get(`${userId}:${channelId}`) as T | undefined) ?? null;
+        }
+
+        if (
+          query.includes("from user_channel_settings") &&
+          query.includes("where user_id = ? and channel_id = 'whatsapp'")
+        ) {
+          const [userId] = values as [string];
+          const setting = channelSettings.get(`${userId}:whatsapp`);
+          return (setting ? ({ id: setting.id } as T) : null) as T | null;
         }
 
         if (

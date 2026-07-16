@@ -1,6 +1,6 @@
 import type { WorkerEnv } from "types/env";
 import type { User, UserSource } from "@/domain/user/entity";
-import type { UserRepoPort } from "@/ports/user-repo.port";
+import type { FindOrCreateByChannelExternalIdResult, UserRepoPort } from "@/ports/user-repo.port";
 
 type UserRow = {
   id: string;
@@ -10,6 +10,7 @@ type UserRow = {
   timezone: string;
   locale: string;
   confidence_threshold: number;
+  onboarding_completed_at: string | null;
 };
 
 type UserSourceRow = {
@@ -20,15 +21,20 @@ type UserSourceRow = {
   is_primary: number;
 };
 
+const DEFAULT_CURRENCY = "PEN";
+const DEFAULT_TIMEZONE = "America/Lima";
+const DEFAULT_LOCALE = "es-PE";
+
 function mapUser(row: UserRow): User {
   return {
     id: row.id,
     name: row.name,
     status: row.status,
-    defaultCurrency: row.default_currency,
-    timezone: row.timezone,
-    locale: row.locale,
+    defaultCurrency: row.default_currency || DEFAULT_CURRENCY,
+    timezone: row.timezone || DEFAULT_TIMEZONE,
+    locale: row.locale || DEFAULT_LOCALE,
     confidenceThreshold: row.confidence_threshold,
+    onboardingCompletedAt: row.onboarding_completed_at,
   };
 }
 
@@ -42,19 +48,37 @@ function mapUserSource(row: UserSourceRow): UserSource {
   };
 }
 
-export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
-  return {
-    async getById(id: string): Promise<User | null> {
-      const row = await env.DB.prepare(
-        `SELECT id,
+const USER_SELECT = `SELECT id,
                 display_name AS name,
                 status,
                 default_currency,
                 timezone,
                 locale,
-                confidence_threshold
-         FROM users WHERE id = ? LIMIT 1`,
-      )
+                confidence_threshold,
+                onboarding_completed_at
+         FROM users`;
+
+export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
+  async function ensureWhatsAppChannelSetting(userId: string): Promise<void> {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM user_channel_settings WHERE user_id = ? AND channel_id = 'whatsapp' LIMIT 1`,
+    )
+      .bind(userId)
+      .first<{ id: string }>();
+    if (existing) return;
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO user_channel_settings (id, user_id, channel_id, enabled, is_primary, config_json, created_at, updated_at)
+       VALUES (?, ?, 'whatsapp', 1, 1, NULL, ?, ?)`,
+    )
+      .bind(crypto.randomUUID(), userId, now, now)
+      .run();
+  }
+
+  return {
+    async getById(id: string): Promise<User | null> {
+      const row = await env.DB.prepare(`${USER_SELECT} WHERE id = ? LIMIT 1`)
         .bind(id)
         .first<UserRow>();
 
@@ -73,7 +97,8 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
                 u.default_currency,
                 u.timezone,
                 u.locale,
-                u.confidence_threshold
+                u.confidence_threshold,
+                u.onboarding_completed_at
          FROM user_sources us
          JOIN users u ON u.id = us.user_id
          WHERE us.source_type = ? AND us.external_id = ? AND us.status = 'active'
@@ -84,6 +109,56 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
 
       if (!row) return null;
       return mapUser(row);
+    },
+
+    async findOrCreateByChannelExternalId(input: {
+      channel: string;
+      externalUserId: string;
+      displayName?: string;
+    }): Promise<FindOrCreateByChannelExternalIdResult> {
+      const existing = await this.findByChannelExternalId({
+        channel: input.channel,
+        externalUserId: input.externalUserId,
+      });
+      if (existing) {
+        if (input.channel === "whatsapp") {
+          await ensureWhatsAppChannelSetting(existing.id);
+        }
+        return { user: existing, created: false };
+      }
+
+      const userId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const displayName =
+        input.displayName?.trim() ||
+        (input.channel === "whatsapp" ? `WhatsApp ${input.externalUserId}` : input.externalUserId);
+
+      await env.DB.prepare(
+        `INSERT INTO users (
+           id, display_name, default_currency, timezone, locale, created_at, updated_at,
+           status, confidence_threshold, onboarding_completed_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0.75, NULL)`,
+      )
+        .bind(userId, displayName, DEFAULT_CURRENCY, DEFAULT_TIMEZONE, DEFAULT_LOCALE, now, now)
+        .run();
+
+      await this.createChannelMapping({
+        userId,
+        channel: input.channel,
+        externalUserId: input.externalUserId,
+        isPrimary: true,
+      });
+
+      if (input.channel === "whatsapp") {
+        await ensureWhatsAppChannelSetting(userId);
+      }
+
+      const created = await this.getById(userId);
+      if (!created) {
+        throw new Error(`Failed to load newly created user ${userId}`);
+      }
+
+      return { user: created, created: true };
     },
 
     async getPrimaryExternalUserId(input: {
@@ -139,6 +214,16 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
         externalUserId: input.externalUserId,
         isPrimary: isPrimary === 1,
       };
+    },
+
+    async markOnboardingCompleted(input: { userId: string; completedAt: string }): Promise<void> {
+      await env.DB.prepare(
+        `UPDATE users
+         SET onboarding_completed_at = ?, updated_at = ?
+         WHERE id = ? AND onboarding_completed_at IS NULL`,
+      )
+        .bind(input.completedAt, input.completedAt, input.userId)
+        .run();
     },
   };
 }

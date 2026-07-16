@@ -10,6 +10,7 @@ function createUserModelDbStub() {
     timezone: "America/Lima",
     locale: "es-PE",
     confidence_threshold: 0.75,
+    onboarding_completed_at: null,
   };
 
   const userSource = {
@@ -92,6 +93,7 @@ describe("d1 user repo", () => {
       timezone: "America/Lima",
       locale: "es-PE",
       confidenceThreshold: 0.75,
+      onboardingCompletedAt: null,
     });
   });
 

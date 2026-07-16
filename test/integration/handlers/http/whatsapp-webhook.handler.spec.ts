@@ -114,21 +114,29 @@ describe("whatsapp webhook integration", () => {
     expect(pending).not.toBeNull();
   });
 
-  it("returns 404 when customer mapping does not exist", async () => {
-    const env = createTestEnv();
-
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "00000000000",
-        text: "comida",
-        timestamp: Date.now(),
-      }),
+  it("returns 200 and upserts a new WhatsApp user when mapping is missing", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
     });
 
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(404);
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_new_user_1",
+          from: "51888888888",
+          text: "hola",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getEnqueuedJobs(env)).toHaveLength(1);
+    expect(getEnqueuedJobs(env)[0]?.job.externalUserId).toBe("51888888888");
   });
 
   it("returns 403 when channel is disabled for customer", async () => {
@@ -356,6 +364,7 @@ describe("whatsapp webhook integration", () => {
           timezone: "America/Lima",
           locale: "es-PE",
           confidence_threshold: 0.75,
+          onboarding_completed_at: null,
         },
       ],
     });

@@ -98,22 +98,16 @@ export async function handleWhatsAppWebhook(
       return new Response("Invalid payload", { status: 400 });
     }
 
-    const user = yield* Effect.tryPromise({
+    const userLookup = yield* Effect.tryPromise({
       try: () =>
-        container.userRepo.findByChannelExternalId({
+        container.userRepo.findOrCreateByChannelExternalId({
           channel: incomingMessage.channel,
           externalUserId: incomingMessage.externalUserId,
         }),
       catch: (cause) => new WebhookParseError({ requestId, cause }),
     });
 
-    if (!user) {
-      container.logger.warn("whatsapp.webhook_user_not_found", {
-        requestId,
-        externalUserId: incomingMessage.externalUserId,
-      });
-      return new Response("User not found", { status: 404 });
-    }
+    const user = userLookup.user;
 
     if (user.status !== "ACTIVE") {
       container.logger.warn("whatsapp.user_inactive_skip", {
@@ -122,6 +116,15 @@ export async function handleWhatsAppWebhook(
         status: user.status,
       });
       return new Response("User inactive", { status: 403 });
+    }
+
+    if (userLookup.created) {
+      container.logger.info("whatsapp.user_upserted", {
+        requestId,
+        userId: user.id,
+        externalUserId: incomingMessage.externalUserId,
+        created: true,
+      });
     }
 
     const authorizationResult = yield* container

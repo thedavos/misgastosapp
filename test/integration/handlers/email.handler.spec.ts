@@ -116,6 +116,7 @@ describe("email handler integration", () => {
           timezone: "America/Lima",
           locale: "es-PE",
           confidence_threshold: 0.75,
+          onboarding_completed_at: null,
         },
       ],
     });

@@ -150,6 +150,7 @@ export function createContainer(
     ocr,
     chatMediaRepo,
     logger,
+    userRepo,
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
     fallbackExpenseCapture,
     handleUserReply,
@@ -162,8 +163,8 @@ export function createContainer(
       const user = await userRepo.getById(userId);
       if (!user) return null;
       return {
-        timezone: user.timezone,
-        defaultCurrency: user.defaultCurrency,
+        timezone: user.timezone || "America/Lima",
+        defaultCurrency: user.defaultCurrency || "PEN",
       };
     },
     resolveAttachmentData: telegramAttachmentResolver,
