@@ -9,7 +9,11 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
-import { buildPeriodExpenses, buildPeriodSummary, buildTopSpendSummary } from "@/app/report-summary";
+import {
+  buildPeriodExpenses,
+  buildPeriodSummary,
+  buildTopSpendSummary,
+} from "@/app/report-summary";
 import type { GetReportIntentPayload } from "@/domain/intent/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
@@ -98,7 +102,10 @@ export function createGetReportFromIntent(deps: GetReportFromIntentDeps) {
           ? buildTopSpendSummary(periodExpenses)
           : periodExpenses.length === 0
             ? `No encontré gastos para ${input.payload.periodKind === "day" ? "hoy" : input.payload.periodKind === "week" ? "esta semana" : "este mes"}.`
-            : buildPeriodSummary({ expenses: periodExpenses, periodKind: input.payload.periodKind });
+            : buildPeriodSummary({
+                expenses: periodExpenses,
+                periodKind: input.payload.periodKind,
+              });
 
       yield* fromPromise(
         () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),

@@ -1,4 +1,8 @@
-import { buildPeriodExpenses, buildPeriodSummary, buildTopSpendSummary } from "@/app/report-summary";
+import {
+  buildPeriodExpenses,
+  buildPeriodSummary,
+  buildTopSpendSummary,
+} from "@/app/report-summary";
 import type { Expense } from "@/domain/expense/entity";
 import type { ParsedIntent } from "@/domain/intent/entity";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
@@ -61,7 +65,9 @@ export type MobileIntentExecutionResult =
       error: "intent_not_executable";
     };
 
-function canApplyCreateIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "create_expense" }> {
+function canApplyCreateIntentDirectly(
+  intent: ParsedIntent,
+): intent is Extract<ParsedIntent, { name: "create_expense" }> {
   return (
     intent.name === "create_expense" &&
     intent.payload.confidence >= 0.85 &&
@@ -73,7 +79,9 @@ function canApplyCreateIntentDirectly(intent: ParsedIntent): intent is Extract<P
   );
 }
 
-function canApplyUpdateIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "update_last_expense" }> {
+function canApplyUpdateIntentDirectly(
+  intent: ParsedIntent,
+): intent is Extract<ParsedIntent, { name: "update_last_expense" }> {
   return (
     intent.name === "update_last_expense" &&
     intent.payload.confidence >= 0.9 &&
@@ -81,11 +89,15 @@ function canApplyUpdateIntentDirectly(intent: ParsedIntent): intent is Extract<P
   );
 }
 
-function canApplyDeleteIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "delete_last_expense" }> {
+function canApplyDeleteIntentDirectly(
+  intent: ParsedIntent,
+): intent is Extract<ParsedIntent, { name: "delete_last_expense" }> {
   return intent.name === "delete_last_expense" && intent.payload.confidence >= 0.9;
 }
 
-function canApplyReportIntentDirectly(intent: ParsedIntent): intent is Extract<ParsedIntent, { name: "get_report" }> {
+function canApplyReportIntentDirectly(
+  intent: ParsedIntent,
+): intent is Extract<ParsedIntent, { name: "get_report" }> {
   return intent.name === "get_report" && intent.payload.confidence >= 0.9;
 }
 

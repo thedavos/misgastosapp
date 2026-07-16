@@ -7,6 +7,8 @@ export interface WorkerEnv extends Cloudflare.Env {
   TELEGRAM_WEBHOOK_SECRET?: string;
   KAPSO_API_KEY?: string;
   KAPSO_WEBHOOK_SECRET?: string;
+  /** JSON map of opaque Bearer tokens to user ids, e.g. {"tok_abc":"cust_1"} */
+  MOBILE_API_TOKENS?: string;
 
   // Bindings
   DB: D1Database;

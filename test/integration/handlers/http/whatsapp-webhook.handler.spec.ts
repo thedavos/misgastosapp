@@ -342,4 +342,40 @@ describe("whatsapp webhook integration", () => {
       "FAILED",
     );
   });
+
+  it("returns 403 and skips enqueue when user is inactive", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
+      customers: [
+        {
+          id: "cust_default",
+          name: "Default Customer",
+          status: "INACTIVE",
+          default_currency: "PEN",
+          timezone: "America/Lima",
+          locale: "es-PE",
+          confidence_threshold: 0.75,
+        },
+      ],
+    });
+
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_inactive_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("User inactive");
+    expect(getEnqueuedJobs(env)).toHaveLength(0);
+  });
 });

@@ -57,26 +57,6 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const occurredAt = draft.occurredAt;
       const rawText = draft.description ?? draft.merchant;
 
-      const expense = yield* fromPromise(
-        () =>
-          deps.expenseRepo.createExpenseRecord({
-            userId: input.userId,
-            amount,
-            currency,
-            merchant,
-            occurredAt,
-            bank: "unknown",
-            rawText,
-            createdVia: input.sourceType ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
-          }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "createExpenseRecord",
-            cause,
-          }),
-      );
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -125,6 +105,27 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
           }),
         );
       }
+
+      const expense = yield* fromPromise(
+        () =>
+          deps.expenseRepo.createExpenseRecord({
+            userId: input.userId,
+            amount,
+            currency,
+            merchant,
+            occurredAt,
+            bank: "unknown",
+            rawText,
+            createdVia:
+              input.sourceType ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
+          }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "createExpenseRecord",
+            cause,
+          }),
+      );
 
       const message = `Listo. Registré ${formatAmount(expense.amount, expense.currency)} en ${expense.merchant}.`;
 

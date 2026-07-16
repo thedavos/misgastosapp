@@ -14,7 +14,9 @@ describe("email handler integration", () => {
 
     const dbState = (
       env.DB as unknown as {
-        __state: { expenses: Map<string, { status: string; customer_id: string; merchant: string }> };
+        __state: {
+          expenses: Map<string, { status: string; customer_id: string; merchant: string }>;
+        };
       }
     ).__state;
     expect(dbState.expenses.size).toBe(1);

@@ -71,10 +71,7 @@ export function createD1ChannelPolicyRepo(env: WorkerEnv): ChannelPolicyRepoPort
       return mapUserChannelSetting(row);
     },
 
-    async isChannelEnabledForUser(input: {
-      userId: string;
-      channelId: string;
-    }): Promise<boolean> {
+    async isChannelEnabledForUser(input: { userId: string; channelId: string }): Promise<boolean> {
       const channel = await this.getChannel(input.channelId);
       if (!channel || channel.status !== "ACTIVE") return false;
 

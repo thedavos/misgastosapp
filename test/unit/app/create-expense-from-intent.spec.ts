@@ -128,4 +128,110 @@ describe("create expense from intent", () => {
 
     expect(result).toBeNull();
   });
+
+  it("does not persist when the channel is disabled", async () => {
+    const createExpenseRecord = vi.fn();
+    const createExpenseFromIntent = createCreateExpenseFromIntent({
+      channel: {
+        sendMessage: vi.fn(),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      channelPolicyRepo: {
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(false),
+      },
+      featurePolicy: {
+        isFeatureEnabled: vi.fn().mockResolvedValue(true),
+      },
+      expenseRepo: {
+        createExpenseRecord,
+        getById: vi.fn(),
+        findLatestByUser: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
+        markConfirmed: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    });
+
+    const exit = await Effect.runPromiseExit(
+      createExpenseFromIntent({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        payload: {
+          draft: {
+            amountMinor: 1800,
+            currency: "PEN",
+            merchant: "Tambo",
+            description: "S/ 18 en Tambo",
+            occurredAt: "2026-04-22T10:00:00.000Z",
+          },
+          missingFields: [],
+          confidence: 0.9,
+        },
+      }),
+    );
+
+    expect(exit._tag).toBe("Failure");
+    expect(createExpenseRecord).not.toHaveBeenCalled();
+  });
+
+  it("does not persist when the feature entitlement is blocked", async () => {
+    const createExpenseRecord = vi.fn();
+    const createExpenseFromIntent = createCreateExpenseFromIntent({
+      channel: {
+        sendMessage: vi.fn(),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      channelPolicyRepo: {
+        isChannelEnabledForUser: vi.fn().mockResolvedValue(true),
+      },
+      featurePolicy: {
+        isFeatureEnabled: vi.fn().mockResolvedValue(false),
+      },
+      expenseRepo: {
+        createExpenseRecord,
+        getById: vi.fn(),
+        findLatestByUser: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
+        markConfirmed: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    });
+
+    const exit = await Effect.runPromiseExit(
+      createExpenseFromIntent({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        payload: {
+          draft: {
+            amountMinor: 1800,
+            currency: "PEN",
+            merchant: "Tambo",
+            description: "S/ 18 en Tambo",
+            occurredAt: "2026-04-22T10:00:00.000Z",
+          },
+          missingFields: [],
+          confidence: 0.9,
+        },
+      }),
+    );
+
+    expect(exit._tag).toBe("Failure");
+    expect(createExpenseRecord).not.toHaveBeenCalled();
+  });
 });

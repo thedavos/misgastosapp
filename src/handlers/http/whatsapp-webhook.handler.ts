@@ -115,6 +115,15 @@ export async function handleWhatsAppWebhook(
       return new Response("User not found", { status: 404 });
     }
 
+    if (user.status !== "ACTIVE") {
+      container.logger.warn("whatsapp.user_inactive_skip", {
+        requestId,
+        userId: user.id,
+        status: user.status,
+      });
+      return new Response("User inactive", { status: 403 });
+    }
+
     const authorizationResult = yield* container
       .authorizeChannel({
         userId: user.id,

@@ -333,11 +333,7 @@ export function createD1ExpenseRepo(env: WorkerEnv): ExpenseRepoPort {
       };
     },
 
-    async markConfirmed(input: {
-      id: string;
-      userId: string;
-      categoryId: string;
-    }): Promise<void> {
+    async markConfirmed(input: { id: string; userId: string; categoryId: string }): Promise<void> {
       const existing = await this.getById({ id: input.id, userId: input.userId });
       if (!existing) return;
 

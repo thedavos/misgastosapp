@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { handleFetch } from "@/handlers/http/router.handler";
 
 describe("mobile intent execute handler integration", () => {
-  it("creates an expense directly for mobile create_expense input", async () => {
+  it("rejects missing authentication", async () => {
     const env = createTestEnv();
 
     const response = await handleFetch(
@@ -13,7 +13,51 @@ describe("mobile intent execute handler integration", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          userId: "cust_default",
+          text: "S/ 18 en Tambo",
+        }),
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("rejects cross-user body identity", async () => {
+    const env = createTestEnv();
+
+    const response = await handleFetch(
+      new Request("https://example.com/api/mobile/intents/execute", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
+        },
+        body: JSON.stringify({
+          userId: "cust_other",
+          text: "S/ 18 en Tambo",
+        }),
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("creates an expense directly for mobile create_expense input", async () => {
+    const env = createTestEnv();
+
+    const response = await handleFetch(
+      new Request("https://example.com/api/mobile/intents/execute", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
+        },
+        body: JSON.stringify({
           text: "S/ 18 en Tambo",
         }),
       }),
@@ -30,6 +74,7 @@ describe("mobile intent execute handler integration", () => {
 
   it("returns a generated report for mobile report input", async () => {
     const env = createTestEnv();
+    const nowIso = new Date().toISOString();
     const dbState = (
       env.DB as unknown as {
         __state: {
@@ -60,13 +105,13 @@ describe("mobile intent execute handler integration", () => {
       amount: 18,
       currency: "PEN",
       merchant: "Tambo",
-      occurred_at: "2026-04-22T10:00:00.000Z",
+      occurred_at: nowIso,
       bank: "mobile",
       raw_text: "x",
       status: "needs_clarification",
       category_id: null,
-      created_at: "2026-04-22T10:00:00.000Z",
-      updated_at: "2026-04-22T10:00:00.000Z",
+      created_at: nowIso,
+      updated_at: nowIso,
     });
 
     const response = await handleFetch(
@@ -74,9 +119,9 @@ describe("mobile intent execute handler integration", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
         },
         body: JSON.stringify({
-          userId: "cust_default",
           text: "Resumen del mes",
         }),
       }),

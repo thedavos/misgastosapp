@@ -72,6 +72,16 @@ export class ConversationStateError extends Data.TaggedError("ConversationStateE
   cause: unknown;
 }> {}
 
+export class IntentContextResolveError extends Data.TaggedError("IntentContextResolveError")<{
+  requestId?: string;
+  cause: unknown;
+}> {}
+
+export class IntentParseError extends Data.TaggedError("IntentParseError")<{
+  requestId?: string;
+  cause: unknown;
+}> {}
+
 export class ChannelSendError extends Data.TaggedError("ChannelSendError")<{
   requestId?: string;
   cause: unknown;
@@ -153,6 +163,8 @@ export type AppError =
   | ExpensePersistenceError
   | CategoryLookupError
   | ConversationStateError
+  | IntentContextResolveError
+  | IntentParseError
   | ChannelSendError
   | ChannelPolicyError
   | ChannelDisabledError

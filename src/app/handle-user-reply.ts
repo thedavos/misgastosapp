@@ -70,8 +70,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
       }
 
       const expense = yield* fromPromise(
-        () =>
-          deps.expenseRepo.getById({ id: pendingState.expenseId, userId: input.userId }),
+        () => deps.expenseRepo.getById({ id: pendingState.expenseId, userId: input.userId }),
         (cause) => new ExpensePersistenceError({ operation: "getById", cause }),
       );
 

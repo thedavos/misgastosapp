@@ -513,7 +513,9 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")) {
+        if (
+          query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")
+        ) {
           const [status, categoryId, updatedAt, id, userId] = values as [
             string,
             string | null,
@@ -835,7 +837,9 @@ function createMemoryD1Database(options?: {
         ) {
           const [userId, excludedStatus] = values as [string, string];
           const row = Array.from(expenses.values())
-            .filter((expense) => expense.customer_id === userId && expense.status !== excludedStatus)
+            .filter(
+              (expense) => expense.customer_id === userId && expense.status !== excludedStatus,
+            )
             .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
           if (!row) return null;
           return {
@@ -876,9 +880,7 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes(
-            "from categories_v2 where id = ? and (user_id = ? or user_id is null)",
-          )
+          query.includes("from categories_v2 where id = ? and (user_id = ? or user_id is null)")
         ) {
           const [id, userId] = values as [string, string];
           const category = categories.get(id);
@@ -911,7 +913,10 @@ function createMemoryD1Database(options?: {
           return null;
         }
 
-        if (query.includes("from user_sources") && query.includes("where user_id = ? and source_type = ? and is_primary = 1")) {
+        if (
+          query.includes("from user_sources") &&
+          query.includes("where user_id = ? and source_type = ? and is_primary = 1")
+        ) {
           const [userId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
             (row) => row.customer_id === userId && row.channel === channel && row.is_primary === 1,
@@ -920,7 +925,10 @@ function createMemoryD1Database(options?: {
           return { external_user_id: match.external_user_id } as T;
         }
 
-        if (query.includes("from user_sources") && query.includes("where source_type = ? and external_id = ?")) {
+        if (
+          query.includes("from user_sources") &&
+          query.includes("where source_type = ? and external_id = ?")
+        ) {
           const [channel, externalUserId] = values as [string, string];
           if (channel === "email") {
             const sender = emailSenders.get(externalUserId);
@@ -1176,6 +1184,7 @@ export function createTestEnv(options?: {
   kapsoWebhookMaxSkewSeconds?: string;
   chatMediaRetentionDays?: string;
   expenseIngestionEnqueueStatus?: number;
+  mobileApiTokens?: string;
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -1252,5 +1261,7 @@ export function createTestEnv(options?: {
     CHAT_MEDIA_RETENTION_DAYS: options?.chatMediaRetentionDays ?? "90",
     EMAIL_WORKER_INBOX: "recibos@misgastos.app",
     STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
+    MOBILE_API_TOKENS:
+      options?.mobileApiTokens ?? JSON.stringify({ "test-mobile-token": "cust_default" }),
   } as unknown as WorkerEnv;
 }

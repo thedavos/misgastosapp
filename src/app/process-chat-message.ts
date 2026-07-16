@@ -1,14 +1,16 @@
 import { Effect } from "effect";
-import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { fromPromise } from "@/app/effects";
 import {
   ChatMediaPersistenceError,
   ChannelSendError,
   ConversationStateError,
+  IntentContextResolveError,
+  IntentParseError,
   InvalidTransactionError,
   OcrExtractionError,
   type AppError,
 } from "@/app/errors";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -135,7 +137,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         if (!normalizedText) {
           if (imageAttachments.length > 0) {
             yield* fromPromise(
-              () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+              () =>
+                deps.channel.sendMessage({
+                  externalUserId: input.externalUserId,
+                  text: GUIDANCE_MESSAGE,
+                }),
               (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
             );
           }
@@ -264,7 +270,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const sourceText = combinedSegments.join("\n").trim();
       if (!sourceText) {
         yield* fromPromise(
-          () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+          () =>
+            deps.channel.sendMessage({
+              externalUserId: input.externalUserId,
+              text: GUIDANCE_MESSAGE,
+            }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
         );
         deps.logger.info("chat.ingest_no_transaction_guidance", {
@@ -293,9 +303,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             } satisfies IntentContext;
           },
           (cause) =>
-            new ConversationStateError({
+            new IntentContextResolveError({
               requestId: input.requestId,
-              operation: "get",
               cause,
             }),
         );
@@ -309,9 +318,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               requestId: input.requestId,
             }) as Promise<ParsedIntent>,
           (cause) =>
-            new ConversationStateError({
+            new IntentParseError({
               requestId: input.requestId,
-              operation: "get",
               cause,
             }),
         );
@@ -376,7 +384,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       if (ingestionResult._tag === "Left") {
         if (ingestionResult.left instanceof InvalidTransactionError) {
           yield* fromPromise(
-            () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+            () =>
+              deps.channel.sendMessage({
+                externalUserId: input.externalUserId,
+                text: GUIDANCE_MESSAGE,
+              }),
             (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
           return { categorized: false, guided: true };

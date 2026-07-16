@@ -14,6 +14,7 @@ export async function handleMobileIntentExecute(
   const resolvedRequest = await resolveMobileIntentRequest({
     request,
     userRepo: container.userRepo,
+    mobileApiTokens: env.MOBILE_API_TOKENS,
   });
 
   if (!resolvedRequest.ok) {

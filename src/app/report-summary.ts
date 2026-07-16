@@ -84,11 +84,7 @@ export function buildPeriodSummary(input: {
 
   const strongestMerchant = Array.from(topMerchant.entries()).sort((a, b) => b[1] - a[1])[0];
   const periodLabel =
-    input.periodKind === "day"
-      ? "hoy"
-      : input.periodKind === "week"
-        ? "esta semana"
-        : "este mes";
+    input.periodKind === "day" ? "hoy" : input.periodKind === "week" ? "esta semana" : "este mes";
 
   const lines = [
     `Resumen de ${periodLabel}:`,

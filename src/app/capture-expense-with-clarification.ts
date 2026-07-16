@@ -71,7 +71,8 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
             occurredAt: transaction.date,
             bank: transaction.bank,
             rawText: transaction.rawText,
-            createdVia: input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
+            createdVia:
+              input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
           }),
         (cause) =>
           new ExpensePersistenceError({

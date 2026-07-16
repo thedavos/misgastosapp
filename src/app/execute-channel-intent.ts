@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import type { AppError } from "@/app/errors";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -6,7 +7,6 @@ import type {
   ParsedIntent,
   UpdateLastExpenseIntentPayload,
 } from "@/domain/intent/entity";
-import type { AppError } from "@/app/errors";
 
 export type ExecuteChannelIntentDeps = {
   createExpenseFromIntent?: (input: {

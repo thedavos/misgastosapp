@@ -2,24 +2,78 @@ import { describe, expect, it, vi } from "vitest";
 import { resolveMobileIntentRequest } from "@/handlers/http/mobile-intent-request";
 import type { UserRepoPort } from "@/ports/user-repo.port";
 
-describe("resolve mobile intent request", () => {
-  it("returns invalid_json when the body is not valid json", async () => {
-    const request = new Request("https://example.com", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: "{",
-    });
+const ACTIVE_USER = {
+  id: "cust_1",
+  name: "David",
+  status: "ACTIVE" as const,
+  defaultCurrency: "PEN",
+  timezone: "America/Lima",
+  locale: "es-PE",
+  confidenceThreshold: 0.8,
+};
 
+const TOKENS = JSON.stringify({ "test-mobile-token": "cust_1" });
+
+function makeRequest(body: unknown, headers?: Record<string, string>) {
+  return new Request("https://example.com", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...headers,
+    },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
+describe("resolve mobile intent request", () => {
+  it("returns unauthorized when Authorization is missing", async () => {
     const result = await resolveMobileIntentRequest({
-      request,
+      request: makeRequest({ text: "hola" }),
       userRepo: {
         getById: vi.fn(),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
       } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected unauthorized");
+    expect(result.response.status).toBe(401);
+    expect(await result.response.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("returns unauthorized when Authorization token is invalid", async () => {
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest({ text: "hola" }, { authorization: "Bearer wrong-token" }),
+      userRepo: {
+        getById: vi.fn(),
+        findByChannelExternalId: vi.fn(),
+        getPrimaryExternalUserId: vi.fn(),
+        createChannelMapping: vi.fn(),
+      } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected unauthorized");
+    expect(result.response.status).toBe(401);
+    expect(await result.response.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("returns invalid_json when the body is not valid json", async () => {
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest("{", {
+        authorization: "Bearer test-mobile-token",
+      }),
+      userRepo: {
+        getById: vi.fn(),
+        findByChannelExternalId: vi.fn(),
+        getPrimaryExternalUserId: vi.fn(),
+        createChannelMapping: vi.fn(),
+      } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
     });
 
     expect(result.ok).toBe(false);
@@ -28,81 +82,78 @@ describe("resolve mobile intent request", () => {
     expect(await result.response.json()).toEqual({ error: "invalid_json" });
   });
 
-  it("returns userId_or_userId_and_text_required when required fields are missing", async () => {
-    const request = new Request("https://example.com", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ userId: "cust_1" }),
-    });
-
+  it("returns text_required when text is missing", async () => {
     const result = await resolveMobileIntentRequest({
-      request,
+      request: makeRequest({ userId: "cust_1" }, { authorization: "Bearer test-mobile-token" }),
       userRepo: {
         getById: vi.fn(),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
       } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
     });
 
     expect(result.ok).toBe(false);
-    if (result.ok) throw new Error("expected missing fields result");
+    if (result.ok) throw new Error("expected text_required");
     expect(result.response.status).toBe(400);
-    expect(await result.response.json()).toEqual({ error: "userId_and_text_required" });
+    expect(await result.response.json()).toEqual({ error: "text_required" });
   });
 
-  it("returns user_not_found when the user does not exist", async () => {
-    const request = new Request("https://example.com", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ userId: "cust_missing", text: "hola" }),
+  it("returns forbidden when body userId mismatches authenticated principal", async () => {
+    const getById = vi.fn();
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest(
+        { userId: "cust_other", text: "hola" },
+        { authorization: "Bearer test-mobile-token" },
+      ),
+      userRepo: {
+        getById,
+        findByChannelExternalId: vi.fn(),
+        getPrimaryExternalUserId: vi.fn(),
+        createChannelMapping: vi.fn(),
+      } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
     });
 
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected forbidden");
+    expect(result.response.status).toBe(403);
+    expect(await result.response.json()).toEqual({ error: "forbidden" });
+    expect(getById).not.toHaveBeenCalled();
+  });
+
+  it("returns unauthorized when authenticated principal is unknown", async () => {
     const result = await resolveMobileIntentRequest({
-      request,
+      request: makeRequest({ text: "hola" }, { authorization: "Bearer test-mobile-token" }),
       userRepo: {
         getById: vi.fn().mockResolvedValue(null),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
       } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
     });
 
     expect(result.ok).toBe(false);
-    if (result.ok) throw new Error("expected user_not_found result");
-    expect(result.response.status).toBe(404);
-    expect(await result.response.json()).toEqual({ error: "user_not_found" });
+    if (result.ok) throw new Error("expected unauthorized for unknown principal");
+    expect(result.response.status).toBe(401);
+    expect(await result.response.json()).toEqual({ error: "unauthorized" });
   });
 
-  it("returns normalized request data when the payload is valid", async () => {
-    const request = new Request("https://example.com", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ userId: " cust_1 ", text: " S/ 18 en Tambo " }),
-    });
-
+  it("returns normalized request data when auth and payload are valid", async () => {
     const result = await resolveMobileIntentRequest({
-      request,
+      request: makeRequest(
+        { text: " S/ 18 en Tambo " },
+        { authorization: "Bearer test-mobile-token" },
+      ),
       userRepo: {
-        getById: vi.fn().mockResolvedValue({
-          id: "cust_1",
-          name: "David",
-          status: "ACTIVE",
-          defaultCurrency: "PEN",
-          timezone: "America/Lima",
-          locale: "es-PE",
-          confidenceThreshold: 0.8,
-        }),
+        getById: vi.fn().mockResolvedValue(ACTIVE_USER),
         findByChannelExternalId: vi.fn(),
         getPrimaryExternalUserId: vi.fn(),
         createChannelMapping: vi.fn(),
       } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
     });
 
     expect(result.ok).toBe(true);
@@ -110,15 +161,27 @@ describe("resolve mobile intent request", () => {
     expect(result.value).toEqual({
       userId: "cust_1",
       text: "S/ 18 en Tambo",
-      user: {
-        id: "cust_1",
-        name: "David",
-        status: "ACTIVE",
-        defaultCurrency: "PEN",
-        timezone: "America/Lima",
-        locale: "es-PE",
-        confidenceThreshold: 0.8,
-      },
+      user: ACTIVE_USER,
     });
+  });
+
+  it("accepts matching body userId without changing principal identity", async () => {
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest(
+        { userId: "cust_1", text: "hola" },
+        { authorization: "Bearer test-mobile-token" },
+      ),
+      userRepo: {
+        getById: vi.fn().mockResolvedValue(ACTIVE_USER),
+        findByChannelExternalId: vi.fn(),
+        getPrimaryExternalUserId: vi.fn(),
+        createChannelMapping: vi.fn(),
+      } as unknown as UserRepoPort,
+      mobileApiTokens: TOKENS,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected success");
+    expect(result.value.userId).toBe("cust_1");
   });
 });

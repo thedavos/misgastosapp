@@ -2,12 +2,12 @@ import { Effect } from "effect";
 import type { WorkerEnv } from "types/env";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
-import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import {
   UserSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
 } from "@/app/errors";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { createContainer } from "@/composition/container";
 import { getEffectFailureMeta } from "@/utils/effect-failure";
 
@@ -93,8 +93,7 @@ export async function handleEmail(
     let userId: string | null = null;
     for (const senderCandidate of senderCandidates) {
       const resolvedUserId = yield* Effect.tryPromise({
-        try: () =>
-          container.userEmailSenderRepo.resolveUserIdBySenderEmail(senderCandidate),
+        try: () => container.userEmailSenderRepo.resolveUserIdBySenderEmail(senderCandidate),
         catch: (cause) =>
           new UserSenderLookupError({
             requestId,
