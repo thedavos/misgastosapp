@@ -79,6 +79,13 @@ export async function resolveMobileIntentRequest(input: {
     };
   }
 
+  if (user.status !== "ACTIVE") {
+    return {
+      ok: false,
+      response: Response.json({ error: "forbidden" }, { status: 403 }),
+    };
+  }
+
   return {
     ok: true,
     value: {

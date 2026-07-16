@@ -66,24 +66,6 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         return { handled: true };
       }
 
-      const discardedExpense = yield* fromPromise(
-        () =>
-          deps.expenseRepo.discard({
-            id: latestExpense.id,
-            userId: input.userId,
-          }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "discard",
-            cause,
-          }),
-      );
-
-      if (!discardedExpense) {
-        return { handled: true };
-      }
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -131,6 +113,24 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
             featureKey,
           }),
         );
+      }
+
+      const discardedExpense = yield* fromPromise(
+        () =>
+          deps.expenseRepo.discard({
+            id: latestExpense.id,
+            userId: input.userId,
+          }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "discard",
+            cause,
+          }),
+      );
+
+      if (!discardedExpense) {
+        return { handled: true };
       }
 
       yield* fromPromise(

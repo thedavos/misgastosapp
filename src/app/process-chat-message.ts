@@ -107,6 +107,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
     updateLastExpenseFromIntent: deps.updateLastExpenseFromIntent,
     deleteLastExpenseFromIntent: deps.deleteLastExpenseFromIntent,
     getReportFromIntent: deps.getReportFromIntent,
+    channel: deps.channel,
   });
 
   return function processChatMessage(input: {
@@ -165,6 +166,13 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             userId: input.userId,
             channel: input.channel,
           });
+
+          const greetingOnly =
+            !normalizedText ||
+            /^(hola|buenas|ayuda|help|info|informaci[oó]n)[!?.]*$/i.test(normalizedText);
+          if (greetingOnly) {
+            return { categorized: false, guided: true };
+          }
         }
       }
 

@@ -138,4 +138,39 @@ describe("d1 user repo", () => {
     });
     expect(mapping.id).toBeTruthy();
   });
+
+  it("falls back to PEN and America/Lima when a legacy row has empty defaults", async () => {
+    const db = {
+      prepare(sql: string) {
+        const query = sql.replace(/\s+/g, " ").trim().toLowerCase();
+        return {
+          bind(..._values: unknown[]) {
+            return {
+              async first<T>() {
+                if (query.includes("from users where id = ?")) {
+                  return {
+                    id: "user_legacy",
+                    name: "Legacy",
+                    status: "ACTIVE",
+                    default_currency: "",
+                    timezone: "",
+                    locale: "",
+                    confidence_threshold: 0.75,
+                    onboarding_completed_at: null,
+                  } as T;
+                }
+                return null;
+              },
+            };
+          },
+        };
+      },
+    } as D1Database;
+
+    const repo = createD1UserRepo({ DB: db } as never);
+    const user = await repo.getById("user_legacy");
+
+    expect(user?.defaultCurrency).toBe("PEN");
+    expect(user?.timezone).toBe("America/Lima");
+  });
 });

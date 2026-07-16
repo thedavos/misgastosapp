@@ -122,6 +122,24 @@ describe("resolve mobile intent request", () => {
     expect(await result.response.json()).toEqual({ error: "unauthorized" });
   });
 
+  it("returns forbidden when authenticated user is inactive", async () => {
+    const result = await resolveMobileIntentRequest({
+      request: makeRequest({ text: "hola" }, { authorization: "Bearer test-mobile-token" }),
+      userRepo: userRepo({
+        getById: vi.fn().mockResolvedValue({
+          ...ACTIVE_USER,
+          status: "INACTIVE",
+        }),
+      }),
+      mobileApiTokens: TOKENS,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected forbidden for inactive user");
+    expect(result.response.status).toBe(403);
+    expect(await result.response.json()).toEqual({ error: "forbidden" });
+  });
+
   it("returns normalized request data when auth and payload are valid", async () => {
     const result = await resolveMobileIntentRequest({
       request: makeRequest(
