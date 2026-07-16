@@ -13,6 +13,7 @@ import {
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
+import { DEFAULT_CATEGORIES } from "@/domain/category/defaults";
 import { isValidExpenseCandidate } from "@/domain/expense/rules";
 import type { AiPort } from "@/ports/ai.port";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
@@ -165,6 +166,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
             amount: expense.amount,
             currency: expense.currency,
             merchant: expense.merchant,
+            categories: [...DEFAULT_CATEGORIES],
           }),
         (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
       );

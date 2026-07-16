@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { formatCategoryRetryMessage } from "@/app/ask-category-message";
 import { createCompleteExpenseFlow } from "@/app/complete-expense-flow";
 import { fromPromise } from "@/app/effects";
 import {
@@ -152,7 +153,7 @@ export function createHandleUserReply(deps: HandleUserReplyDeps) {
           () =>
             deps.channel.sendMessage({
               externalUserId: message.externalUserId,
-              text: "No me quedó clara la categoría. ¿Puedes elegir una más específica?",
+              text: formatCategoryRetryMessage(categories),
             }),
           (cause) => new ChannelSendError({ cause }),
         );

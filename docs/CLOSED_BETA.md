@@ -103,7 +103,8 @@ Comentario libre:
 
 - [ ] DAV-81/82/83/84 security gates green in CI
 - [ ] Kapso webhook signature mode `strict` in production
-- [ ] `MOBILE_API_TOKENS` configured if mobile API is exposed
+- [ ] Secrets configured: `KAPSO_API_KEY`, `KAPSO_WEBHOOK_SECRET`, and `MOBILE_API_TOKENS` if mobile is exposed
+- [ ] Production D1 on MVP schema (migrations `011`–`019`); current remote may still be legacy `customers`/`expenses` only
 - [ ] Migration `018_onboarding_and_otros_category.sql` applied
 - [ ] Migration `019_mobile_channel.sql` applied (mobile channel + `channels.mobile`)
 - [ ] At least N beta users active in Peru (product sets N)

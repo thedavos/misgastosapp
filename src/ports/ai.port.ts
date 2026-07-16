@@ -20,6 +20,7 @@ export interface MessageGenerationInput {
   currency?: string;
   merchant?: string;
   categoryName?: string;
+  categories?: Array<{ id: string; name: string; slug: string }>;
 }
 
 export interface AiPort {
