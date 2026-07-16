@@ -3,9 +3,11 @@ import type { WorkerEnv } from "types/env";
 import { emailToAiInput } from "@/adapters/ai/cloudflare-ai.adapter";
 import { parseForwardedEmail } from "@/adapters/email/parser";
 import {
+  ChannelDisabledError,
   UserSenderLookupError,
   EmailParseFailedError,
   MissingDefaultUserError,
+  SubscriptionFeatureBlockedError,
 } from "@/app/errors";
 import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { createContainer } from "@/composition/container";
@@ -224,14 +226,32 @@ export async function handleEmail(
       return;
     }
 
-    yield* container.captureExpenseWithClarification({
-      userId,
-      sourceText,
-      channel: "whatsapp",
-      createdVia: "email",
-      externalUserId: primaryExternalUserId,
-      requestId,
-    });
+    const captureResult = yield* container
+      .captureExpenseWithClarification({
+        userId,
+        sourceText,
+        channel: "whatsapp",
+        createdVia: "email",
+        externalUserId: primaryExternalUserId,
+        requestId,
+      })
+      .pipe(Effect.either);
+
+    if (captureResult._tag === "Left") {
+      if (
+        captureResult.left instanceof ChannelDisabledError ||
+        captureResult.left instanceof SubscriptionFeatureBlockedError
+      ) {
+        container.logger.warn("email.capture_authorization_skipped", {
+          requestId,
+          userId,
+          error: captureResult.left._tag,
+        });
+        return;
+      }
+
+      return yield* Effect.fail(captureResult.left);
+    }
 
     container.logger.info("email.done", { requestId, userId, mode: "fallback_clarification" });
   });

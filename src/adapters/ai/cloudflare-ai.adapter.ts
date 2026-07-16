@@ -3,6 +3,7 @@ import type { WorkerEnv } from "types/env";
 import { buildClassifyCategoryPrompt } from "@/adapters/ai/prompts/classify-category.prompt";
 import { buildExtractTransactionPrompt } from "@/adapters/ai/prompts/extract-transaction.prompt";
 import { buildGenerateMessagePrompt } from "@/adapters/ai/prompts/generate-message.prompt";
+import { formatAskCategoryMessage } from "@/app/ask-category-message";
 import type {
   AiPort,
   CategoryClassificationInput,
@@ -201,7 +202,12 @@ export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
       }
 
       if (input.kind === "ask_category") {
-        return `Hola, vi este gasto en ${input.merchant ?? "un comercio"}. ¿Qué categoría le pongo?`;
+        return formatAskCategoryMessage({
+          amount: input.amount,
+          currency: input.currency,
+          merchant: input.merchant,
+          categories: input.categories,
+        });
       }
       return `Listo, ya lo guardé en ${input.categoryName ?? "la categoría indicada"}.`;
     },

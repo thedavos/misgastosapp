@@ -1,3 +1,4 @@
+import { formatAskCategoryMessage } from "@/app/ask-category-message";
 import type {
   AiPort,
   CategoryClassificationInput,
@@ -25,7 +26,12 @@ export function createInflectionAiAdapter(config: InflectionClientConfig): AiPor
     },
     async generateMessage(input: MessageGenerationInput): Promise<string> {
       if (input.kind === "ask_category") {
-        return "Hola, ¿qué categoría le ponemos a este gasto?";
+        return formatAskCategoryMessage({
+          amount: input.amount,
+          currency: input.currency,
+          merchant: input.merchant,
+          categories: input.categories,
+        });
       }
       return "¡Listo! Ya quedó registrado.";
     },
