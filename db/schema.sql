@@ -58,7 +58,7 @@ CREATE TABLE users (
   locale TEXT NOT NULL DEFAULT 'es-PE',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
-, status TEXT NOT NULL DEFAULT 'ACTIVE', confidence_threshold REAL NOT NULL DEFAULT 0.75);
+, status TEXT NOT NULL DEFAULT 'ACTIVE', confidence_threshold REAL NOT NULL DEFAULT 0.75, onboarding_completed_at TEXT);
 CREATE TABLE user_sources (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

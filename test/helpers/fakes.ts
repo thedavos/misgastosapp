@@ -29,6 +29,7 @@ type CustomerRow = {
   timezone: string;
   locale: string;
   confidence_threshold: number;
+  onboarding_completed_at: string | null;
 };
 
 type CustomerChannelRow = {
@@ -293,6 +294,7 @@ function createMemoryD1Database(options?: {
       timezone: "America/Lima",
       locale: "es-PE",
       confidence_threshold: 0.75,
+      onboarding_completed_at: "2026-01-01T00:00:00.000Z",
     },
   ];
   for (const customer of options?.customers ?? defaultCustomers) {
@@ -513,7 +515,9 @@ function createMemoryD1Database(options?: {
           return { success: true };
         }
 
-        if (query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")) {
+        if (
+          query.startsWith("update transactions set status = ?, category_id = ?, updated_at = ?")
+        ) {
           const [status, categoryId, updatedAt, id, userId] = values as [
             string,
             string | null,
@@ -668,7 +672,11 @@ function createMemoryD1Database(options?: {
           return { success: true, meta: { changes: 1 } };
         }
 
-        if (query.startsWith("insert or replace into user_sources")) {
+        if (
+          query.startsWith("insert or replace into user_sources") ||
+          query.startsWith("insert or ignore into user_sources") ||
+          query.startsWith("insert into user_sources")
+        ) {
           const [id, userId, channel, externalUserId, isPrimary] = values as [
             string,
             string,
@@ -678,13 +686,81 @@ function createMemoryD1Database(options?: {
             string,
             string,
           ];
-          customerChannels.set(`${channel}:${externalUserId}`, {
+          const key = `${channel}:${externalUserId}`;
+          const alreadyMapped = customerChannels.has(key);
+          if (alreadyMapped && query.startsWith("insert or ignore into user_sources")) {
+            return { success: true, meta: { changes: 0 } };
+          }
+          if (alreadyMapped && query.startsWith("insert into user_sources")) {
+            throw new Error(
+              "UNIQUE constraint failed: user_sources.source_type, user_sources.external_id",
+            );
+          }
+          customerChannels.set(key, {
             id,
             customer_id: userId,
             channel,
             external_user_id: externalUserId,
             is_primary: isPrimary,
           });
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("delete from users where id = ?")) {
+          const [id] = values as [string];
+          customers.delete(id);
+          return { success: true, meta: { changes: 1 } };
+        }
+
+        if (query.startsWith("insert into users")) {
+          const [id, name, defaultCurrency, timezone, locale, createdAt, updatedAt] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+          ];
+          customers.set(id, {
+            id,
+            name,
+            status: "ACTIVE",
+            default_currency: defaultCurrency,
+            timezone,
+            locale,
+            confidence_threshold: 0.75,
+            onboarding_completed_at: null,
+          });
+          void createdAt;
+          void updatedAt;
+          return { success: true };
+        }
+
+        if (query.startsWith("insert into user_channel_settings")) {
+          const [id, userId, createdAt, updatedAt] = values as [string, string, string, string];
+          channelSettings.set(`${userId}:whatsapp`, {
+            id,
+            customer_id: userId,
+            channel_id: "whatsapp",
+            enabled: 1,
+            is_primary: 1,
+            config_json: null,
+          });
+          void createdAt;
+          void updatedAt;
+          return { success: true };
+        }
+
+        if (query.startsWith("update users set onboarding_completed_at = ?")) {
+          const [completedAt, updatedAt, userId] = values as [string, string, string];
+          const current = customers.get(userId);
+          if (!current || current.onboarding_completed_at) return { success: true };
+          customers.set(userId, {
+            ...current,
+            onboarding_completed_at: completedAt,
+          });
+          void updatedAt;
           return { success: true };
         }
 
@@ -835,7 +911,9 @@ function createMemoryD1Database(options?: {
         ) {
           const [userId, excludedStatus] = values as [string, string];
           const row = Array.from(expenses.values())
-            .filter((expense) => expense.customer_id === userId && expense.status !== excludedStatus)
+            .filter(
+              (expense) => expense.customer_id === userId && expense.status !== excludedStatus,
+            )
             .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
           if (!row) return null;
           return {
@@ -876,9 +954,7 @@ function createMemoryD1Database(options?: {
         }
 
         if (
-          query.includes(
-            "from categories_v2 where id = ? and (user_id = ? or user_id is null)",
-          )
+          query.includes("from categories_v2 where id = ? and (user_id = ? or user_id is null)")
         ) {
           const [id, userId] = values as [string, string];
           const category = categories.get(id);
@@ -911,7 +987,10 @@ function createMemoryD1Database(options?: {
           return null;
         }
 
-        if (query.includes("from user_sources") && query.includes("where user_id = ? and source_type = ? and is_primary = 1")) {
+        if (
+          query.includes("from user_sources") &&
+          query.includes("where user_id = ? and source_type = ? and is_primary = 1")
+        ) {
           const [userId, channel] = values as [string, string];
           const match = Array.from(customerChannels.values()).find(
             (row) => row.customer_id === userId && row.channel === channel && row.is_primary === 1,
@@ -920,7 +999,10 @@ function createMemoryD1Database(options?: {
           return { external_user_id: match.external_user_id } as T;
         }
 
-        if (query.includes("from user_sources") && query.includes("where source_type = ? and external_id = ?")) {
+        if (
+          query.includes("from user_sources") &&
+          query.includes("where source_type = ? and external_id = ?")
+        ) {
           const [channel, externalUserId] = values as [string, string];
           if (channel === "email") {
             const sender = emailSenders.get(externalUserId);
@@ -956,6 +1038,15 @@ function createMemoryD1Database(options?: {
         ) {
           const [userId, channelId] = values as [string, string];
           return (channelSettings.get(`${userId}:${channelId}`) as T | undefined) ?? null;
+        }
+
+        if (
+          query.includes("from user_channel_settings") &&
+          query.includes("where user_id = ? and channel_id = 'whatsapp'")
+        ) {
+          const [userId] = values as [string];
+          const setting = channelSettings.get(`${userId}:whatsapp`);
+          return (setting ? ({ id: setting.id } as T) : null) as T | null;
         }
 
         if (
@@ -1176,6 +1267,7 @@ export function createTestEnv(options?: {
   kapsoWebhookMaxSkewSeconds?: string;
   chatMediaRetentionDays?: string;
   expenseIngestionEnqueueStatus?: number;
+  mobileApiTokens?: string;
 }): WorkerEnv {
   const promptsKv = createMemoryKvNamespace();
   void promptsKv.put("SYSTEM_PROMPT", "Extrae transacciones con precision");
@@ -1252,5 +1344,7 @@ export function createTestEnv(options?: {
     CHAT_MEDIA_RETENTION_DAYS: options?.chatMediaRetentionDays ?? "90",
     EMAIL_WORKER_INBOX: "recibos@misgastos.app",
     STRICT_POLICY_MODE: options?.strictPolicyMode ?? "true",
+    MOBILE_API_TOKENS:
+      options?.mobileApiTokens ?? JSON.stringify({ "test-mobile-token": "cust_default" }),
   } as unknown as WorkerEnv;
 }

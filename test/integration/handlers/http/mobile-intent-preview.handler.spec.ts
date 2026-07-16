@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { handleFetch } from "@/handlers/http/router.handler";
 
 describe("mobile intent preview handler integration", () => {
-  it("returns a parsed intent preview for mobile input", async () => {
+  it("rejects missing authentication", async () => {
     const env = createTestEnv();
 
     const response = await handleFetch(
@@ -13,7 +13,28 @@ describe("mobile intent preview handler integration", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          userId: "cust_default",
+          text: "S/ 18 en Tambo",
+        }),
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("returns a parsed intent preview for mobile input", async () => {
+    const env = createTestEnv();
+
+    const response = await handleFetch(
+      new Request("https://example.com/api/mobile/intents/preview", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
+        },
+        body: JSON.stringify({
           text: "S/ 18 en Tambo",
         }),
       }),
@@ -24,6 +45,7 @@ describe("mobile intent preview handler integration", () => {
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.sourceType).toBe("mobile");
+    expect(payload.userId).toBe("cust_default");
     expect(payload.parsedIntent.name).toBe("create_expense");
   });
 });

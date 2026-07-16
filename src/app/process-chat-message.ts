@@ -1,14 +1,18 @@
 import { Effect } from "effect";
-import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { fromPromise } from "@/app/effects";
 import {
   ChatMediaPersistenceError,
   ChannelSendError,
   ConversationStateError,
+  IntentContextResolveError,
+  IntentParseError,
   InvalidTransactionError,
   OcrExtractionError,
+  UserPersistenceError,
   type AppError,
 } from "@/app/errors";
+import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
+import { WHATSAPP_ONBOARDING_MESSAGE } from "@/app/onboarding";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -24,6 +28,7 @@ import type { ChatMediaRepoPort } from "@/ports/chat-media-repo.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { LoggerPort } from "@/ports/logger.port";
 import type { OcrPort } from "@/ports/ocr.port";
+import type { UserRepoPort } from "@/ports/user-repo.port";
 import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
@@ -38,6 +43,7 @@ export type ProcessChatMessageDeps = {
   ocr: OcrPort;
   chatMediaRepo: ChatMediaRepoPort;
   logger: LoggerPort;
+  userRepo?: UserRepoPort;
   fallbackExpenseCapture: (input: {
     userId: string;
     sourceText: string;
@@ -102,6 +108,7 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
     updateLastExpenseFromIntent: deps.updateLastExpenseFromIntent,
     deleteLastExpenseFromIntent: deps.deleteLastExpenseFromIntent,
     getReportFromIntent: deps.getReportFromIntent,
+    channel: deps.channel,
   });
 
   return function processChatMessage(input: {
@@ -120,6 +127,58 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const attachments = input.attachments ?? [];
       const imageAttachments = attachments.filter((attachment) => attachment.type === "image");
 
+      if (deps.userRepo && input.channel === "whatsapp") {
+        const user = yield* fromPromise(
+          () => deps.userRepo!.getById(input.userId),
+          (cause) =>
+            new UserPersistenceError({
+              requestId: input.requestId,
+              operation: "getById",
+              cause,
+            }),
+        );
+
+        if (user && !user.onboardingCompletedAt) {
+          // Mark complete before send so retries cannot duplicate the onboarding message
+          // if markOnboardingCompleted fails after a successful send.
+          yield* fromPromise(
+            () =>
+              deps.userRepo!.markOnboardingCompleted({
+                userId: input.userId,
+                completedAt: new Date().toISOString(),
+              }),
+            (cause) =>
+              new UserPersistenceError({
+                requestId: input.requestId,
+                operation: "markOnboardingCompleted",
+                cause,
+              }),
+          );
+
+          yield* fromPromise(
+            () =>
+              deps.channel.sendMessage({
+                externalUserId: input.externalUserId,
+                text: WHATSAPP_ONBOARDING_MESSAGE,
+              }),
+            (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+          );
+
+          deps.logger.info("chat.onboarding_sent", {
+            requestId: input.requestId,
+            userId: input.userId,
+            channel: input.channel,
+          });
+
+          const greetingOnly =
+            !normalizedText ||
+            /^(hola|buenas|ayuda|help|info|informaci[oó]n)[!?.]*$/i.test(normalizedText);
+          if (greetingOnly) {
+            return { categorized: false, guided: true };
+          }
+        }
+      }
+
       const pendingState = yield* fromPromise(
         () =>
           deps.conversationState.get({
@@ -135,7 +194,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
         if (!normalizedText) {
           if (imageAttachments.length > 0) {
             yield* fromPromise(
-              () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+              () =>
+                deps.channel.sendMessage({
+                  externalUserId: input.externalUserId,
+                  text: GUIDANCE_MESSAGE,
+                }),
               (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
             );
           }
@@ -179,15 +242,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               });
             }
 
-            if (!attachment.url) return null;
-
-            const response = await fetch(attachment.url);
-            if (!response.ok) return null;
-            const buffer = await response.arrayBuffer();
-            return {
-              data: new Uint8Array(buffer),
-              mimeType: attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
-            };
+            // Do not fetch arbitrary remote URLs without an allowlisted resolver (SSRF).
+            return null;
           },
           (cause) => new OcrExtractionError({ requestId: input.requestId, cause }),
         );
@@ -264,7 +320,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       const sourceText = combinedSegments.join("\n").trim();
       if (!sourceText) {
         yield* fromPromise(
-          () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+          () =>
+            deps.channel.sendMessage({
+              externalUserId: input.externalUserId,
+              text: GUIDANCE_MESSAGE,
+            }),
           (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
         );
         deps.logger.info("chat.ingest_no_transaction_guidance", {
@@ -293,9 +353,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
             } satisfies IntentContext;
           },
           (cause) =>
-            new ConversationStateError({
+            new IntentContextResolveError({
               requestId: input.requestId,
-              operation: "get",
               cause,
             }),
         );
@@ -309,9 +368,8 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
               requestId: input.requestId,
             }) as Promise<ParsedIntent>,
           (cause) =>
-            new ConversationStateError({
+            new IntentParseError({
               requestId: input.requestId,
-              operation: "get",
               cause,
             }),
         );
@@ -376,7 +434,11 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
       if (ingestionResult._tag === "Left") {
         if (ingestionResult.left instanceof InvalidTransactionError) {
           yield* fromPromise(
-            () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: GUIDANCE_MESSAGE }),
+            () =>
+              deps.channel.sendMessage({
+                externalUserId: input.externalUserId,
+                text: GUIDANCE_MESSAGE,
+              }),
             (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
           );
           return { categorized: false, guided: true };

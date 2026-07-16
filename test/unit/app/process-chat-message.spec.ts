@@ -529,4 +529,159 @@ describe("process chat message", () => {
     expect(createMedia).toHaveBeenCalledTimes(1);
     expect(linkExpense).toHaveBeenCalledWith({ id: "media_1", expenseId: "exp_2" });
   });
+
+  it("maps resolveIntentContext failures to IntentContextResolveError", async () => {
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue(null),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["fallbackExpenseCapture"],
+      handleUserReply: vi.fn(),
+      parseUserIntent: vi.fn(),
+      resolveIntentContext: vi.fn().mockRejectedValue(new Error("kv_down")),
+    });
+
+    const exit = await Effect.runPromiseExit(
+      processChatMessage({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        providerEventId: "evt_ctx_fail",
+        text: "S/ 10 en Tambo",
+      }),
+    );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag !== "Failure") throw new Error("expected failure");
+    const failure = String(exit.cause);
+    expect(failure).toContain("IntentContextResolveError");
+    expect(failure).not.toContain("ConversationStateError");
+  });
+
+  it("maps parseUserIntent failures to IntentParseError", async () => {
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue(null),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["fallbackExpenseCapture"],
+      handleUserReply: vi.fn(),
+      parseUserIntent: vi.fn().mockRejectedValue(new Error("model_timeout")),
+      resolveIntentContext: vi.fn().mockResolvedValue({
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+      }),
+    });
+
+    const exit = await Effect.runPromiseExit(
+      processChatMessage({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        providerEventId: "evt_parse_fail",
+        text: "S/ 10 en Tambo",
+      }),
+    );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag !== "Failure") throw new Error("expected failure");
+    const failure = String(exit.cause);
+    expect(failure).toContain("IntentParseError");
+    expect(failure).not.toContain("ConversationStateError");
+  });
+
+  it("keeps conversation-state read failures as ConversationStateError", async () => {
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockRejectedValue(new Error("kv_get_failed")),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["fallbackExpenseCapture"],
+      handleUserReply: vi.fn(),
+    });
+
+    const exit = await Effect.runPromiseExit(
+      processChatMessage({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        providerEventId: "evt_kv_fail",
+        text: "hola",
+      }),
+    );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag !== "Failure") throw new Error("expected failure");
+    expect(String(exit.cause)).toContain("ConversationStateError");
+  });
 });

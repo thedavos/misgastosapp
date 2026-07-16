@@ -7,23 +7,24 @@ import { createLogger } from "@/adapters/observability";
 import { createD1CategoryRepo } from "@/adapters/persistence/d1/category.repo";
 import { createD1ChannelPolicyRepo } from "@/adapters/persistence/d1/channel-policy.repo";
 import { createD1ChatMediaRepo } from "@/adapters/persistence/d1/chat-media.repo";
-import { createD1UserEmailSenderRepo } from "@/adapters/persistence/d1/user-email-sender.repo";
-import { createD1UserRepo } from "@/adapters/persistence/d1/user.repo";
 import { createD1ExpenseRepo } from "@/adapters/persistence/d1/expense.repo";
 import { createD1FeaturePolicyRepo } from "@/adapters/persistence/d1/feature-policy.repo";
 import { createD1SubscriptionRepo } from "@/adapters/persistence/d1/subscription.repo";
+import { createD1UserEmailSenderRepo } from "@/adapters/persistence/d1/user-email-sender.repo";
+import { createD1UserRepo } from "@/adapters/persistence/d1/user.repo";
 import { createD1WebhookEventRepo } from "@/adapters/persistence/d1/webhook-event.repo";
 import { createKvConversationStateRepo } from "@/adapters/persistence/kv/conversation-state.repo";
 import { createAuthorizeChannel } from "@/app/authorize-channel";
+import { createCaptureExpenseWithClarification } from "@/app/capture-expense-with-clarification";
 import { createCreateExpenseFromIntent } from "@/app/create-expense-from-intent";
 import { createDeleteLastExpenseFromIntent } from "@/app/delete-last-expense-from-intent";
+import { createFallbackExpenseCapture } from "@/app/fallback-expense-capture";
 import { createGetReportFromIntent } from "@/app/get-report-from-intent";
 import { createHandleUserReply } from "@/app/handle-user-reply";
-import { createCaptureExpenseWithClarification } from "@/app/capture-expense-with-clarification";
-import { createFallbackExpenseCapture } from "@/app/fallback-expense-capture";
 import { createParseUserIntent } from "@/app/parse-user-intent";
 import { createProcessChatMessage } from "@/app/process-chat-message";
 import { createUpdateLastExpenseFromIntent } from "@/app/update-last-expense-from-intent";
+import { isAllowedKapsoMediaUrl } from "@/utils/url/isAllowedKapsoMediaUrl";
 
 export function createContainer(
   env: WorkerEnv,
@@ -101,19 +102,32 @@ export function createContainer(
 
     if (!input.attachment.url) return null;
 
-    const headers = new Headers();
-    if (input.channel === "whatsapp" && env.KAPSO_API_KEY) {
-      headers.set("Authorization", `Bearer ${env.KAPSO_API_KEY}`);
+    if (input.channel === "whatsapp") {
+      if (!isAllowedKapsoMediaUrl(input.attachment.url, env)) {
+        logger.warn("chat.media_url_blocked", {
+          requestId,
+          channel: input.channel,
+        });
+        return null;
+      }
+
+      const headers = new Headers();
+      if (env.KAPSO_API_KEY) {
+        headers.set("Authorization", `Bearer ${env.KAPSO_API_KEY}`);
+      }
+
+      const firstResponse = await fetch(input.attachment.url, { headers });
+      const response = !firstResponse.ok ? await fetch(input.attachment.url) : firstResponse;
+
+      if (!response.ok) return null;
+      const buffer = await response.arrayBuffer();
+      return {
+        data: new Uint8Array(buffer),
+        mimeType: input.attachment.mimeType ?? response.headers.get("content-type") ?? undefined,
+      };
     }
 
-    const firstResponse = await fetch(input.attachment.url, {
-      headers,
-    });
-    const response =
-      !firstResponse.ok && input.channel === "whatsapp"
-        ? await fetch(input.attachment.url)
-        : firstResponse;
-
+    const response = await fetch(input.attachment.url);
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
     return {
@@ -150,6 +164,7 @@ export function createContainer(
     ocr,
     chatMediaRepo,
     logger,
+    userRepo,
     mediaRetentionDays: env.CHAT_MEDIA_RETENTION_DAYS,
     fallbackExpenseCapture,
     handleUserReply,
@@ -162,8 +177,8 @@ export function createContainer(
       const user = await userRepo.getById(userId);
       if (!user) return null;
       return {
-        timezone: user.timezone,
-        defaultCurrency: user.defaultCurrency,
+        timezone: user.timezone || "America/Lima",
+        defaultCurrency: user.defaultCurrency || "PEN",
       };
     },
     resolveAttachmentData: telegramAttachmentResolver,

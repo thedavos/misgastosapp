@@ -198,8 +198,8 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
     },
 
     async verifyWebhook(input: { headers: Headers; rawBody: string }): Promise<boolean> {
-      const expected = env.KAPSO_WEBHOOK_SECRET;
-      if (!expected) return true;
+      const expected = env.KAPSO_WEBHOOK_SECRET?.trim();
+      if (!expected) return false;
 
       const providedRaw = input.headers.get("x-kapso-signature");
       const providedSignature = parseSignatureHeader(providedRaw);
@@ -226,7 +226,10 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
       if (isHmacValid) return true;
       if (signatureMode === "strict") return false;
 
-      return providedRaw === expected;
+      if (!providedRaw) return false;
+      const providedBytes = new TextEncoder().encode(providedRaw);
+      const expectedBytes = new TextEncoder().encode(expected);
+      return constantTimeEquals(providedBytes, expectedBytes);
     },
   };
 }

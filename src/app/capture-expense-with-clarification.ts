@@ -61,54 +61,6 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
         return yield* Effect.fail(new InvalidTransactionError({ requestId: input.requestId }));
       }
 
-      const expense = yield* fromPromise(
-        () =>
-          deps.expenseRepo.createExpenseRecord({
-            userId: input.userId,
-            amount: transaction.amount,
-            currency: transaction.currency,
-            merchant: transaction.merchant,
-            occurredAt: transaction.date,
-            bank: transaction.bank,
-            rawText: transaction.rawText,
-            createdVia: input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
-          }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "createExpenseRecord",
-            cause,
-          }),
-      );
-
-      yield* fromPromise(
-        () =>
-          deps.conversationState.put({
-            userId: input.userId,
-            channel: input.channel,
-            externalUserId: input.externalUserId,
-            expenseId: expense.id,
-            createdAt: new Date().toISOString(),
-          }),
-        (cause) =>
-          new ConversationStateError({
-            requestId: input.requestId,
-            operation: "put",
-            cause,
-          }),
-      );
-
-      const message = yield* fromPromise(
-        () =>
-          deps.ai.generateMessage({
-            kind: "ask_category",
-            amount: expense.amount,
-            currency: expense.currency,
-            merchant: expense.merchant,
-          }),
-        (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
-      );
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -167,6 +119,55 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
           }),
         );
       }
+
+      const expense = yield* fromPromise(
+        () =>
+          deps.expenseRepo.createExpenseRecord({
+            userId: input.userId,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            merchant: transaction.merchant,
+            occurredAt: transaction.date,
+            bank: transaction.bank,
+            rawText: transaction.rawText,
+            createdVia:
+              input.createdVia ?? (input.channel as "whatsapp" | "email" | "mobile" | "telegram"),
+          }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "createExpenseRecord",
+            cause,
+          }),
+      );
+
+      yield* fromPromise(
+        () =>
+          deps.conversationState.put({
+            userId: input.userId,
+            channel: input.channel,
+            externalUserId: input.externalUserId,
+            expenseId: expense.id,
+            createdAt: new Date().toISOString(),
+          }),
+        (cause) =>
+          new ConversationStateError({
+            requestId: input.requestId,
+            operation: "put",
+            cause,
+          }),
+      );
+
+      const message = yield* fromPromise(
+        () =>
+          deps.ai.generateMessage({
+            kind: "ask_category",
+            amount: expense.amount,
+            currency: expense.currency,
+            merchant: expense.merchant,
+          }),
+        (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
+      );
 
       yield* fromPromise(
         () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),

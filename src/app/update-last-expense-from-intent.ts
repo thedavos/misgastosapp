@@ -75,32 +75,6 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         return { handled: true };
       }
 
-      const updatedExpense = yield* fromPromise(
-        () =>
-          deps.expenseRepo.update({
-            id: latestExpense.id,
-            userId: input.userId,
-            amount:
-              input.payload.patch.amountMinor !== undefined
-                ? input.payload.patch.amountMinor / 100
-                : latestExpense.amount,
-            currency: input.payload.patch.currency ?? latestExpense.currency,
-            merchant: input.payload.patch.merchant ?? latestExpense.merchant,
-            occurredAt: input.payload.patch.occurredAt ?? latestExpense.occurredAt,
-            rawText: latestExpense.rawText,
-          }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "update",
-            cause,
-          }),
-      );
-
-      if (!updatedExpense) {
-        return { handled: true };
-      }
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -148,6 +122,32 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
             featureKey,
           }),
         );
+      }
+
+      const updatedExpense = yield* fromPromise(
+        () =>
+          deps.expenseRepo.update({
+            id: latestExpense.id,
+            userId: input.userId,
+            amount:
+              input.payload.patch.amountMinor !== undefined
+                ? input.payload.patch.amountMinor / 100
+                : latestExpense.amount,
+            currency: input.payload.patch.currency ?? latestExpense.currency,
+            merchant: input.payload.patch.merchant ?? latestExpense.merchant,
+            occurredAt: input.payload.patch.occurredAt ?? latestExpense.occurredAt,
+            rawText: latestExpense.rawText,
+          }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "update",
+            cause,
+          }),
+      );
+
+      if (!updatedExpense) {
+        return { handled: true };
       }
 
       yield* fromPromise(

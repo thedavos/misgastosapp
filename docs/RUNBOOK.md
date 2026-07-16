@@ -23,6 +23,7 @@ wrangler d1 execute misgastos --file db/migrations/014_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/015_backfill_user_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/016_retire_legacy_support_tables.sql
 wrangler d1 execute misgastos --file db/migrations/017_retire_legacy_expense_tables.sql
+wrangler d1 execute misgastos --file db/migrations/018_onboarding_and_otros_category.sql
 ```
 
 ### KV namespaces
@@ -51,9 +52,12 @@ wrangler secret put TELEGRAM_CHAT_ID
 wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put KAPSO_API_KEY
 wrangler secret put KAPSO_WEBHOOK_SECRET
+wrangler secret put MOBILE_API_TOKENS
 wrangler secret put SENTRY_DSN
 wrangler secret put SENTRY_RELEASE
 ```
+
+`MOBILE_API_TOKENS` is a JSON map of opaque Bearer tokens to user ids, for example `{"tok_abc":"user_uuid"}`.
 
 ## 3) Configuración de vars
 
@@ -152,3 +156,7 @@ wrangler tail misgastosapp
 
 - Reaplica migración `db/migrations/001_init.sql`.
 - Verifica binding `DB` en environment activo.
+
+## Closed beta
+
+See `docs/CLOSED_BETA.md` for enable/suspend flows, metrics, feedback template, and go/no-go checklist.

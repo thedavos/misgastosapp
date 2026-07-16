@@ -1,4 +1,5 @@
 import type { WorkerEnv } from "types/env";
+import { DEFAULT_CATEGORIES, FALLBACK_CATEGORY } from "@/domain/category/defaults";
 import type { Category } from "@/domain/category/entity";
 import type { CategoryRepoPort } from "@/ports/category-repo.port";
 
@@ -7,13 +8,6 @@ type CategoryRow = {
   name: string;
   slug: string;
 };
-
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: "cat_food", name: "Comida", slug: "comida" },
-  { id: "cat_transport", name: "Transporte", slug: "transporte" },
-  { id: "cat_shopping", name: "Compras", slug: "compras" },
-  { id: "cat_services", name: "Servicios", slug: "servicios" },
-];
 
 function normalizeName(name: string): string {
   return name.trim().toLowerCase();
@@ -30,7 +24,7 @@ export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
         .bind(input.userId)
         .all<CategoryRow>();
 
-      if (!rows.results.length) return DEFAULT_CATEGORIES;
+      if (!rows.results.length) return [...DEFAULT_CATEGORIES];
       return rows.results;
     },
 
@@ -63,6 +57,20 @@ export function createD1CategoryRepo(env: WorkerEnv): CategoryRepoPort {
 
       if (row) return row;
       return DEFAULT_CATEGORIES.find((category) => category.id === input.id) ?? null;
+    },
+
+    async resolveOrFallback(input: {
+      userId: string;
+      categoryId?: string | null;
+    }): Promise<Category> {
+      if (input.categoryId) {
+        const found = await this.getById({ userId: input.userId, id: input.categoryId });
+        if (found) return found;
+      }
+      return (
+        (await this.getById({ userId: input.userId, id: FALLBACK_CATEGORY.id })) ??
+        FALLBACK_CATEGORY
+      );
     },
   };
 }

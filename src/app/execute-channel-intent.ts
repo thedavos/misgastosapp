@@ -1,4 +1,7 @@
 import { Effect } from "effect";
+import { fromPromise } from "@/app/effects";
+import { ChannelSendError, type AppError } from "@/app/errors";
+import { WHATSAPP_ONBOARDING_MESSAGE } from "@/app/onboarding";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -6,9 +9,10 @@ import type {
   ParsedIntent,
   UpdateLastExpenseIntentPayload,
 } from "@/domain/intent/entity";
-import type { AppError } from "@/app/errors";
+import type { ChannelPort } from "@/ports/channel.port";
 
 export type ExecuteChannelIntentDeps = {
+  channel?: ChannelPort;
   createExpenseFromIntent?: (input: {
     userId: string;
     channel: string;
@@ -135,6 +139,18 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
         if (reported.handled) {
           return { handled: true };
         }
+      }
+
+      if (input.parsedIntent.name === "help" && deps.channel) {
+        yield* fromPromise(
+          () =>
+            deps.channel!.sendMessage({
+              externalUserId: input.externalUserId,
+              text: WHATSAPP_ONBOARDING_MESSAGE,
+            }),
+          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+        );
+        return { handled: true };
       }
 
       return { handled: false };

@@ -4,4 +4,5 @@ export interface CategoryRepoPort {
   listAll(input: { userId: string }): Promise<Category[]>;
   getByName(input: { userId: string; name: string }): Promise<Category | null>;
   getById(input: { userId: string; id: string }): Promise<Category | null>;
+  resolveOrFallback(input: { userId: string; categoryId?: string | null }): Promise<Category>;
 }

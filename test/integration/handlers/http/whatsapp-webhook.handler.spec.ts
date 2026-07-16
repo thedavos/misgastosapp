@@ -114,25 +114,35 @@ describe("whatsapp webhook integration", () => {
     expect(pending).not.toBeNull();
   });
 
-  it("returns 404 when customer mapping does not exist", async () => {
-    const env = createTestEnv();
-
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "00000000000",
-        text: "comida",
-        timestamp: Date.now(),
-      }),
+  it("returns 200 and upserts a new WhatsApp user when mapping is missing", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
     });
 
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(404);
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_new_user_1",
+          from: "51888888888",
+          text: "hola",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getEnqueuedJobs(env)).toHaveLength(1);
+    expect(getEnqueuedJobs(env)[0]?.job.externalUserId).toBe("51888888888");
   });
 
   it("returns 403 when channel is disabled for customer", async () => {
     const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
       channelSettings: [
         {
           id: "ccs_cust_default_whatsapp",
@@ -145,22 +155,25 @@ describe("whatsapp webhook integration", () => {
       ],
     });
 
-    const request = new Request("https://example.com/webhooks/whatsapp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        from: "51999999999",
-        text: "comida",
-        timestamp: Date.now(),
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
       }),
-    });
-
-    const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
+      env,
+      {} as ExecutionContext,
+    );
     expect(response.status).toBe(403);
   });
 
   it("returns 402 when subscription blocks channel feature", async () => {
     const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
       planFeatures: [
         {
           id: "pf_free_whatsapp",
@@ -173,6 +186,27 @@ describe("whatsapp webhook integration", () => {
       ],
     });
 
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+    expect(response.status).toBe(402);
+  });
+
+  it("returns 401 when webhook secret is missing", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: undefined,
+      kapsoWebhookSignatureMode: "strict",
+    });
+
     const request = new Request("https://example.com/webhooks/whatsapp", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -184,7 +218,7 @@ describe("whatsapp webhook integration", () => {
     });
 
     const response = await handleWhatsAppWebhook(request, env, {} as ExecutionContext);
-    expect(response.status).toBe(402);
+    expect(response.status).toBe(401);
   });
 
   it("returns 401 on invalid signature in strict mode", async () => {
@@ -341,5 +375,42 @@ describe("whatsapp webhook integration", () => {
     expect(dbState.inboundWebhookEvents.get("kapso_whatsapp:evt_enqueue_fail_1")?.status).toBe(
       "FAILED",
     );
+  });
+
+  it("returns 403 and skips enqueue when user is inactive", async () => {
+    const env = createTestEnv({
+      kapsoWebhookSecret: "topsecret",
+      kapsoWebhookSignatureMode: "strict",
+      customers: [
+        {
+          id: "cust_default",
+          name: "Default Customer",
+          status: "INACTIVE",
+          default_currency: "PEN",
+          timezone: "America/Lima",
+          locale: "es-PE",
+          confidence_threshold: 0.75,
+          onboarding_completed_at: null,
+        },
+      ],
+    });
+
+    const response = await handleWhatsAppWebhook(
+      await makeSignedWebhookRequest({
+        body: {
+          id: "evt_inactive_1",
+          from: "51999999999",
+          text: "comida",
+          timestamp: Date.now(),
+        },
+        secret: "topsecret",
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("User inactive");
+    expect(getEnqueuedJobs(env)).toHaveLength(0);
   });
 });
