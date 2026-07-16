@@ -102,11 +102,14 @@ Comentario libre:
 ## Go / no-go checklist
 
 - [x] DAV-81/82/83/84 security gates green in CI
-- [ ] Kapso webhook signature mode `strict` in production
-- [ ] Secrets configured: `KAPSO_API_KEY`, `KAPSO_WEBHOOK_SECRET`, and `MOBILE_API_TOKENS` if mobile is exposed
+- [x] Kapso webhook signature mode `strict` in production
+- [x] Secrets configured: `KAPSO_API_KEY`, `KAPSO_WEBHOOK_SECRET` (2026-07-16)
+- [ ] `MOBILE_API_TOKENS` if mobile API is exposed (optional for WhatsApp-only beta)
 - [x] Production D1 on MVP schema (migrations `011`–`019` applied 2026-07-16)
 - [x] Migration `018_onboarding_and_otros_category.sql` applied
 - [x] Migration `019_mobile_channel.sql` applied (mobile channel + `channels.mobile`)
+- [x] Worker redeployed with MVP code (2026-07-16, `misgastosapp.davidvargas-d45.workers.dev`)
+- [ ] Signed WhatsApp smoke: send a real message and confirm onboarding/expense reply
 - [ ] At least N beta users active in Peru (product sets N)
 - [ ] Parsing success and correction rates reviewed after first week
 - [ ] No unresolved P0 security findings
@@ -114,14 +117,18 @@ Comentario libre:
 
 External validation still required before marking DAV-71 complete.
 
-### Remaining ops commands
+### Kapso webhook URL
 
-```bash
-pnpm exec wrangler secret put KAPSO_API_KEY
-pnpm exec wrangler secret put KAPSO_WEBHOOK_SECRET
-# optional if mobile API is public:
-pnpm exec wrangler secret put MOBILE_API_TOKENS
-# value example: {"tok_beta1":"cust_..."}
+```
+https://misgastosapp.davidvargas-d45.workers.dev/webhooks/whatsapp
 ```
 
-Confirm `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` in `wrangler.jsonc` / Worker vars, then run a signed WhatsApp smoke test.
+Unsigned POSTs must return `401`. Verified after secrets were set.
+
+### Optional remaining secrets
+
+```bash
+# only if mobile API is public:
+pnpm exec wrangler secret put MOBILE_API_TOKENS
+# value example: {"tok_beta1":"<user_id>"}
+```
