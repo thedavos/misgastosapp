@@ -1371,6 +1371,8 @@ export function createTestEnv(options?: {
     KAPSO_API_BASE_URL: undefined,
     KAPSO_API_KEY: undefined,
     KAPSO_WEBHOOK_SECRET: options?.kapsoWebhookSecret,
+    KAPSO_PHONE_NUMBER_ID: undefined,
+    KAPSO_META_WHATSAPP_BASE_URL: undefined,
     KAPSO_WEBHOOK_SIGNATURE_MODE: options?.kapsoWebhookSignatureMode ?? "dual",
     KAPSO_WEBHOOK_MAX_SKEW_SECONDS: options?.kapsoWebhookMaxSkewSeconds ?? "300",
     CHAT_MEDIA_RETENTION_DAYS: options?.chatMediaRetentionDays ?? "90",
