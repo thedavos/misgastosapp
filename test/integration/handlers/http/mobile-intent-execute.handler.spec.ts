@@ -72,6 +72,88 @@ describe("mobile intent execute handler integration", () => {
     expect(payload.result.expense.merchant).toBe("Tambo");
   });
 
+  it("rejects when the mobile channel is disabled for the user", async () => {
+    const env = createTestEnv({
+      channelSettings: [
+        {
+          id: "ccs_cust_default_whatsapp",
+          customer_id: "cust_default",
+          channel_id: "whatsapp",
+          enabled: 1,
+          is_primary: 1,
+          config_json: null,
+        },
+        {
+          id: "ccs_cust_default_mobile",
+          customer_id: "cust_default",
+          channel_id: "mobile",
+          enabled: 0,
+          is_primary: 0,
+          config_json: null,
+        },
+      ],
+    });
+
+    const response = await handleFetch(
+      new Request("https://example.com/api/mobile/intents/execute", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
+        },
+        body: JSON.stringify({
+          text: "S/ 18 en Tambo",
+        }),
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "channel_disabled" });
+  });
+
+  it("rejects when channels.mobile is not entitled", async () => {
+    const env = createTestEnv({
+      planFeatures: [
+        {
+          id: "pf_free_whatsapp",
+          plan_id: "free",
+          feature_key: "channels.whatsapp",
+          feature_type: "boolean",
+          bool_value: 1,
+          limit_value: null,
+        },
+        {
+          id: "pf_free_mobile",
+          plan_id: "free",
+          feature_key: "channels.mobile",
+          feature_type: "boolean",
+          bool_value: 0,
+          limit_value: null,
+        },
+      ],
+    });
+
+    const response = await handleFetch(
+      new Request("https://example.com/api/mobile/intents/execute", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-mobile-token",
+        },
+        body: JSON.stringify({
+          text: "S/ 18 en Tambo",
+        }),
+      }),
+      env,
+      {} as ExecutionContext,
+    );
+
+    expect(response.status).toBe(402);
+    expect(await response.json()).toEqual({ error: "payment_required" });
+  });
+
   it("returns a generated report for mobile report input", async () => {
     const env = createTestEnv();
     const nowIso = new Date().toISOString();

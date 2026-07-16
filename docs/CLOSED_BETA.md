@@ -105,6 +105,7 @@ Comentario libre:
 - [ ] Kapso webhook signature mode `strict` in production
 - [ ] `MOBILE_API_TOKENS` configured if mobile API is exposed
 - [ ] Migration `018_onboarding_and_otros_category.sql` applied
+- [ ] Migration `019_mobile_channel.sql` applied (mobile channel + `channels.mobile`)
 - [ ] At least N beta users active in Peru (product sets N)
 - [ ] Parsing success and correction rates reviewed after first week
 - [ ] No unresolved P0 security findings

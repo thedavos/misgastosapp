@@ -52,29 +52,6 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
         return { handled: false };
       }
 
-      const latestExpense = yield* fromPromise(
-        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "findLatestByUser",
-            cause,
-          }),
-      );
-
-      if (!latestExpense) {
-        yield* fromPromise(
-          () =>
-            deps.channel.sendMessage({
-              externalUserId: input.externalUserId,
-              text: "No encontré un gasto reciente para corregir.",
-            }),
-          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
-        );
-
-        return { handled: true };
-      }
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -122,6 +99,29 @@ export function createUpdateLastExpenseFromIntent(deps: UpdateLastExpenseFromInt
             featureKey,
           }),
         );
+      }
+
+      const latestExpense = yield* fromPromise(
+        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "findLatestByUser",
+            cause,
+          }),
+      );
+
+      if (!latestExpense) {
+        yield* fromPromise(
+          () =>
+            deps.channel.sendMessage({
+              externalUserId: input.externalUserId,
+              text: "No encontré un gasto reciente para corregir.",
+            }),
+          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+        );
+
+        return { handled: true };
       }
 
       const updatedExpense = yield* fromPromise(

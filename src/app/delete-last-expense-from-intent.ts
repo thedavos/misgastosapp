@@ -43,29 +43,6 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
         return { handled: false };
       }
 
-      const latestExpense = yield* fromPromise(
-        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
-        (cause) =>
-          new ExpensePersistenceError({
-            requestId: input.requestId,
-            operation: "findLatestByUser",
-            cause,
-          }),
-      );
-
-      if (!latestExpense) {
-        yield* fromPromise(
-          () =>
-            deps.channel.sendMessage({
-              externalUserId: input.externalUserId,
-              text: "No encontré un gasto reciente para eliminar.",
-            }),
-          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
-        );
-
-        return { handled: true };
-      }
-
       const isEnabled = yield* fromPromise(
         () =>
           deps.channelPolicyRepo.isChannelEnabledForUser({
@@ -113,6 +90,29 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
             featureKey,
           }),
         );
+      }
+
+      const latestExpense = yield* fromPromise(
+        () => deps.expenseRepo.findLatestByUser({ userId: input.userId }),
+        (cause) =>
+          new ExpensePersistenceError({
+            requestId: input.requestId,
+            operation: "findLatestByUser",
+            cause,
+          }),
+      );
+
+      if (!latestExpense) {
+        yield* fromPromise(
+          () =>
+            deps.channel.sendMessage({
+              externalUserId: input.externalUserId,
+              text: "No encontré un gasto reciente para eliminar.",
+            }),
+          (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
+        );
+
+        return { handled: true };
       }
 
       const discardedExpense = yield* fromPromise(

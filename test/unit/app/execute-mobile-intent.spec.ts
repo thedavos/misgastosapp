@@ -1,6 +1,12 @@
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
+import { ChannelDisabledError, SubscriptionFeatureBlockedError } from "@/app/errors";
 import { createExecuteMobileIntent } from "@/app/execute-mobile-intent";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
+
+function allowMobileAuth() {
+  return () => Effect.void;
+}
 
 describe("execute mobile intent", () => {
   it("creates an expense when mobile create_expense is directly executable", async () => {
@@ -42,6 +48,7 @@ describe("execute mobile intent", () => {
         discard: vi.fn(),
         markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
+      authorizeChannel: allowMobileAuth(),
     });
 
     const result = await executeMobileIntent({
@@ -99,6 +106,7 @@ describe("execute mobile intent", () => {
         discard: vi.fn(),
         markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
+      authorizeChannel: allowMobileAuth(),
     });
 
     const result = await executeMobileIntent({
@@ -132,6 +140,7 @@ describe("execute mobile intent", () => {
         discard: vi.fn(),
         markConfirmed: vi.fn(),
       } as unknown as ExpenseRepoPort,
+      authorizeChannel: allowMobileAuth(),
     });
 
     const result = await executeMobileIntent({
@@ -154,5 +163,79 @@ describe("execute mobile intent", () => {
       },
       error: "intent_not_executable",
     });
+  });
+
+  it("blocks execution before parsing when the mobile channel is disabled", async () => {
+    const parseUserIntent = vi.fn();
+    const createExpenseRecord = vi.fn();
+
+    const executeMobileIntent = createExecuteMobileIntent({
+      parseUserIntent,
+      expenseRepo: {
+        createExpenseRecord,
+        getById: vi.fn(),
+        listByUser: vi.fn(),
+        findLatestByUser: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
+        markConfirmed: vi.fn(),
+      } as unknown as ExpenseRepoPort,
+      authorizeChannel: () =>
+        Effect.fail(
+          new ChannelDisabledError({
+            userId: "cust_1",
+            channelId: "mobile",
+          }),
+        ),
+    });
+
+    await expect(
+      executeMobileIntent({
+        userId: "cust_1",
+        text: "S/ 18 en Tambo",
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+        nowIso: "2026-04-22T15:00:00.000Z",
+      }),
+    ).rejects.toBeInstanceOf(ChannelDisabledError);
+
+    expect(parseUserIntent).not.toHaveBeenCalled();
+    expect(createExpenseRecord).not.toHaveBeenCalled();
+  });
+
+  it("blocks execution when channels.mobile is not entitled", async () => {
+    const parseUserIntent = vi.fn();
+
+    const executeMobileIntent = createExecuteMobileIntent({
+      parseUserIntent,
+      expenseRepo: {
+        createExpenseRecord: vi.fn(),
+        getById: vi.fn(),
+        listByUser: vi.fn(),
+        findLatestByUser: vi.fn(),
+        update: vi.fn(),
+        discard: vi.fn(),
+        markConfirmed: vi.fn(),
+      } as unknown as ExpenseRepoPort,
+      authorizeChannel: () =>
+        Effect.fail(
+          new SubscriptionFeatureBlockedError({
+            userId: "cust_1",
+            featureKey: "channels.mobile",
+          }),
+        ),
+    });
+
+    await expect(
+      executeMobileIntent({
+        userId: "cust_1",
+        text: "S/ 18 en Tambo",
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+        nowIso: "2026-04-22T15:00:00.000Z",
+      }),
+    ).rejects.toBeInstanceOf(SubscriptionFeatureBlockedError);
+
+    expect(parseUserIntent).not.toHaveBeenCalled();
   });
 });

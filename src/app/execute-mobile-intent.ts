@@ -1,8 +1,10 @@
+import { Effect } from "effect";
 import {
   buildPeriodExpenses,
   buildPeriodSummary,
   buildTopSpendSummary,
 } from "@/app/report-summary";
+import type { AppError } from "@/app/errors";
 import type { Expense } from "@/domain/expense/entity";
 import type { ParsedIntent } from "@/domain/intent/entity";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
@@ -19,6 +21,11 @@ export type ExecuteMobileIntentDeps = {
     requestId?: string;
   }) => Promise<ParsedIntent>;
   expenseRepo: ExpenseRepoPort;
+  authorizeChannel: (input: {
+    userId: string;
+    channelId: string;
+    requestId?: string;
+  }) => Effect.Effect<void, AppError>;
 };
 
 export type ExecuteMobileIntentInput = {
@@ -105,6 +112,20 @@ export function createExecuteMobileIntent(deps: ExecuteMobileIntentDeps) {
   return async function executeMobileIntent(
     input: ExecuteMobileIntentInput,
   ): Promise<MobileIntentExecutionResult> {
+    const authorizationResult = await Effect.runPromise(
+      deps
+        .authorizeChannel({
+          userId: input.userId,
+          channelId: "mobile",
+          requestId: input.requestId,
+        })
+        .pipe(Effect.either),
+    );
+
+    if (authorizationResult._tag === "Left") {
+      throw authorizationResult.left;
+    }
+
     const parsedIntent = await deps.parseUserIntent({
       text: input.text,
       context: {
