@@ -101,15 +101,27 @@ Comentario libre:
 
 ## Go / no-go checklist
 
-- [ ] DAV-81/82/83/84 security gates green in CI
+- [x] DAV-81/82/83/84 security gates green in CI
 - [ ] Kapso webhook signature mode `strict` in production
 - [ ] Secrets configured: `KAPSO_API_KEY`, `KAPSO_WEBHOOK_SECRET`, and `MOBILE_API_TOKENS` if mobile is exposed
-- [ ] Production D1 on MVP schema (migrations `011`–`019`); current remote may still be legacy `customers`/`expenses` only
-- [ ] Migration `018_onboarding_and_otros_category.sql` applied
-- [ ] Migration `019_mobile_channel.sql` applied (mobile channel + `channels.mobile`)
+- [x] Production D1 on MVP schema (migrations `011`–`019` applied 2026-07-16)
+- [x] Migration `018_onboarding_and_otros_category.sql` applied
+- [x] Migration `019_mobile_channel.sql` applied (mobile channel + `channels.mobile`)
 - [ ] At least N beta users active in Peru (product sets N)
 - [ ] Parsing success and correction rates reviewed after first week
 - [ ] No unresolved P0 security findings
 - [ ] Real-user feedback logged (blocks full DAV-71 Done)
 
 External validation still required before marking DAV-71 complete.
+
+### Remaining ops commands
+
+```bash
+pnpm exec wrangler secret put KAPSO_API_KEY
+pnpm exec wrangler secret put KAPSO_WEBHOOK_SECRET
+# optional if mobile API is public:
+pnpm exec wrangler secret put MOBILE_API_TOKENS
+# value example: {"tok_beta1":"cust_..."}
+```
+
+Confirm `KAPSO_WEBHOOK_SIGNATURE_MODE=strict` in `wrangler.jsonc` / Worker vars, then run a signed WhatsApp smoke test.
