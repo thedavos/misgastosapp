@@ -8,6 +8,8 @@ import { toIsoTimestamp } from "@/utils/date/toIsoTimestamp";
 import { parsePositiveInt } from "@/utils/number/parsePositiveInt";
 import { normalizeBaseUrl } from "@/utils/url/normalizeBaseUrl";
 
+const KAPSO_META_WHATSAPP_BASE = "https://api.kapso.ai/meta/whatsapp/v24.0";
+
 function parseSignatureHeader(signatureHeader: string | null): string | null {
   if (!signatureHeader) return null;
   const raw = signatureHeader.trim();
@@ -19,6 +21,13 @@ function parseSignatureHeader(signatureHeader: string | null): string | null {
   }
 
   return raw.toLowerCase();
+}
+
+async function signaturesMatch(providedHex: string, expectedHex: string): Promise<boolean> {
+  const providedBytes = hexToBytes(providedHex);
+  const expectedBytes = hexToBytes(expectedHex);
+  if (!providedBytes || !expectedBytes) return false;
+  return constantTimeEquals(providedBytes, expectedBytes);
 }
 
 function resolveProviderEventId(payload: Record<string, unknown>): string | null {
@@ -83,6 +92,23 @@ function extractImageAttachments(payload: Record<string, unknown>) {
     maybePush(mediaRecord.url, mediaRecord.mimeType, mediaRecord.id);
   }
 
+  const image = payload.image;
+  if (image && typeof image === "object") {
+    const imageRecord = image as Record<string, unknown>;
+    maybePush(imageRecord.link, imageRecord.mime_type, imageRecord.id);
+  }
+
+  const kapso = payload.kapso;
+  if (kapso && typeof kapso === "object") {
+    const kapsoRecord = kapso as Record<string, unknown>;
+    maybePush(kapsoRecord.media_url, undefined, undefined);
+    const mediaData = kapsoRecord.media_data;
+    if (mediaData && typeof mediaData === "object") {
+      const mediaDataRecord = mediaData as Record<string, unknown>;
+      maybePush(mediaDataRecord.url, mediaDataRecord.content_type, undefined);
+    }
+  }
+
   const mediaList = payload.attachments;
   if (Array.isArray(mediaList)) {
     for (const rawAttachment of mediaList) {
@@ -99,21 +125,87 @@ function extractImageAttachments(payload: Record<string, unknown>) {
   return attachments;
 }
 
+function extractText(value: unknown): string | null {
+  if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.body === "string" && record.body.trim().length > 0) {
+      return record.body.trim();
+    }
+    if (typeof record.content === "string" && record.content.trim().length > 0) {
+      return record.content.trim();
+    }
+  }
+  return null;
+}
+
+function isInboundKapsoMessage(message: Record<string, unknown>): boolean {
+  const kapso = message.kapso;
+  if (!kapso || typeof kapso !== "object") return true;
+  const direction = (kapso as Record<string, unknown>).direction;
+  if (typeof direction !== "string") return true;
+  return direction.toLowerCase() === "inbound";
+}
+
+function unwrapWebhookPayloads(payload: Record<string, unknown>): Record<string, unknown>[] {
+  if (payload.batch === true && Array.isArray(payload.data)) {
+    return payload.data.filter(
+      (item): item is Record<string, unknown> => !!item && typeof item === "object",
+    );
+  }
+  return [payload];
+}
+
 function extractIncomingMessage(
   payload: Record<string, unknown>,
   providerEventId: string,
   payloadHash: string,
 ): IncomingUserMessage | null {
+  // Kapso Platform v2: message + conversation envelope
+  const nested = payload.message;
+  if (nested && typeof nested === "object") {
+    const nestedRecord = nested as Record<string, unknown>;
+    if (!isInboundKapsoMessage(nestedRecord)) return null;
+
+    const conversation =
+      payload.conversation && typeof payload.conversation === "object"
+        ? (payload.conversation as Record<string, unknown>)
+        : null;
+
+    const nestedFrom =
+      (typeof nestedRecord.from === "string" && nestedRecord.from) ||
+      (typeof conversation?.phone_number === "string" && conversation.phone_number) ||
+      null;
+
+    const nestedText =
+      extractText(nestedRecord.text) ||
+      (nestedRecord.kapso && typeof nestedRecord.kapso === "object"
+        ? extractText((nestedRecord.kapso as Record<string, unknown>).content)
+        : null);
+
+    const nestedAttachments = extractImageAttachments(nestedRecord);
+    if (nestedFrom && (nestedText || nestedAttachments.length > 0)) {
+      return {
+        channel: "whatsapp",
+        externalUserId: nestedFrom,
+        text: nestedText ?? "",
+        timestamp: toIsoTimestamp(nestedRecord.timestamp),
+        providerEventId,
+        payloadHash,
+        attachments: nestedAttachments,
+        raw: payload,
+      };
+    }
+  }
+
+  // Legacy flat fixture payload
   const from =
     (typeof payload.userId === "string" && payload.userId) ||
     (typeof payload.from === "string" && payload.from) ||
     (typeof payload.phone === "string" && payload.phone) ||
     null;
 
-  const text =
-    (typeof payload.text === "string" && payload.text) ||
-    (typeof payload.message === "string" && payload.message) ||
-    null;
+  const text = extractText(payload.text) || extractText(payload.message);
   const attachments = extractImageAttachments(payload);
 
   if (from && (text || attachments.length > 0)) {
@@ -129,50 +221,34 @@ function extractIncomingMessage(
     };
   }
 
-  const nested = payload.message;
-  if (nested && typeof nested === "object") {
-    const nestedRecord = nested as Record<string, unknown>;
-    const nestedFrom = typeof nestedRecord.from === "string" ? nestedRecord.from : null;
-    const nestedText = typeof nestedRecord.text === "string" ? nestedRecord.text : null;
-    const nestedAttachments = extractImageAttachments(nestedRecord);
-
-    if (nestedFrom && (nestedText || nestedAttachments.length > 0)) {
-      return {
-        channel: "whatsapp",
-        externalUserId: nestedFrom,
-        text: nestedText ?? "",
-        timestamp: toIsoTimestamp(nestedRecord.timestamp),
-        providerEventId,
-        payloadHash,
-        attachments: nestedAttachments.length > 0 ? nestedAttachments : attachments,
-        raw: payload,
-      };
-    }
-  }
-
   return null;
 }
 
 export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
-  const baseUrl = normalizeBaseUrl(env.KAPSO_API_BASE_URL);
   const signatureMode = env.KAPSO_WEBHOOK_SIGNATURE_MODE ?? "dual";
   const maxSkewSeconds = parsePositiveInt(env.KAPSO_WEBHOOK_MAX_SKEW_SECONDS, 300);
+  const phoneNumberId = env.KAPSO_PHONE_NUMBER_ID?.trim();
 
   return {
     async sendMessage(input: SendMessageInput): Promise<{ providerMessageId: string }> {
-      if (!baseUrl || !env.KAPSO_API_KEY) {
+      if (!env.KAPSO_API_KEY || !phoneNumberId) {
         return { providerMessageId: "kapso-noop" };
       }
 
-      const response = await fetch(`${baseUrl}/platform/v1/messages`, {
+      const metaBase =
+        normalizeBaseUrl(env.KAPSO_META_WHATSAPP_BASE_URL) ?? KAPSO_META_WHATSAPP_BASE;
+      const response = await fetch(`${metaBase}/${phoneNumberId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${env.KAPSO_API_KEY}`,
+          "X-API-Key": env.KAPSO_API_KEY,
         },
         body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
           to: input.externalUserId,
-          text: input.text,
+          type: "text",
+          text: { body: input.text },
         }),
       });
 
@@ -181,8 +257,15 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
         throw new Error(`Kapso sendMessage failed (${response.status}): ${body}`);
       }
 
-      const payload = (await response.json()) as { id?: string; message_id?: string };
-      return { providerMessageId: payload.id ?? payload.message_id ?? "kapso-unknown" };
+      const payload = (await response.json()) as {
+        messages?: Array<{ id?: string }>;
+        id?: string;
+        message_id?: string;
+      };
+      return {
+        providerMessageId:
+          payload.messages?.[0]?.id ?? payload.id ?? payload.message_id ?? "kapso-unknown",
+      };
     },
 
     async parseWebhook(request: Request): Promise<IncomingUserMessage | null> {
@@ -192,38 +275,48 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
 
       const payloadRecord = payload as Record<string, unknown>;
       const payloadHash = await sha256Hex(rawBody);
-      const resolvedEventId = resolveProviderEventId(payloadRecord) ?? `hash:${payloadHash}`;
+      const candidates = unwrapWebhookPayloads(payloadRecord);
 
-      return extractIncomingMessage(payloadRecord, resolvedEventId, payloadHash);
+      for (const candidate of candidates) {
+        const resolvedEventId = resolveProviderEventId(candidate) ?? `hash:${payloadHash}`;
+        const message = extractIncomingMessage(candidate, resolvedEventId, payloadHash);
+        if (message) return message;
+      }
+
+      return null;
     },
 
     async verifyWebhook(input: { headers: Headers; rawBody: string }): Promise<boolean> {
       const expected = env.KAPSO_WEBHOOK_SECRET?.trim();
       if (!expected) return false;
 
+      // Kapso Platform current contract: X-Webhook-Signature = HMAC-SHA256(rawBody)
+      const platformSignature = parseSignatureHeader(input.headers.get("x-webhook-signature"));
+      if (platformSignature) {
+        const expectedSignature = await hmacSha256Hex(expected, input.rawBody);
+        if (await signaturesMatch(platformSignature, expectedSignature)) {
+          return true;
+        }
+      }
+
+      // Legacy Misgastos contract: x-kapso-signature + x-kapso-timestamp over `${timestamp}.${rawBody}`
       const providedRaw = input.headers.get("x-kapso-signature");
       const providedSignature = parseSignatureHeader(providedRaw);
-
       const timestampRaw = input.headers.get("x-kapso-timestamp");
       const timestamp = parsePositiveInt(timestampRaw ?? undefined, 0);
       const hasTimestamp = timestamp > 0;
       const now = Math.floor(Date.now() / 1000);
 
-      const isHmacValid = await (async () => {
+      const isLegacyHmacValid = await (async () => {
         if (!hasTimestamp || !providedSignature) return false;
         if (Math.abs(now - timestamp) > maxSkewSeconds) return false;
 
         const canonicalPayload = `${timestamp}.${input.rawBody}`;
         const expectedSignature = await hmacSha256Hex(expected, canonicalPayload);
-
-        const providedBytes = hexToBytes(providedSignature);
-        const expectedBytes = hexToBytes(expectedSignature);
-        if (!providedBytes || !expectedBytes) return false;
-
-        return constantTimeEquals(providedBytes, expectedBytes);
+        return signaturesMatch(providedSignature, expectedSignature);
       })();
 
-      if (isHmacValid) return true;
+      if (isLegacyHmacValid) return true;
       if (signatureMode === "strict") return false;
 
       if (!providedRaw) return false;

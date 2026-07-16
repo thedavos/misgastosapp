@@ -94,8 +94,11 @@ export async function handleWhatsAppWebhook(
     });
 
     if (!incomingMessage) {
-      container.logger.warn("whatsapp.webhook_invalid_payload", { requestId });
-      return new Response("Invalid payload", { status: 400 });
+      container.logger.info("whatsapp.webhook_ignored_non_inbound", {
+        requestId,
+        event: request.headers.get("x-webhook-event") ?? undefined,
+      });
+      return new Response("OK", { status: 200 });
     }
 
     const userLookup = yield* Effect.tryPromise({

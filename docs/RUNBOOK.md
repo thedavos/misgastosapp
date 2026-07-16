@@ -122,14 +122,22 @@ Configuración Telegram:
 ### Ver logs
 
 ```bash
-wrangler tail misgastosapp
+pnpm exec wrangler tail misgastosapp
+# JSON:
+pnpm exec wrangler tail misgastosapp --format json
 ```
+
+También: Cloudflare Dashboard → Workers & Pages → `misgastosapp` → Logs.
+
+Kapso delivery: Kapso Dashboard → Integrations → Webhooks → intentos/fallos del endpoint.
 
 ### Señales esperadas
 
 - `expense.needs_clarification_created`
 - `expense.flow_completed`
 - `whatsapp.webhook_unauthorized` (si firma incorrecta)
+- `whatsapp.webhook_job_enqueued`
+- `whatsapp.webhook_ignored_non_inbound`
 - `whatsapp.webhook_duplicate_ignored` (si llega evento repetido)
 - `telegram.unknown_user_blocked` (si user Telegram no está mapeado)
 - `chat.media_stored` (si se guarda evidencia de imagen en R2)
@@ -138,10 +146,11 @@ wrangler tail misgastosapp
 
 ### 401 en webhook WhatsApp
 
-- Verifica `KAPSO_WEBHOOK_SECRET`.
-- Verifica header `x-kapso-signature`.
-- Verifica header `x-kapso-timestamp`.
-- Verifica que el reloj del proveedor no esté fuera de `KAPSO_WEBHOOK_MAX_SKEW_SECONDS`.
+- Verifica `KAPSO_WEBHOOK_SECRET` (mismo `secret_key` del webhook en Kapso).
+- Kapso Platform firma con header `x-webhook-signature` = HMAC-SHA256(raw body).
+- Legacy Misgastos: `x-kapso-signature` + `x-kapso-timestamp` sobre `"${timestamp}.${rawBody}"`.
+- Verifica que el reloj del proveedor no esté fuera de `KAPSO_WEBHOOK_MAX_SKEW_SECONDS` (solo legacy timestamp).
+- Sin respuesta outbound: configura `KAPSO_PHONE_NUMBER_ID` (Phone number ID en Kapso → WhatsApp).
 
 ### Gasto no se categoriza
 
