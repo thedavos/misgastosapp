@@ -1359,7 +1359,7 @@ export function createTestEnv(options?: {
     TELEGRAM_BOT_TOKEN: "token",
     TELEGRAM_CHAT_ID: "51999999999",
     TELEGRAM_WEBHOOK_SECRET: "tg-secret",
-    CLOUDFLARE_AI_MODEL: "@cf/meta/llama-3.1-8b-instruct-fast",
+    CLOUDFLARE_AI_MODEL: "@cf/qwen/qwen3-30b-a3b-fp8",
     CLOUDFLARE_OCR_MODEL: "@cf/meta/llama-3.1-8b-instruct-fast",
     DB: db,
     REPORTS: reports,

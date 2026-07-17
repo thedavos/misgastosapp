@@ -7,7 +7,7 @@ describe("cloudflare AI generateMessage", () => {
     const run = vi.fn();
     const env = {
       AI: { run },
-      CLOUDFLARE_AI_MODEL: "@cf/meta/llama-3.1-8b-instruct-fast",
+      CLOUDFLARE_AI_MODEL: "@cf/qwen/qwen3-30b-a3b-fp8",
       PROMPTS_KV: { get: vi.fn() },
     } as unknown as WorkerEnv;
 
