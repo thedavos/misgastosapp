@@ -163,6 +163,10 @@ function createFakeExpenseIngestionAgentNamespace(input?: {
       return {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
+          if (url.pathname === "/cdn-cgi/partyserver/set-name/") {
+            return Response.json({ ok: true });
+          }
+
           if (url.pathname !== "/enqueue" || request.method !== "POST") {
             return new Response("Not Found", { status: 404 });
           }
