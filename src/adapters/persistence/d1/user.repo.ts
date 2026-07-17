@@ -58,6 +58,14 @@ const USER_SELECT = `SELECT id,
                 onboarding_completed_at
          FROM users`;
 
+function canonicalizeExternalId(channel: string, externalUserId: string): string {
+  const trimmed = externalUserId.trim();
+  if (channel === "whatsapp" && /^\+?\d{8,15}$/.test(trimmed)) {
+    return trimmed.replace(/\D+/g, "");
+  }
+  return trimmed;
+}
+
 export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
   async function ensureChannelSetting(input: {
     userId: string;
@@ -80,6 +88,27 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
       .run();
   }
 
+  async function ensureFreeSubscription(userId: string): Promise<void> {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM user_subscriptions WHERE user_id = ? LIMIT 1`,
+    )
+      .bind(userId)
+      .first<{ id: string }>();
+    if (existing) return;
+
+    const now = new Date().toISOString();
+    const periodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    await env.DB.prepare(
+      `INSERT INTO user_subscriptions (
+         id, user_id, plan_id, status, start_at, current_period_start, current_period_end,
+         cancel_at_period_end, provider, provider_subscription_id, plan_version_at_start,
+         metadata_json, created_at, updated_at
+       ) VALUES (?, ?, 'free', 'ACTIVE', ?, ?, ?, 0, 'manual', NULL, 1, NULL, ?, ?)`,
+    )
+      .bind(crypto.randomUUID(), userId, now, now, periodEnd, now, now)
+      .run();
+  }
+
   async function ensureDefaultChannelSettings(userId: string, channel: string): Promise<void> {
     // Mobile is a first-class API channel; provision for every user so strict policy mode
     // does not 403 new WhatsApp/Telegram users who later call mobile endpoints.
@@ -88,6 +117,8 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
     if (channel === "whatsapp") {
       await ensureChannelSetting({ userId, channelId: "whatsapp", isPrimary: 1 });
     }
+
+    await ensureFreeSubscription(userId);
   }
 
   return {
@@ -104,25 +135,34 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
       channel: string;
       externalUserId: string;
     }): Promise<User | null> {
-      const row = await env.DB.prepare(
-        `SELECT u.id,
-                u.display_name AS name,
-                u.status,
-                u.default_currency,
-                u.timezone,
-                u.locale,
-                u.confidence_threshold,
-                u.onboarding_completed_at
-         FROM user_sources us
-         JOIN users u ON u.id = us.user_id
-         WHERE us.source_type = ? AND us.external_id = ? AND us.status = 'active'
-         LIMIT 1`,
-      )
-        .bind(input.channel, input.externalUserId)
-        .first<UserRow>();
+      const externalId = canonicalizeExternalId(input.channel, input.externalUserId);
+      const candidates =
+        input.channel === "whatsapp" && externalId !== input.externalUserId.trim()
+          ? [externalId, input.externalUserId.trim(), `+${externalId}`]
+          : [externalId];
 
-      if (!row) return null;
-      return mapUser(row);
+      for (const candidate of candidates) {
+        const row = await env.DB.prepare(
+          `SELECT u.id,
+                  u.display_name AS name,
+                  u.status,
+                  u.default_currency,
+                  u.timezone,
+                  u.locale,
+                  u.confidence_threshold,
+                  u.onboarding_completed_at
+           FROM user_sources us
+           JOIN users u ON u.id = us.user_id
+           WHERE us.source_type = ? AND us.external_id = ? AND us.status = 'active'
+           LIMIT 1`,
+        )
+          .bind(input.channel, candidate)
+          .first<UserRow>();
+
+        if (row) return mapUser(row);
+      }
+
+      return null;
     },
 
     async findOrCreateByChannelExternalId(input: {
@@ -130,9 +170,10 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
       externalUserId: string;
       displayName?: string;
     }): Promise<FindOrCreateByChannelExternalIdResult> {
+      const externalId = canonicalizeExternalId(input.channel, input.externalUserId);
       const existing = await this.findByChannelExternalId({
         channel: input.channel,
-        externalUserId: input.externalUserId,
+        externalUserId: externalId,
       });
       if (existing) {
         await ensureDefaultChannelSettings(existing.id, input.channel);
@@ -144,7 +185,7 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
       const now = new Date().toISOString();
       const displayName =
         input.displayName?.trim() ||
-        (input.channel === "whatsapp" ? `WhatsApp ${input.externalUserId}` : input.externalUserId);
+        (input.channel === "whatsapp" ? `WhatsApp ${externalId}` : externalId);
 
       await env.DB.prepare(
         `INSERT INTO users (
@@ -162,7 +203,7 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
            id, user_id, source_type, external_id, status, is_primary, metadata_json, created_at, updated_at
          ) VALUES (?, ?, ?, ?, 'active', ?, NULL, ?, ?)`,
       )
-        .bind(sourceId, userId, input.channel, input.externalUserId, 1, now, now)
+        .bind(sourceId, userId, input.channel, externalId, 1, now, now)
         .run();
 
       if ((mappingResult.meta?.changes ?? 0) === 0) {
@@ -170,11 +211,11 @@ export function createD1UserRepo(env: WorkerEnv): UserRepoPort {
 
         const winner = await this.findByChannelExternalId({
           channel: input.channel,
-          externalUserId: input.externalUserId,
+          externalUserId: externalId,
         });
         if (!winner) {
           throw new Error(
-            `Failed to resolve concurrent user mapping for ${input.channel}:${input.externalUserId}`,
+            `Failed to resolve concurrent user mapping for ${input.channel}:${externalId}`,
           );
         }
 
