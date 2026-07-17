@@ -19,6 +19,8 @@ export type ExecuteChannelIntentDeps = {
     sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
+    timezone?: string;
+    nowIso?: string;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
@@ -77,6 +79,8 @@ export function createExecuteChannelIntent(deps: ExecuteChannelIntentDeps) {
           sourceType: input.sourceType,
           externalUserId: input.externalUserId,
           payload: input.parsedIntent.payload,
+          timezone: input.timezone,
+          nowIso: input.nowIso,
           requestId: input.requestId,
         });
 

@@ -1,34 +1,34 @@
 import { Effect } from "effect";
+import { formatAskCategoryMessage } from "@/app/ask-category-message";
 import { fromPromise } from "@/app/effects";
 import {
   ChannelDisabledError,
   ChannelPolicyError,
   FeaturePolicyError,
   ChannelSendError,
+  ConversationStateError,
   ExpensePersistenceError,
   SubscriptionFeatureBlockedError,
   type AppError,
 } from "@/app/errors";
+import { DEFAULT_CATEGORIES } from "@/domain/category/defaults";
 import type { CreateExpenseIntentPayload } from "@/domain/intent/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
-import { getCurrencySymbol } from "@/utils/currencySymbol";
+import { resolveExpenseOccurredAt } from "@/utils/date/resolveExpenseOccurredAt";
 
 export type CreateExpenseFromIntentDeps = {
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
   expenseRepo: ExpenseRepoPort;
+  conversationState: ConversationStatePort;
   logger: LoggerPort;
 };
-
-function formatAmount(amount: number, currency: string): string {
-  const symbol = getCurrencySymbol(currency);
-  return `${symbol} ${amount.toFixed(2)}`;
-}
 
 export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps) {
   return function createExpenseFromIntent(input: {
@@ -37,6 +37,8 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
     sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
+    timezone?: string;
+    nowIso?: string;
     requestId?: string;
   }): Effect.Effect<{ expenseId: string } | null, AppError> {
     return Effect.gen(function* () {
@@ -54,8 +56,13 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
       const amount = draft.amountMinor / 100;
       const currency = draft.currency;
       const merchant = draft.merchant;
-      const occurredAt = draft.occurredAt;
       const rawText = draft.description ?? draft.merchant;
+      const occurredAt = resolveExpenseOccurredAt({
+        candidate: draft.occurredAt,
+        sourceText: rawText,
+        nowIso: input.nowIso ?? new Date().toISOString(),
+        timezone: input.timezone,
+      });
 
       const isEnabled = yield* fromPromise(
         () =>
@@ -127,14 +134,36 @@ export function createCreateExpenseFromIntent(deps: CreateExpenseFromIntentDeps)
           }),
       );
 
-      const message = `Listo. Registré ${formatAmount(expense.amount, expense.currency)} en ${expense.merchant}.`;
+      yield* fromPromise(
+        () =>
+          deps.conversationState.put({
+            userId: input.userId,
+            channel: input.channel,
+            externalUserId: input.externalUserId,
+            expenseId: expense.id,
+            createdAt: new Date().toISOString(),
+          }),
+        (cause) =>
+          new ConversationStateError({
+            requestId: input.requestId,
+            operation: "put",
+            cause,
+          }),
+      );
+
+      const message = formatAskCategoryMessage({
+        amount: expense.amount,
+        currency: expense.currency,
+        merchant: expense.merchant,
+        categories: [...DEFAULT_CATEGORIES],
+      });
 
       yield* fromPromise(
         () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),
         (cause) => new ChannelSendError({ requestId: input.requestId, cause }),
       );
 
-      deps.logger.info("expense.created_from_intent", {
+      deps.logger.info("expense.needs_clarification_created_from_intent", {
         requestId: input.requestId,
         userId: input.userId,
         channel: input.channel,

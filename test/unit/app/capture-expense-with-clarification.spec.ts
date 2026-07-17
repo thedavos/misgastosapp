@@ -13,6 +13,7 @@ describe("ingest expense from email", () => {
     });
     const put = vi.fn().mockResolvedValue(undefined);
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
+    const generateMessage = vi.fn();
 
     const ingest = createCaptureExpenseWithClarification({
       ai: {
@@ -26,7 +27,7 @@ describe("ingest expense from email", () => {
           rawText: "raw",
         }),
         classifyCategory: vi.fn(),
-        generateMessage: vi.fn().mockResolvedValue("¿Qué categoría le pongo?"),
+        generateMessage,
       },
       channel: {
         sendMessage,
@@ -85,9 +86,10 @@ describe("ingest expense from email", () => {
         expenseId: "exp_1",
       }),
     );
+    expect(generateMessage).not.toHaveBeenCalled();
     expect(sendMessage).toHaveBeenCalledWith({
       externalUserId: "51999999999",
-      text: "¿Qué categoría le pongo?",
+      text: "Vi S/. 55.00 en Tambo. ¿Qué categoría le pongo? (Comida, Transporte, Compras, Servicios, Otros)",
     });
   });
 

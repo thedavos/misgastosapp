@@ -1,7 +1,7 @@
 import { Effect } from "effect";
+import { formatConfirmationMessage } from "@/app/ask-category-message";
 import { fromPromise } from "@/app/effects";
 import {
-  AiMessageGenerationError,
   ChannelDisabledError,
   ChannelPolicyError,
   FeaturePolicyError,
@@ -10,7 +10,6 @@ import {
   type AppError,
   SubscriptionFeatureBlockedError,
 } from "@/app/errors";
-import type { AiPort } from "@/ports/ai.port";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
 import type { ConversationStatePort } from "@/ports/conversation-state.port";
@@ -18,7 +17,6 @@ import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
 
 export type CompleteExpenseFlowDeps = {
-  ai: AiPort;
   channel: ChannelPort;
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
@@ -50,14 +48,7 @@ export function createCompleteExpenseFlow(deps: CompleteExpenseFlowDeps) {
           }),
       );
 
-      const message = yield* fromPromise(
-        () =>
-          deps.ai.generateMessage({
-            kind: "confirmation",
-            categoryName: input.categoryName,
-          }),
-        (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
-      );
+      const message = formatConfirmationMessage(input.categoryName);
 
       const isEnabled = yield* fromPromise(
         () =>

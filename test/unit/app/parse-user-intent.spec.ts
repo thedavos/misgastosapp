@@ -57,6 +57,34 @@ describe("parse user intent", () => {
     expect(result.payload.draft.merchant).toBe("Tambo");
   });
 
+  it("resolves hoy over a bad extracted date for create_expense", async () => {
+    const parseUserIntent = createParseUserIntent({
+      ai: {
+        extractTransaction: vi.fn().mockResolvedValue({
+          amount: 25,
+          currency: "PEN",
+          symbol: "S/",
+          merchant: "Tambo",
+          date: "1970-01-01T12:00:00.000Z",
+          bank: "unknown",
+          rawText: "25 soles tambo hoy",
+        }),
+        classifyCategory: vi.fn(),
+        generateMessage: vi.fn(),
+      },
+    });
+
+    const result = await parseUserIntent({
+      text: "25 soles tambo hoy",
+      context: baseContext,
+    });
+
+    expect(result.name).toBe("create_expense");
+    if (result.name !== "create_expense") throw new Error("unexpected intent");
+    expect(result.payload.draft.occurredAt).toBe(baseContext.nowIso);
+    expect(result.payload.missingFields).toEqual([]);
+  });
+
   it("detects strong update_last_expense intent for explicit amount corrections", async () => {
     const parseUserIntent = createParseUserIntent({
       ai: {

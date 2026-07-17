@@ -47,7 +47,7 @@
     }
   ],
   "vars": {
-    "CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+    "CLOUDFLARE_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
     "CLOUDFLARE_OCR_MODEL": "@cf/meta/llama-3.2-11b-vision-instruct",
     "KAPSO_API_BASE_URL": "https://api.kapso.ai",
     "KAPSO_WEBHOOK_SIGNATURE_MODE": "strict",

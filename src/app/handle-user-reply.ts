@@ -38,7 +38,6 @@ export type HandleUserReplyDeps = {
 
 export function createHandleUserReply(deps: HandleUserReplyDeps) {
   const completeExpenseFlow = createCompleteExpenseFlow({
-    ai: deps.ai,
     channel: deps.channel,
     channelPolicyRepo: deps.channelPolicyRepo,
     featurePolicy: deps.featurePolicy,

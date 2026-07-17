@@ -2,8 +2,7 @@ import type { Email } from "postal-mime";
 import type { WorkerEnv } from "types/env";
 import { buildClassifyCategoryPrompt } from "@/adapters/ai/prompts/classify-category.prompt";
 import { buildExtractTransactionPrompt } from "@/adapters/ai/prompts/extract-transaction.prompt";
-import { buildGenerateMessagePrompt } from "@/adapters/ai/prompts/generate-message.prompt";
-import { formatAskCategoryMessage } from "@/app/ask-category-message";
+import { formatAskCategoryMessage, formatConfirmationMessage } from "@/app/ask-category-message";
 import type {
   AiPort,
   CategoryClassificationInput,
@@ -182,25 +181,8 @@ export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
     },
 
     async generateMessage(input: MessageGenerationInput): Promise<string> {
-      const messages = [
-        {
-          role: "system",
-          content: "Eres un asistente financiero empatico y breve. Responde en español.",
-        },
-        { role: "user", content: buildGenerateMessagePrompt(input) },
-      ];
-
-      const payload = await runModel(env, messages);
-      if (typeof payload === "string") return payload;
-      if (
-        payload &&
-        typeof payload === "object" &&
-        "text" in payload &&
-        typeof payload.text === "string"
-      ) {
-        return payload.text;
-      }
-
+      // Never free-form LLM for user-facing WhatsApp copy — models drift into
+      // bank-letter / marketing prose (see ask_category + confirmation paths).
       if (input.kind === "ask_category") {
         return formatAskCategoryMessage({
           amount: input.amount,
@@ -209,7 +191,8 @@ export function createCloudflareAiAdapter(env: WorkerEnv): AiPort {
           categories: input.categories,
         });
       }
-      return `Listo, ya lo guardé en ${input.categoryName ?? "la categoría indicada"}.`;
+
+      return formatConfirmationMessage(input.categoryName);
     },
   };
 }

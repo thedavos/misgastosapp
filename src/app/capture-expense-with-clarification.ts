@@ -1,11 +1,11 @@
 import { Effect } from "effect";
+import { formatAskCategoryMessage } from "@/app/ask-category-message";
 import { fromPromise } from "@/app/effects";
 import {
   AiExtractFailedError,
   ChannelDisabledError,
   ChannelPolicyError,
   FeaturePolicyError,
-  AiMessageGenerationError,
   ChannelSendError,
   ConversationStateError,
   ExpensePersistenceError,
@@ -22,6 +22,7 @@ import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
+import { resolveExpenseOccurredAt } from "@/utils/date/resolveExpenseOccurredAt";
 
 export type CaptureExpenseWithClarificationInput = {
   userId: string;
@@ -121,6 +122,12 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
         );
       }
 
+      const occurredAt = resolveExpenseOccurredAt({
+        candidate: transaction.date,
+        sourceText: input.sourceText,
+        nowIso: new Date().toISOString(),
+      });
+
       const expense = yield* fromPromise(
         () =>
           deps.expenseRepo.createExpenseRecord({
@@ -128,7 +135,7 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
             amount: transaction.amount,
             currency: transaction.currency,
             merchant: transaction.merchant,
-            occurredAt: transaction.date,
+            occurredAt,
             bank: transaction.bank,
             rawText: transaction.rawText,
             createdVia:
@@ -159,17 +166,12 @@ export function createCaptureExpenseWithClarification(deps: CaptureExpenseWithCl
           }),
       );
 
-      const message = yield* fromPromise(
-        () =>
-          deps.ai.generateMessage({
-            kind: "ask_category",
-            amount: expense.amount,
-            currency: expense.currency,
-            merchant: expense.merchant,
-            categories: [...DEFAULT_CATEGORIES],
-          }),
-        (cause) => new AiMessageGenerationError({ requestId: input.requestId, cause }),
-      );
+      const message = formatAskCategoryMessage({
+        amount: expense.amount,
+        currency: expense.currency,
+        merchant: expense.merchant,
+        categories: [...DEFAULT_CATEGORIES],
+      });
 
       yield* fromPromise(
         () => deps.channel.sendMessage({ externalUserId: input.externalUserId, text: message }),

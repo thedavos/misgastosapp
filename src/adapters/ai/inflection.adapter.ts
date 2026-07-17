@@ -1,4 +1,4 @@
-import { formatAskCategoryMessage } from "@/app/ask-category-message";
+import { formatAskCategoryMessage, formatConfirmationMessage } from "@/app/ask-category-message";
 import type {
   AiPort,
   CategoryClassificationInput,
@@ -33,7 +33,7 @@ export function createInflectionAiAdapter(config: InflectionClientConfig): AiPor
           categories: input.categories,
         });
       }
-      return "¡Listo! Ya quedó registrado.";
+      return formatConfirmationMessage(input.categoryName);
     },
   };
 }

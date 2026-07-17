@@ -2,6 +2,7 @@ import { isValidExpenseCandidate } from "@/domain/expense/rules";
 import type { IntentContext, ParsedIntent } from "@/domain/intent/entity";
 import type { AiPort } from "@/ports/ai.port";
 import type { LoggerPort } from "@/ports/logger.port";
+import { resolveExpenseOccurredAt } from "@/utils/date/resolveExpenseOccurredAt";
 
 export type ParseUserIntentDeps = {
   ai: AiPort;
@@ -168,8 +169,13 @@ export function createParseUserIntent(deps: ParseUserIntentDeps) {
             amountMinor: toAmountMinor(extracted.amount),
             currency: extracted.currency || input.context.defaultCurrency,
             merchant: extracted.merchant,
-            description: extracted.rawText,
-            occurredAt: extracted.date,
+            description: extracted.rawText || input.text,
+            occurredAt: resolveExpenseOccurredAt({
+              candidate: extracted.date,
+              sourceText: input.text,
+              nowIso: input.context.nowIso,
+              timezone: input.context.timezone,
+            }),
           },
           missingFields: [],
           confidence: 0.9,

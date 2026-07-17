@@ -31,3 +31,11 @@ export function formatCategoryRetryMessage(
 ): string {
   return `No me quedó clara la categoría. Opciones: ${formatCategoryOptions(categories)}.`;
 }
+
+export function formatConfirmationMessage(categoryName?: string): string {
+  const name = categoryName?.trim();
+  if (name) {
+    return `Listo, ya lo guardé en ${name}.`;
+  }
+  return "Listo, ya lo guardé.";
+}

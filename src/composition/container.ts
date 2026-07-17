@@ -66,6 +66,7 @@ export function createContainer(
     channelPolicyRepo,
     featurePolicy,
     expenseRepo,
+    conversationState,
     logger,
   });
   const updateLastExpenseFromIntent = createUpdateLastExpenseFromIntent({

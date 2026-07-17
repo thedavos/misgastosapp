@@ -58,6 +58,155 @@ describe("process chat message", () => {
     expect(handleUserReply).toHaveBeenCalledTimes(1);
   });
 
+  it("diverts expense-shaped text while awaiting category instead of classifying", async () => {
+    const handleUserReply = vi.fn().mockImplementation(() => Effect.succeed({ categorized: true }));
+    const createExpenseFromIntent = vi
+      .fn()
+      .mockImplementation(() => Effect.succeed({ expenseId: "exp_metro_1" }));
+    const fallbackExpenseCapture = vi.fn().mockImplementation(() => Effect.succeed(null));
+    const loggerInfo = vi.fn();
+
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue({
+          userId: "cust_default",
+          channel: "whatsapp",
+          externalUserId: "51999999999",
+          expenseId: "exp_tambo_pending",
+          createdAt: "now",
+        }),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: loggerInfo,
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      fallbackExpenseCapture: fallbackExpenseCapture as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["fallbackExpenseCapture"],
+      handleUserReply,
+      createExpenseFromIntent: createExpenseFromIntent as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["createExpenseFromIntent"],
+      parseUserIntent: vi.fn().mockResolvedValue({
+        name: "create_expense",
+        payload: {
+          draft: {
+            amountMinor: 2000,
+            currency: "PEN",
+            merchant: "metro",
+            occurredAt: "2026-07-17T10:00:00.000Z",
+          },
+          missingFields: [],
+          confidence: 0.9,
+        },
+      }),
+      resolveIntentContext: vi.fn().mockResolvedValue({
+        timezone: "America/Lima",
+        defaultCurrency: "PEN",
+      }),
+    });
+
+    const result = await Effect.runPromise(
+      processChatMessage({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        providerEventId: "evt_metro_divert",
+        text: "20 soles metro hoy",
+      }),
+    );
+
+    expect(handleUserReply).not.toHaveBeenCalled();
+    expect(createExpenseFromIntent).toHaveBeenCalledTimes(1);
+    expect(fallbackExpenseCapture).not.toHaveBeenCalled();
+    expect(result.expenseId).toBe("exp_metro_1");
+    expect(result.categorized).toBe(false);
+    expect(loggerInfo).toHaveBeenCalledWith(
+      "conversation.divert_new_expense",
+      expect.objectContaining({
+        pendingExpenseId: "exp_tambo_pending",
+      }),
+    );
+  });
+
+  it("keeps category flow for short replies while awaiting category", async () => {
+    const handleUserReply = vi.fn().mockImplementation(() => Effect.succeed({ categorized: true }));
+    const createExpenseFromIntent = vi.fn();
+
+    const processChatMessage = createProcessChatMessage({
+      conversationState: {
+        put: vi.fn(),
+        get: vi.fn().mockResolvedValue({
+          userId: "cust_default",
+          channel: "whatsapp",
+          externalUserId: "51999999999",
+          expenseId: "exp_tambo_pending",
+          createdAt: "now",
+        }),
+        delete: vi.fn(),
+      },
+      channel: {
+        sendMessage: vi.fn().mockResolvedValue({ providerMessageId: "msg_1" }),
+        parseWebhook: vi.fn(),
+        verifyWebhook: vi.fn(),
+      },
+      ocr: {
+        extractTextFromImage: vi.fn(),
+      },
+      chatMediaRepo: {
+        create: vi.fn(),
+        linkExpense: vi.fn(),
+        listByExpenseId: vi.fn(),
+        deleteExpired: vi.fn(),
+      },
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      fallbackExpenseCapture: vi.fn() as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["fallbackExpenseCapture"],
+      handleUserReply,
+      createExpenseFromIntent: createExpenseFromIntent as unknown as Parameters<
+        typeof createProcessChatMessage
+      >[0]["createExpenseFromIntent"],
+    });
+
+    const result = await Effect.runPromise(
+      processChatMessage({
+        userId: "cust_default",
+        channel: "whatsapp",
+        externalUserId: "51999999999",
+        providerEventId: "evt_category_reply",
+        text: "Transporte",
+      }),
+    );
+
+    expect(result.categorized).toBe(true);
+    expect(handleUserReply).toHaveBeenCalledTimes(1);
+    expect(createExpenseFromIntent).not.toHaveBeenCalled();
+  });
+
   it("sends guidance when there is no pending state and no text or OCR content", async () => {
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
 

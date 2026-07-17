@@ -7,12 +7,13 @@ describe("handle user reply", () => {
     const markConfirmed = vi.fn().mockResolvedValue(undefined);
     const deleteState = vi.fn().mockResolvedValue(undefined);
     const sendMessage = vi.fn().mockResolvedValue({ providerMessageId: "msg_1" });
+    const generateMessage = vi.fn();
 
     const handleUserReply = createHandleUserReply({
       ai: {
         extractTransaction: vi.fn(),
         classifyCategory: vi.fn().mockResolvedValue({ categoryId: "cat_food", confidence: 0.9 }),
-        generateMessage: vi.fn().mockResolvedValue("Listo, guardado en Comida."),
+        generateMessage,
       },
       channel: {
         sendMessage,
@@ -87,7 +88,11 @@ describe("handle user reply", () => {
       channel: "whatsapp",
       externalUserId: "u1",
     });
-    expect(sendMessage).toHaveBeenCalled();
+    expect(generateMessage).not.toHaveBeenCalled();
+    expect(sendMessage).toHaveBeenCalledWith({
+      externalUserId: "u1",
+      text: "Listo, ya lo guardé en Comida.",
+    });
   });
 
   it("retries with category options when confidence is low", async () => {

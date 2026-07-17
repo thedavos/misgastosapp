@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatAskCategoryMessage, formatCategoryRetryMessage } from "@/app/ask-category-message";
+import {
+  formatAskCategoryMessage,
+  formatCategoryRetryMessage,
+  formatConfirmationMessage,
+} from "@/app/ask-category-message";
 
 describe("ask-category-message", () => {
   it("formats ask message with amount, merchant, and default categories", () => {
@@ -18,5 +22,10 @@ describe("ask-category-message", () => {
     expect(formatCategoryRetryMessage()).toBe(
       "No me quedó clara la categoría. Opciones: Comida, Transporte, Compras, Servicios, Otros.",
     );
+  });
+
+  it("formats short confirmation without marketing prose", () => {
+    expect(formatConfirmationMessage("Transporte")).toBe("Listo, ya lo guardé en Transporte.");
+    expect(formatConfirmationMessage()).toBe("Listo, ya lo guardé.");
   });
 });

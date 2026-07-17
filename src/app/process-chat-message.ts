@@ -35,6 +35,7 @@ import { sha256Hex } from "@/utils/crypto/sha256Hex";
 import { addDays } from "@/utils/date/addDays";
 import { inferImageExtension } from "@/utils/media/inferImageExtension";
 import { parsePositiveInt } from "@/utils/number/parsePositiveInt";
+import { looksLikeNewExpenseMessage } from "@/utils/text/looksLikeNewExpenseMessage";
 
 const GUIDANCE_MESSAGE =
   "No pude identificar un gasto. Envía texto como: 'S/ 50 en Tambo hoy' o una foto clara del comprobante.";
@@ -60,8 +61,11 @@ export type ProcessChatMessageDeps = {
   createExpenseFromIntent?: (input: {
     userId: string;
     channel: string;
+    sourceType?: "whatsapp" | "email" | "mobile" | "telegram";
     externalUserId: string;
     payload: CreateExpenseIntentPayload;
+    timezone?: string;
+    nowIso?: string;
     requestId?: string;
   }) => Effect.Effect<{ expenseId: string } | null, AppError>;
   updateLastExpenseFromIntent?: (input: {
@@ -208,19 +212,31 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           return { categorized: false, guided: true };
         }
 
-        const replyResult = yield* deps.handleUserReply({
-          userId: input.userId,
-          message: {
+        // Guard: expense-shaped replies must not be treated as category answers.
+        // Old pending expense stays needs_clarification; new capture overwrites the KV lock
+        // with a fresh ask-category state (least surprising UX).
+        if (looksLikeNewExpenseMessage(normalizedText)) {
+          deps.logger.info("conversation.divert_new_expense", {
+            requestId: input.requestId,
+            userId: input.userId,
             channel: input.channel,
-            externalUserId: input.externalUserId,
-            text: normalizedText,
-            timestamp: input.timestamp ?? new Date().toISOString(),
-            providerEventId: input.providerEventId,
-            raw: input.raw ?? {},
-          },
-        });
+            pendingExpenseId: pendingState.expenseId,
+          });
+        } else {
+          const replyResult = yield* deps.handleUserReply({
+            userId: input.userId,
+            message: {
+              channel: input.channel,
+              externalUserId: input.externalUserId,
+              text: normalizedText,
+              timestamp: input.timestamp ?? new Date().toISOString(),
+              providerEventId: input.providerEventId,
+              raw: input.raw ?? {},
+            },
+          });
 
-        return { categorized: replyResult.categorized };
+          return { categorized: replyResult.categorized };
+        }
       }
 
       const combinedSegments: string[] = [];
