@@ -187,7 +187,7 @@ function extractIncomingMessage(
     if (nestedFrom && (nestedText || nestedAttachments.length > 0)) {
       return {
         channel: "whatsapp",
-        externalUserId: nestedFrom,
+        externalUserId: normalizeExternalUserId(nestedFrom),
         text: nestedText ?? "",
         timestamp: toIsoTimestamp(nestedRecord.timestamp),
         providerEventId,
@@ -211,7 +211,7 @@ function extractIncomingMessage(
   if (from && (text || attachments.length > 0)) {
     return {
       channel: "whatsapp",
-      externalUserId: from,
+      externalUserId: normalizeExternalUserId(from),
       text: text ?? "",
       timestamp: toIsoTimestamp(payload.timestamp),
       providerEventId,
@@ -222,6 +222,16 @@ function extractIncomingMessage(
   }
 
   return null;
+}
+
+function normalizeExternalUserId(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  // Keep a stable id for WhatsApp phone numbers (digits only).
+  if (/^\+?\d{8,15}$/.test(trimmed)) {
+    return trimmed.replace(/\D+/g, "");
+  }
+  return trimmed;
 }
 
 export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
@@ -246,7 +256,7 @@ export function createKapsoChannelAdapter(env: WorkerEnv): ChannelPort {
         body: JSON.stringify({
           messaging_product: "whatsapp",
           recipient_type: "individual",
-          to: input.externalUserId,
+          to: normalizeExternalUserId(input.externalUserId),
           type: "text",
           text: { body: input.text },
         }),
