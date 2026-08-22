@@ -50,6 +50,84 @@ function extractUpdateAmountPatch(
   };
 }
 
+function matchesReportIntent(normalized: string): boolean {
+  return (
+    normalized.includes("resumen de hoy") ||
+    normalized.includes("resumen del día") ||
+    normalized.includes("resumen del dia") ||
+    normalized.includes("resumen de la semana") ||
+    normalized.includes("resumen semanal") ||
+    normalized.includes("resumen del mes") ||
+    normalized.includes("resumen mensual") ||
+    normalized.includes("en qué gasté más") ||
+    normalized.includes("en que gaste mas") ||
+    normalized.includes("top spend")
+  );
+}
+
+function matchesHelpIntent(normalized: string): boolean {
+  return (
+    normalized === "ayuda" ||
+    normalized === "help" ||
+    normalized.includes("cómo funciona") ||
+    normalized.includes("como funciona") ||
+    normalized.includes("qué puedes hacer") ||
+    normalized.includes("que puedes hacer")
+  );
+}
+
+function matchesDeleteIntent(normalized: string): boolean {
+  return (
+    normalized.includes("borra") ||
+    normalized.includes("elimina") ||
+    normalized.includes("borrar último") ||
+    normalized.includes("borrar ultimo") ||
+    normalized.includes("eliminar último") ||
+    normalized.includes("eliminar ultimo")
+  );
+}
+
+function matchesUpdateIntent(normalized: string): boolean {
+  return (
+    normalized.includes("corrige") ||
+    normalized.includes("corrígelo") ||
+    normalized.includes("corrigelo") ||
+    normalized.includes("cámbia") ||
+    normalized.includes("cambia") ||
+    normalized.includes("no fueron") ||
+    normalized.includes("fue ayer")
+  );
+}
+
+export function matchesExplicitCommandIntent(normalized: string): boolean {
+  if (!normalized) return false;
+  return (
+    matchesReportIntent(normalized) ||
+    matchesHelpIntent(normalized) ||
+    matchesDeleteIntent(normalized) ||
+    matchesUpdateIntent(normalized)
+  );
+}
+
+type ReportPeriodKind = "day" | "week" | "month" | "top_spend";
+
+function resolveReportPeriod(normalized: string): ReportPeriodKind {
+  if (
+    normalized.includes("resumen de hoy") ||
+    normalized.includes("resumen del día") ||
+    normalized.includes("resumen del dia")
+  ) {
+    return "day";
+  }
+  if (normalized.includes("resumen de la semana") || normalized.includes("resumen semanal")) {
+    return "week";
+  }
+  if (normalized.includes("resumen del mes") || normalized.includes("resumen mensual")) {
+    return "month";
+  }
+  return "top_spend";
+}
+
 export function createParseUserIntent(deps: ParseUserIntentDeps) {
   return async function parseUserIntent(input: {
     text: string;
@@ -65,79 +143,29 @@ export function createParseUserIntent(deps: ParseUserIntentDeps) {
       };
     }
 
-    if (
-      normalized.includes("resumen de hoy") ||
-      normalized.includes("resumen del día") ||
-      normalized.includes("resumen del dia")
-    ) {
+    if (matchesReportIntent(normalized)) {
+      const periodKind = resolveReportPeriod(normalized);
       return {
         name: "get_report",
-        payload: { periodKind: "day", confidence: 0.98 },
+        payload: { periodKind, confidence: periodKind === "top_spend" ? 0.96 : 0.98 },
       };
     }
 
-    if (normalized.includes("resumen de la semana") || normalized.includes("resumen semanal")) {
-      return {
-        name: "get_report",
-        payload: { periodKind: "week", confidence: 0.98 },
-      };
-    }
-
-    if (normalized.includes("resumen del mes") || normalized.includes("resumen mensual")) {
-      return {
-        name: "get_report",
-        payload: { periodKind: "month", confidence: 0.98 },
-      };
-    }
-
-    if (
-      normalized.includes("en qué gasté más") ||
-      normalized.includes("en que gaste mas") ||
-      normalized.includes("top spend")
-    ) {
-      return {
-        name: "get_report",
-        payload: { periodKind: "top_spend", confidence: 0.96 },
-      };
-    }
-
-    if (
-      normalized === "ayuda" ||
-      normalized === "help" ||
-      normalized.includes("cómo funciona") ||
-      normalized.includes("como funciona") ||
-      normalized.includes("qué puedes hacer") ||
-      normalized.includes("que puedes hacer")
-    ) {
+    if (matchesHelpIntent(normalized)) {
       return {
         name: "help",
         payload: { topic: "examples", confidence: 0.97 },
       };
     }
 
-    if (
-      normalized.includes("borra") ||
-      normalized.includes("elimina") ||
-      normalized.includes("borrar último") ||
-      normalized.includes("borrar ultimo") ||
-      normalized.includes("eliminar último") ||
-      normalized.includes("eliminar ultimo")
-    ) {
+    if (matchesDeleteIntent(normalized)) {
       return {
         name: "delete_last_expense",
         payload: { confidence: 0.93 },
       };
     }
 
-    if (
-      normalized.includes("corrige") ||
-      normalized.includes("corrígelo") ||
-      normalized.includes("corrigelo") ||
-      normalized.includes("cámbia") ||
-      normalized.includes("cambia") ||
-      normalized.includes("no fueron") ||
-      normalized.includes("fue ayer")
-    ) {
+    if (matchesUpdateIntent(normalized)) {
       const amountPatch = extractUpdateAmountPatch(input.text, input.context.defaultCurrency);
       if (amountPatch) {
         return {

@@ -5,6 +5,7 @@ import {
   ChannelPolicyError,
   FeaturePolicyError,
   ChannelSendError,
+  ConversationStateError,
   ExpensePersistenceError,
   SubscriptionFeatureBlockedError,
   type AppError,
@@ -12,6 +13,7 @@ import {
 import type { DeleteLastExpenseIntentPayload } from "@/domain/intent/entity";
 import type { ChannelPolicyRepoPort } from "@/ports/channel-policy-repo.port";
 import type { ChannelPort } from "@/ports/channel.port";
+import type { ConversationStatePort } from "@/ports/conversation-state.port";
 import type { ExpenseRepoPort } from "@/ports/expense-repo.port";
 import type { FeaturePolicyPort } from "@/ports/feature-policy.port";
 import type { LoggerPort } from "@/ports/logger.port";
@@ -22,6 +24,7 @@ export type DeleteLastExpenseFromIntentDeps = {
   channelPolicyRepo: ChannelPolicyRepoPort;
   featurePolicy: FeaturePolicyPort;
   expenseRepo: ExpenseRepoPort;
+  conversationState?: ConversationStatePort;
   logger: LoggerPort;
 };
 
@@ -131,6 +134,24 @@ export function createDeleteLastExpenseFromIntent(deps: DeleteLastExpenseFromInt
 
       if (!discardedExpense) {
         return { handled: true };
+      }
+
+      const conversationState = deps.conversationState;
+      if (conversationState) {
+        yield* fromPromise(
+          () =>
+            conversationState.delete({
+              userId: input.userId,
+              channel: input.channel,
+              externalUserId: input.externalUserId,
+            }),
+          (cause) =>
+            new ConversationStateError({
+              requestId: input.requestId,
+              operation: "delete",
+              cause,
+            }),
+        );
       }
 
       yield* fromPromise(

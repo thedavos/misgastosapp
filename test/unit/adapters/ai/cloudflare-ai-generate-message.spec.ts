@@ -1,6 +1,6 @@
+import type { WorkerEnv } from "types/env";
 import { describe, expect, it, vi } from "vitest";
 import { createCloudflareAiAdapter } from "@/adapters/ai/cloudflare-ai.adapter";
-import type { WorkerEnv } from "types/env";
 
 describe("cloudflare AI generateMessage", () => {
   it("returns deterministic ask_category and confirmation without calling Workers AI", async () => {

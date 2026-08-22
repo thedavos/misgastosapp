@@ -4,7 +4,7 @@ import { handleEmail } from "@/handlers/email.handler";
 import { makeMessage } from "@/utils/makeMessage";
 
 describe("email handler integration", () => {
-  it("creates expense directly from email intent without conversation state", async () => {
+  it("creates expense directly from email intent with pending conversation state for whatsapp", async () => {
     const env = createTestEnv();
     const message = makeMessage(
       "From: notificaciones@example.com\nSubject: Compra\n\nRealizaste una compra por S/ 50 en Tambo",
@@ -29,7 +29,15 @@ describe("email handler integration", () => {
     const conversation = await env.CONVERSATION_STATE_KV.get(
       "conv:cust_default:whatsapp:51999999999",
     );
-    expect(conversation).toBeNull();
+    expect(conversation).not.toBeNull();
+
+    const createdExpenseId = Array.from(dbState.expenses.keys())[0];
+    expect(JSON.parse(conversation as string)).toMatchObject({
+      userId: "cust_default",
+      channel: "whatsapp",
+      externalUserId: "51999999999",
+      expenseId: createdExpenseId,
+    });
   });
 
   it("does not create expense when sender is not mapped", async () => {

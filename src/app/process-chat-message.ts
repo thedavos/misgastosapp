@@ -15,6 +15,7 @@ import {
 } from "@/app/errors";
 import { createExecuteChannelIntent } from "@/app/execute-channel-intent";
 import { WHATSAPP_ONBOARDING_MESSAGE } from "@/app/onboarding";
+import { matchesExplicitCommandIntent } from "@/app/parse-user-intent";
 import type {
   CreateExpenseIntentPayload,
   DeleteLastExpenseIntentPayload,
@@ -212,11 +213,18 @@ export function createProcessChatMessage(deps: ProcessChatMessageDeps) {
           return { categorized: false, guided: true };
         }
 
-        // Guard: expense-shaped replies must not be treated as category answers.
+        // Guard: expense-shaped or command-like replies must not be treated as category answers.
         // Old pending expense stays needs_clarification; new capture overwrites the KV lock
         // with a fresh ask-category state (least surprising UX).
         if (looksLikeNewExpenseMessage(normalizedText)) {
           deps.logger.info("conversation.divert_new_expense", {
+            requestId: input.requestId,
+            userId: input.userId,
+            channel: input.channel,
+            pendingExpenseId: pendingState.expenseId,
+          });
+        } else if (matchesExplicitCommandIntent(normalizedText.toLowerCase())) {
+          deps.logger.info("conversation.divert_command", {
             requestId: input.requestId,
             userId: input.userId,
             channel: input.channel,

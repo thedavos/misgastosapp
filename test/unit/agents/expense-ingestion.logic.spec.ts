@@ -60,7 +60,7 @@ describe("expense ingestion logic", () => {
     expect(dbState.inboundWebhookEvents.get("kapso_whatsapp:evt_1")?.status).toBe("PROCESSED");
   });
 
-  it("creates the expense directly for WhatsApp without opening pending conversation state", async () => {
+  it("creates the expense directly for WhatsApp and opens pending conversation state awaiting category", async () => {
     const env = createTestEnv();
     const container = createContainer(env);
 
@@ -99,7 +99,15 @@ describe("expense ingestion logic", () => {
     const pendingState = await env.CONVERSATION_STATE_KV.get(
       "conv:cust_default:whatsapp:51999999999",
     );
-    expect(pendingState).toBeNull();
+    expect(pendingState).not.toBeNull();
+
+    const createdExpenseId = Array.from(dbState.expenses.keys())[0];
+    expect(JSON.parse(pendingState as string)).toMatchObject({
+      userId: "cust_default",
+      channel: "whatsapp",
+      externalUserId: "51999999999",
+      expenseId: createdExpenseId,
+    });
   });
 
   it("updates the latest WhatsApp expense directly when the correction patch is explicit", async () => {
