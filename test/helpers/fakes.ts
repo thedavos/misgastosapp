@@ -969,16 +969,6 @@ function createMemoryD1Database(options?: {
           } as T;
         }
 
-        if (false) {
-          const [userId, excludedStatus] = values as [string, string];
-          const row = Array.from(expenses.values())
-            .filter(
-              (expense) => expense.customer_id === userId && expense.status !== excludedStatus,
-            )
-            .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-          return (row as T | undefined) ?? null;
-        }
-
         if (query.includes("from categories_v2 where lower(name) = ?")) {
           const [name, userId] = values as [string, string];
           const found = Array.from(categories.values()).find(

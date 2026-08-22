@@ -8,7 +8,6 @@ Estado actual:
 - Canal secundario conservado: Telegram (Chat SDK, DM-only, segunda iteración).
 - Canal soportado para creación de gastos: email.
 - IA principal: Cloudflare Workers AI.
-- IA alterna en scaffold: Inflection API.
 
 ## Flujo actual (implementado)
 
