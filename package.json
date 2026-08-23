@@ -1,57 +1,23 @@
 {
   "name": "misgastosapp",
   "version": "0.0.1",
-  "description": "Bot personal para automatizar categorización de gastos bancarios",
-  "keywords": [
-    "cloudflare-ai",
-    "cloudflare-workers",
-    "expense-tracker",
-    "telegram-bot"
-  ],
+  "private": true,
+  "description": "Monorepo de MisGastos.app: worker (WhatsApp/email/API) y app mobile",
   "license": "MIT",
   "author": "davidvargas.d45@gmail.com",
-  "main": "index.js",
   "scripts": {
-    "cf-typegen": "wrangler types",
-    "check": "npm-run-all --parallel tsc lint format:check",
-    "deploy": "wrangler deploy",
-    "deploy:release": "npm-run-all deploy sentry:sourcemaps",
-    "dev": "wrangler dev",
+    "check": "pnpm --filter @misgastos/worker check",
+    "deploy": "pnpm --filter @misgastos/worker deploy",
+    "dev": "pnpm --filter @misgastos/worker dev",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
-    "format:diff": "oxfmt --write && git --no-pager diff",
     "lint": "oxlint --type-aware",
-    "sentry:sourcemaps": "npm-run-all sentry:sourcemaps:build sentry:sourcemaps:inject sentry:sourcemaps:upload",
-    "sentry:sourcemaps:build": "wrangler deploy --dry-run --outdir dist",
-    "sentry:sourcemaps:inject": "pnpm dlx @sentry/cli sourcemaps inject dist",
-    "sentry:sourcemaps:upload": "pnpm dlx @sentry/cli sourcemaps upload dist --release \"$SENTRY_RELEASE\" --org \"$SENTRY_ORG\" --project \"$SENTRY_PROJECT\"",
-    "start": "wrangler dev",
-    "tail": "wrangler tail misgastosapp",
-    "test": "vitest",
-    "tsc": "tsgo --project tsconfig.worker.json"
-  },
-  "dependencies": {
-    "@chat-adapter/telegram": "*",
-    "@sentry/cloudflare": "^10.39.0",
-    "agents": "^0.7.5",
-    "chat": "*",
-    "date-fns": "^4.1.0",
-    "effect": "^3.19.18",
-    "hono": "4.12.4",
-    "postal-mime": "^2.7.3"
+    "mobile:start": "pnpm --filter @misgastos/mobile start",
+    "tail": "pnpm --filter @misgastos/worker tail",
+    "test": "pnpm --filter @misgastos/worker test"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.13",
-    "@cloudflare/workers-types": "^4.20260219.0",
-    "@sentry/cli": "^3.2.1",
-    "@typescript/native-preview": "^7.0.0-dev.20260218.1",
-    "npm-run-all2": "^8.0.4",
     "oxfmt": "^0.33.0",
-    "oxlint": "^1.48.0",
-    "oxlint-tsgolint": "^0.14.0",
-    "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "~3.2.4",
-    "wrangler": "^4.66.0"
-  },
-  "packageManager": "pnpm@10.30.3"
+    "oxlint": "^1.48.0"
+  }
 }

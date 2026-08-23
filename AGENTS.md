@@ -2,34 +2,34 @@
 
 ## Project Structure & Module Organization
 
-- `src/`: Cloudflare Worker source (entry in `src/index.ts`) with feature areas like `src/email/` and `src/http/`.
-- `test/`: Vitest tests (e.g., `test/index.spec.ts`) and test types.
-- `db/`: D1 database schema (`db/schema.sql`).
-- `types/`: Shared type definitions (e.g., `types/env`).
-- Config: `wrangler.jsonc`, `tsconfig.json`, `tsconfig.worker.json`.
+pnpm monorepo (`pnpm-workspace.yaml`):
+
+- `apps/worker/`: Cloudflare Worker (entry in `src/index.ts`), WhatsApp/email ingestion, HTTP API for mobile, Durable Object agent, D1 schema in `db/schema.sql`, config in `wrangler.jsonc`.
+- `apps/mobile/`: Expo / React Native app (SDK 57).
+- `docs/`: Product and operations docs (runbook, closed beta guide, MVP design).
+- Root: shared `package.json` (delegating scripts), `pnpm-workspace.yaml`, `oxlint`/`oxfmt` configs, `AGENTS.md`, `README.md`, `LICENSE`.
 
 ## Build, Test, and Development Commands
 
-- `pnpm dev` / `pnpm start`: Run the worker locally with Wrangler.
+Root scripts delegate to the worker package:
+
+- `pnpm dev`: Run the worker locally with Wrangler.
 - `pnpm deploy`: Deploy the worker to Cloudflare.
-- `pnpm test`: Run Vitest.
-- `pnpm lint`: Run `oxlint` (type-aware linting).
-- `pnpm lint:format`: Check formatting with `oxfmt`.
-- `pnpm tsc`: Typecheck via `tsgo` using `tsconfig.worker.json`.
-- `pnpm check`: Run `tsc`, `lint`, and `lint:format` in parallel.
-- `pnpm cf-typegen`: Generate Cloudflare types.
+- `pnpm test`: Run Vitest for the worker.
+- `pnpm check`: Run worker `tsc`, `lint`, and format check in parallel.
+- `pnpm mobile:start`: Start the Expo dev server.
+- Package-scoped: run inside `apps/worker` or `apps/mobile` with `pnpm --filter @misgastos/worker <script>` (e.g. `tsc`, `cf-typegen`, `android`, `ios`).
 
 ## Coding Style & Naming Conventions
 
 - TypeScript is the primary language; keep imports explicit and ordered.
 - Indentation is 2 spaces and trailing commas are used in multi-line objects.
 - Prefer descriptive function names like `onEmail`, `onFetch` to match worker handlers.
-- Formatting and linting are enforced via `oxfmt` and `oxlint`; run `pnpm check` before PRs.
+- Formatting and linting are enforced via root `oxfmt` and `oxlint`; run `pnpm check` before PRs.
 
 ## Testing Guidelines
 
-- Framework: Vitest.
-- Test files live under `test/` and typically use `*.spec.ts` naming.
+- Framework: Vitest (worker). Test files live under `apps/worker/test/` with `*.spec.ts` naming.
 - Run `pnpm test` locally; add tests for new parsing or handler behavior.
 
 ## Commit & Pull Request Guidelines
@@ -41,5 +41,5 @@
 ## Configuration & Secrets
 
 - Secrets are managed via Wrangler (`wrangler secret put ...`).
-- Required environment values include `CLAUDE_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and `SENTRY_DSN` when enabled.
-- Database schema changes must update `db/schema.sql` and be applied to D1.
+- Worker env vars/secrets are documented in `apps/worker/README.md` section "Variables y bindings" and `apps/worker/.env.example`.
+- Database schema changes must update `apps/worker/db/schema.sql` and be applied to D1.
