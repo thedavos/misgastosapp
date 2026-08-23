@@ -189,3 +189,6 @@ test/fixtures/*
 
 # Zed
 .zed/
+
+# Claude local settings
+.claude/
