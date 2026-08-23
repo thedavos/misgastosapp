@@ -1,0 +1,358 @@
+Delivered-To: davidvargas.d45@gmail.com
+Received: by 2002:ac9:7e42:0:b0:61f:e427:1ca5 with SMTP id 2csp924118ocs;
+        Thu, 19 Feb 2026 08:13:39 -0800 (PST)
+X-Received: by 2002:a05:6102:2ac7:b0:5f9:39e8:5346 with SMTP id ada2fe7eead31-5fe7fb393bfmr2925033137.9.1771517619321;
+        Thu, 19 Feb 2026 08:13:39 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1771517619; cv=none;
+        d=google.com; s=arc-20240605;
+        b=J/ETuUzNHTZyRIzV8s1n3pDp1UM/ma/b7yddHNecidWyI96V6PGOFL1r+g+LySOdzV
+         ea6u0ySqESqDrQYzs3X9L+WGTufaG8JcLBsuzKzrmIPVzKoc/KdLZ8suDC/sZaekMOs4
+         BuVeMP0vTeri1sdiNHMH3DmmQWuzVq1980FVC89hRBE9EnItGdcmBkZY1PtWTTXI2RWA
+         5DXlS+gUMokH7kptf2YtCiK3b4LEwIhW6izkI29R9+kT9fYhBIcbg7H4YaOPi4GILl1e
+         sld03rwMj1l/ELzwCYMtdjxC3RxvToHY8/fR1E9Qzm0i6IX421DP8WVXSmUyIKxd2tVY
+         prmg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=mime-version:subject:message-id:to:from:date:dkim-signature
+         :dkim-filter;
+        bh=cSGh5IQMKo5SNC84WBVRNUiDzxKoDYB6zi6oiqWVVQ8=;
+        fh=/xGWPGh0xPcgED3pG9/6YWwkt4EQeHeiTugIw3/lkIE=;
+        b=XkrIAe7IxBdxTCioezAyVvJJLWr7xBkGgvYtY6keSphCROWFSxwfxYr4sR95Pnlgh9
+         P3Fk5Ksnvf7eF4bZNI2YDoCS6glX5RYB0Yd4f7JPcC8yvvVtTBAviman0jLoEEDXa+Z3
+         IaXZ2ksO2XqtoMjmNz/5b74pzSM4E8PXiZdVMvmfFna4S5hFuIqyJWRXZb6UE9BvRGJr
+         J6MYDv6eNUtPGu4yZLplcoGz1xB0WsKUEO05XyLxT62tsN5FwjLYr4+NCtXhASqkpqcT
+         sUngf+yv6EPPztIfGAAIZWCrvFwVi/ii4kmfbFZvSoyH/Z6d7UD2cGnRZ9/yhmPIhvNU
+         GM2Q==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@netinterbank.com.pe header.s=onpremprd1 header.b=YmnfkHXX;
+       spf=pass (google.com: domain of servicioalcliente@netinterbank.com.pe designates 201.234.114.132 as permitted sender) smtp.mailfrom=servicioalcliente@netinterbank.com.pe;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=netinterbank.com.pe
+Return-Path: <servicioalcliente@netinterbank.com.pe>
+Received: from ibmail2.intercorp.com.pe (ibmail2.intercorp.com.pe. [201.234.114.132])
+        by mx.google.com with ESMTPS id a1e0cc1a2514c-94afd4d5105si3455849241.297.2026.02.19.08.13.38
+        for <davidvargas.d45@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 19 Feb 2026 08:13:39 -0800 (PST)
+Received-SPF: pass (google.com: domain of servicioalcliente@netinterbank.com.pe designates 201.234.114.132 as permitted sender) client-ip=201.234.114.132;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@netinterbank.com.pe header.s=onpremprd1 header.b=YmnfkHXX;
+       spf=pass (google.com: domain of servicioalcliente@netinterbank.com.pe designates 201.234.114.132 as permitted sender) smtp.mailfrom=servicioalcliente@netinterbank.com.pe;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=netinterbank.com.pe
+Received: from s227vp36.grupoib.local (unknown [10.13.70.165]) by ibmail2.intercorp.com.pe (Postfix) with ESMTP id 5423E112EE5 for <davidvargas.d45@gmail.com>; Thu, 19 Feb 2026 10:34:54 -0500 (-05)
+DKIM-Filter: OpenDKIM Filter v2.11.0 ibmail2.intercorp.com.pe 5423E112EE5
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=netinterbank.com.pe; s=onpremprd1; t=1771515294; bh=EcBc0yZ13rOc0G1N5wfWyEzmheVrKPN1RE6dqa2+g5E=; h=Date:From:To:Subject:From; b=YmnfkHXXIriUufInjpEtUgJgeLdyzUlTiXvcpTKrDcmTo2H8GHTjNJFPu69dVKFqn
+	 yQHJykYo0F8PEgqLdO3hZL6rX1TiQYu2/dBnvwLSvt/pYGhIGyB32aD0M2hwyvt5eZ
+	 XNE+x94J+yTndGo3sLxNE5fLg6eOUpZcuZyazUbE=
+Date: Thu, 19 Feb 2026 10:34:54 -0500 (PET)
+From: Interbank Servicio al Cliente <servicioalcliente@netinterbank.com.pe>
+To: davidvargas.d45@gmail.com
+Message-ID: <1166781301.198119.1771515294342@s227vp36.grupoib.local>
+Subject: Constancia de pago
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_198117_-113573906.1771515294334"
+
+------=_Part_198117_-113573906.1771515294334
+Content-Type: multipart/related; boundary="----=_Part_198118_26523357.1771515294334"
+
+------=_Part_198118_26523357.1771515294334
+Content-Type: text/html;charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<title>Interbank | Confirmaci&oacute;n de <span>Constancia de pago</span></title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<style type="text/css" xml:space="preserve">
+			v\:* { behavior: url(#default#VML); display: inline-block; }
+			body{ font-size: 16px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin:0px; padding: :0; font-weight: medium;
+			}
+
+			#cliente-nombre {font-size:  25.37px; font-weight: normal; padding-bottom: 20px;}
+			.content-border{width:620px; border-collapse: collapse; border: #009b3a;}
+			.content{width:620px;border-collapse: collapse;}
+			.resumen-table{display: inline-block;}
+			.resumen-table img{margin-left:-5px; margin-right:10px;}
+			.resumen-superior{ font-size: 24.87px; font-weight: 300; margin:0px; padding: 0px; vertical-align: bottom; width: 245px;}
+			.resumen-inferior { font-size: 36.13px; font-weight: normal; margin: 0px; padding: 0px; vertical-align: top; width: 245px;}
+			.tipo-cambio{ font-size: 10px; font-weight: 500; margin-left: 3px;}
+			.tipo-cambio td{padding-left: 5px; padding-bottom: 13px;}
+			.subresumen-bold{font-size: 15.74px; font-weight: 400;}
+			.subresumen-light{font-size: 15.74px; font-weight: 200; }
+			.detail-table-container{vertical-align: top;}
+			.detail-table-container .detail-table:first-child{margin-right: 20px;}
+			.detail-table{font-size: 13.88px; width: 98%; font-weight: 300; width: 260px; display: inline-block; border: ##eeeeee;}
+			.detail-table strong{font-size: 16.19px; font-weight: 400;}
+			.detail-table td img{vertical-align: middle;}
+			#data-container{padding: 20px 30px 0px 30px;}
+			#white-space{height: 90px;}
+			#long-string{white-space: nowrap;}
+			h2{font-size: 15px; font-weight: 500;margin: 3px; padding-left: 27.3px; }
+
+			#font-parrafo-etiqueta{
+				-webkit-margin-before:0px;
+				-webkit-margin-after:0px;
+				color:#0039a6;
+				font-size: 14px;
+				width:126px;;
+				word-wrap:break-word;
+				overflow:auto;
+			}
+
+			#font-parrafo-valor{
+				-webkit-margin-before:0px;
+				-webkit-margin-after:0px;
+				color:#4e4f53;
+				font-size: 14px;
+				width:134px;
+				word-wrap:break-word;
+				overflow:auto;
+			}
+			#font-etiqueta-codope{
+				-webkit-margin-before:0px;
+				-webkit-margin-after:0px;
+				color:#0039a6;
+				font-size: 13px;
+				width:126px;;
+				word-wrap:break-word;
+				overflow:auto;
+			}
+			#font-valor-codope{
+				-webkit-margin-before:0px;
+				-webkit-margin-after:0px;
+				color:#4e4f53;
+				font-size: 13px;
+				width:134px;
+				word-wrap:break-word;
+				overflow:auto;
+			}
+
+			@media screen and (max-width: 600px){
+				.content{width: 100%;}
+				.content-border{width: 98%;}
+				.resumen-row > td{
+					display: block;
+					width: 100%;
+				}
+				.resumen-table{width: 49.5%;}
+				.resumen-inferior{width: 98%;}
+				.resumen-superior{width: 98%;}
+				.detail-table{
+					margin:0px;
+					width: 100%;
+				}
+				#white-space{
+					height: 80px;
+				}
+			}
+
+			@media screen and (max-width: 470px){
+				h2{padding-left: 11.51px;}
+				.content, .content-border{width: 100%;}
+				.resumen-row > td{
+					display: block;
+					width: 100%;
+				}
+				.resumen-table{width: 100%;}
+				.resumen-inferior{width: 98%;}
+				.resumen-superior{width: 98%;}
+				.detail-table{
+
+
+					margin:0px;
+					margin-bottom: 15px;
+
+
+					width: 100%;
+				}
+				#data-container{padding: 10px 15px 0px 14.85px;}
+				#white-space{
+					height: 60px;
+				}
+			}
+
+			@media screen and (max-width: 320px){
+				h2{padding-left: 11.51px;}
+				.content, .content-border{width: 315px;}
+				.resumen-row > td{
+					display: block;
+					width: 100%;
+				}
+				.resumen-inferior{width: 300px;}
+				.resumen-superior{width: 300px;}
+				#data-container{padding: 10px 15px 0px 14.85px;}
+				#white-space{
+					height: 40px;
+				}
+			}
+		</style>
+	</head>
+
+
+	<body>
+		<table border="0" cellspacing="0" cellpadding="0" style="color: #4d4d4d; font-size: 16px; width: 100%;">
+		  <tr>
+			<td rowspan="1" colspan="1">Hola&nbsp;<span>David</span>,</td>
+		  </tr>
+		  <tr>
+			<td style="height: 10px;" rowspan="1" colspan="1">&nbsp;</td>
+		  </tr>
+		  <tr>
+			<td rowspan="1" colspan="1">A continuaci&oacute;n te enviamos el detalle de tu operaci&oacute;n</td>
+		  </tr>
+		</table>
+		<table align="center" border="0" cellpadding="0" cellspacing="0" class="content-border">
+
+		<tr>
+			<td style="height: 20px;" rowspan="1" colspan="1">&nbsp;</td>
+		</tr>
+
+		<tr>
+			<td rowspan="1" colspan="1">
+				<table align="center" border="0" cellpadding="0" cellspacing="0" class="content">
+				<tr>
+					<td width="300" height="50" align="center" valign="top" rowspan="1" colspan="1">
+						<img src="cid:logo" style="display: block; height: 30px; margin: 0 auto 20px auto; width: 173px" alt="Interbank" />
+					</td>
+				</tr>
+				<tr>
+					<td width="300" align="center" background="cid:sello" style="background-repeat:no-repeat; background-attachment: fixed; background-position: 50% 50%" rowspan="1" colspan="1">
+						<!--[if gte vml 1]>
+							<v:image xmlns:v="urn:schemas-microsoft-com:vml" style='width: 248px; height: 248px; position: absolute; top: 0; left:0; margin-left:180% !important; margin-top:92% !important; border: 0; z-index: -1;' src="cid:sello" />
+						<![endif]-->
+						<table width="298" cellspacing="0" cellpadding="0" style=" border: 1px solid #36c1dc; padding-left:15px; padding-right:15px;">
+						<tr>
+							<td width="268" height="330" align="center" valign="top" style="text-align: center;" rowspan="1" colspan="1">
+								<table width="100%" cellspacing="0" cellpadding="0" style="border-spacing: 0; text-align: center;">
+								<tr>
+									<td colspan="2" style="height: 20px;" rowspan="1">&nbsp;</td>
+								</tr>
+								<tr style="vertical-align:top;">
+									<td colspan="2" align="center" valign="top" style="color: #00add0; font-size: 18px; width:141px; word-wrap:break-word; overflow:auto;" rowspan="1">
+										<span>Constancia de pago</span>
+									</td>
+								</tr>
+								<tr>
+									<td colspan="2" style="height: 20px;" rowspan="1">&nbsp;</td>
+								</tr>
+								<tr style="vertical-align:top;">
+									<td colspan="2" align="center" valign="top" style="text-align: center; font-size:13px" rowspan="1"><span>19 Feb 2026</span>&nbsp;<span>10:34 AM</span></td>
+								</tr>
+								<tr>
+									<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								</tr>
+								<tr align="center" valign="top">
+									<td style="color: #0039a6; text-align: right; font-size:13px; width: 126px;" rowspan="1" colspan="1">
+										<span id="font-etiqueta-codope">C&oacute;digo de operaci&oacute;n:</span>
+									</td>
+									<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+										<span id="font-valor-codope" style="color: #4e4f53; font-size: 13px;"><span>0360985</span></span>
+									</td>
+								</tr>
+								<tr>
+									<td colspan="2" style="height: 30px;" rowspan="1">&nbsp;</td>
+								</tr>
+								</table>
+								<table width="100%" border="0" align="center" cellpadding="0" cellspacing="0" style="color: #4e4f53; font-size: 14px; text-align: center;">
+								<tr style="vertical-align:top;">
+										<td style="color: #0039a6; text-align: right; font-size:14px; width: 126px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-etiqueta">Cuenta cargo:</span>
+										</td>
+										<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-valor"><span>Interbank Visa Infinite</span> <span>Soles</span><br clear="none" /><span>477289******8739</span></span>
+										</td>
+									</tr>
+									<tr>
+										<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								  	</tr>
+								  	<tr style="vertical-align:top;">
+										<td style="color: #0039a6; text-align: right; font-size:14px; width: 126px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-etiqueta">Empresa:</span>
+										</td>
+										<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-valor"><span>IES CIBERTEC SAC</span><br clear="none" /><span>CARRERAS</span></span>
+										</td>
+									</tr>
+									<tr>
+										<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								  	</tr>
+									<!-- #set ($counter = 0)
+									#foreach ($x in $listaMontos)
+									#set ($counter = $counter + 1) -->
+									<tr style="vertical-align:top;">
+										<td style="color: #0039a6; text-align: right; font-size:14px; width: 126px;" rowspan="1" colspan="1">
+											<!-- span id="font-parrafo-etiqueta">Recibo&nbsp;${counter}:</span -->
+											<span id="font-parrafo-etiqueta">Recibo&nbsp;<span>1</span>:</span>
+										</td>
+										<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+											<!-- span id="font-parrafo-valor">${monedaLabel1}&nbsp;${x}<br>${fechaPago}</span -->
+											<span id="font-parrafo-valor">
+											<span>S/</span>&nbsp;<span>470.35 <br> 15/02</span>
+											<br clear="none" />
+											<span></span></span>
+										</td>
+									</tr>
+									<tr>
+										<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								  	</tr>
+									<!-- #end -->
+									<tr style="vertical-align:top;">
+										<td style="color: #0039a6; text-align: right; font-size:14px; width: 126px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-etiqueta">Datos:</span>
+										</td>
+										<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+											<!-- span id="font-parrafo-valor">#if ($nombreClienteDestino != "")${nombreClienteDestino}<br>#end${identificadorTo}</span -->
+											<span id="font-parrafo-valor">
+												<span></span><span>i202515596</span>
+											</span>
+										</td>
+									</tr>
+									<tr>
+										<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								  	</tr>
+									<tr style="vertical-align:top;">
+										<td style="color: #0039a6; text-align: right; font-size:14px; width: 126px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-etiqueta">Moneda y monto:</span>
+										</td>
+										<td style="text-align: left; padding-left:8px; width: 134px;" rowspan="1" colspan="1">
+											<span id="font-parrafo-valor"><span>S/</span> <span>470.35</span></span>
+										</td>
+									</tr>
+									<tr>
+										<td colspan="2" style="height: 10px;" rowspan="1">&nbsp;</td>
+								  	</tr>
+								</table>
+							</td>
+						</tr>
+						<tr>
+							<td style="height: 30px;" rowspan="1" colspan="1">&nbsp;</td>
+						</tr>
+						</table>
+					</td>
+				</tr>
+				</table>
+			</td>
+		</tr>
+		</table>
+	</body>
+</html>
+
+------=_Part_198118_26523357.1771515294334
+Content-Type: image/x-png
+Content-Transfer-Encoding: base64
+Content-Disposition: inline
+Content-ID: <logo>
+
+
+------=_Part_198118_26523357.1771515294334
+Content-Type: image/x-png
+Content-Transfer-Encoding: base64
+Content-Disposition: inline
+Content-ID: <sello>
+
+
+------=_Part_198118_26523357.1771515294334--
+------=_Part_198117_-113573906.1771515294334--
